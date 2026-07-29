@@ -1,0 +1,29 @@
+runConfig:
+  runtime: nodejs20
+  minInstances: 0
+  maxInstances: 4
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: NEXT_PUBLIC_SUPABASE_URL
+    value: https://efbcgjaxsgtiiwlhdsrm.supabase.co
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    value: sb_publishable_jdTsCSK944gXT2u08-lUJg_bARpr91l
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    value: sb_publishable_jdTsCSK944gXT2u08-lUJg_bARpr91l
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_APP_URL
+    value: https://arcadia-f834f.web.app
+    availability:
+      - BUILD
+      - RUNTIME
