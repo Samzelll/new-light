@@ -1,12 +1,20 @@
 import { supabase } from './supabase';
 import type { ContestStatus, ContestType } from '@/constants/contestTypes';
 
+export interface ContestRuleSection {
+  title: string;
+  body: string;
+}
+
 // ── Types ────────────────────────────────────────────────────────
 export interface Contest {
   id: string;
   title: string;
   description: string | null;
   rules: string | null;
+  prize?: string | null;
+  quickRules?: string[];
+  rulesSections?: ContestRuleSection[];
   type: ContestType;
   status: ContestStatus;
   visibility?: 'public' | 'private';

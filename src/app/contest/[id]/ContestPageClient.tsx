@@ -4,17 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
+import { ArrowLeft, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useSelector } from 'react-redux';
-import type { RootState } from '@/lib/store';
 import { getContestById, Contest, updateContestStatus } from '@/services/contestService';
 import { getParticipants, Participant, addBattleParticipant, deleteParticipant } from '@/services/participantService';
 import { castVote } from '@/services/voteService';
 import { supabase } from '@/services/supabase';
-import { CreatorToolbar } from '@/components/contest/CreatorToolbar';
-import { useToast } from '@/components/ui/Toast';
-import { ShareVoteCard } from '@/components/ui/ShareVoteCard';
-import { useGuestVoting } from '@/hooks/useGuestVoting';
+import { BattleVoteView } from '@/components/contest/BattleVoteView';
+import { ContestPage as RegistrationContestPage } from '@/components/contest/RegistrationContestPage';
 
 const LiveBattle = dynamic(
   () => import('@/components/contest/LiveBattle').then((mod) => mod.LiveBattle),
@@ -60,9 +57,6 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   const id = (typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : propId) || '';
 
   const { user, isAuthenticated } = useAuth();
-  const profile = useSelector((state: RootState) => state.auth.profile);
-  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
-  const { tryGuestVote } = useGuestVoting();
 
   const [contest, setContest] = useState<Contest | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -78,18 +72,8 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   const [newBattleCompPhoto, setNewBattleCompPhoto] = useState('');
   const [newBattleCompDesc, setNewBattleCompDesc] = useState('');
   const [addingBattleComp, setAddingBattleComp] = useState(false);
-  const [showShareFor, setShowShareFor] = useState<string | null>(null); // participantId after vote
 
-  // Privileged access: own contest OR admin/developer roles
-  const isAdminRole = profile && ['admin', 'developer'].includes(profile.role);
-  const isCreator = Boolean(
-    user && contest && (
-      contest.created_by === user.id ||
-      user.email === 'samzelenkov@gmail.com' ||
-      isAdminRole
-    )
-  );
-  const creatorRole = profile?.role || 'creator';
+  const isCreator = Boolean(user && contest && (contest.created_by === user.id || user.email === 'samzelenkov@gmail.com'));
 
   const reloadParticipants = async () => {
     const { data: participantsData } = await getParticipants(id, 'all');
@@ -97,14 +81,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   };
 
   const handleDeleteCompetitor = async (participantId: string) => {
-    if (!confirm('Remove this participant?')) return;
+    if (!confirm('Are you sure you want to remove this participant / competitor?')) return;
     const { success, error: delErr } = await deleteParticipant(participantId);
     if (success) {
       setParticipants((prev) => prev.filter((p) => p.id !== participantId));
-      toastSuccess('Participant removed');
       await reloadParticipants();
     } else if (delErr) {
-      toastError(delErr);
+      alert(delErr);
     }
   };
 
@@ -140,8 +123,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     if (!contest) return;
     const { error: statusErr } = await updateContestStatus(contest.id, newStatus);
     if (statusErr) {
-      toastError(statusErr);
-      throw new Error(statusErr);
+      alert(statusErr);
     } else {
       setContest((prev) => prev ? { ...prev, status: newStatus } : null);
     }
@@ -173,7 +155,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
         if (votesData) {
           setVotes(votesData);
           if (user) {
-            const myVote = votesData.find((v) => v.voter_id === user.id);
+            const myVote = votesData.find((v: any) => v.voter_id === user.id);
             if (myVote) setUserVotedParticipantId(myVote.participant_id);
           }
         }
@@ -190,21 +172,11 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
   const handleCastVote = async (participantId: string) => {
     if (!isAuthenticated || !user) {
-      // Allow guest to vote up to GUEST_VOTES_MAX times
-      const allowed = tryGuestVote();
-      if (!allowed) return;
-      // For guests: record a local-only optimistic vote and show share
-      setUserVotedParticipantId(participantId);
-      setShowShareFor(participantId);
-      setVotes((prev) => [
-        ...prev,
-        { id: `guest_${Date.now()}`, participant_id: participantId, voter_id: 'guest' },
-      ]);
-      toastSuccess('Guest vote recorded! Sign up to make it count permanently.', '⚡');
+      alert('Please sign in to vote in this contest.');
       return;
     }
     if (userVotedParticipantId) {
-      toastInfo('You have already voted in this contest', '💡');
+      alert('You have already cast your vote in this contest.');
       return;
     }
 
@@ -218,10 +190,9 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     });
 
     if (voteErr) {
-      toastError(voteErr);
+      alert(voteErr);
     } else {
       setUserVotedParticipantId(participantId);
-      setShowShareFor(participantId);
       setVotes((prev) => [
         ...prev,
         { id: `local_${Date.now()}`, participant_id: participantId, voter_id: user.id },
@@ -258,8 +229,42 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     );
   }
 
+  // Registration Open status page (dedicated mobile-first view)
+  if (contest.status === 'registration') {
+    return (
+      <RegistrationContestPage
+        contest={contest}
+        participants={participants}
+        userHasApplied={userHasApplied}
+      />
+    );
+  }
+
+  // Pure 1v1 Battle View (Pinterest-style game-like arena)
+  if (contest.type === 'battle') {
+    return <BattleVoteView initialContestId={contest.id} />;
+  }
+
   return (
-    <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-24 animate-fade-in">
+    <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-8 animate-fade-in bg-[#000000] text-[#F9F9F9]">
+      {/* ── Top Navigation Bar ── */}
+      <div className="flex items-center justify-between pb-1">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-xs font-bold text-[#F9F9F9] bg-[#141414] hover:bg-[#222222] border border-[#333333] px-3.5 py-2 rounded-xl transition-all"
+        >
+          <ArrowLeft size={16} strokeWidth={2.5} />
+          <span>Назад в ленту</span>
+        </Link>
+        <Link
+          href="/search"
+          aria-label="Поиск"
+          className="w-9 h-9 rounded-xl bg-[#141414] hover:bg-[#222222] text-[#F9F9F9] flex items-center justify-center transition-colors border border-[#333333]"
+        >
+          <Search size={16} strokeWidth={2} />
+        </Link>
+      </div>
+
       {/* Contest Header */}
       <div className="card flex flex-col gap-4 relative overflow-hidden bg-surface-800 border-surface-600 p-6 sm:p-8">
         {contest.cover_url && (
@@ -287,7 +292,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
               <span className="badge bg-accent-green/20 text-accent-green border-accent-green/30 py-2 px-3 text-xs font-bold">
                 ✓ Entry Submitted
               </span>
-            ) : contest.status === 'registration' || contest.status === 'active' ? (
+            ) : contest.status === 'active' ? (
               <Link href={`/apply/${contest.id}`} className="btn btn-primary text-xs py-2.5 px-5 font-bold shadow-lg">
                 + Register Entry
               </Link>
@@ -313,17 +318,90 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
         </div>
       </div>
 
-      {/* Creator / Admin Controls Panel */}
+      {/* Creator Controls Panel */}
       {isCreator && (
-        <CreatorToolbar
-          contestId={contest.id}
-          currentStatus={contest.status as any}
-          contestType={contest.type}
-          participantsCount={participants.length}
-          onStatusChange={handleChangeStatus}
-          onAddCompetitor={contest.type === 'battle' ? () => setShowAddBattleModal(true) : undefined}
-          role={creatorRole}
-        />
+        <div className="card bg-surface-800 border-brand-500/40 p-5 space-y-4 shadow-xl">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-surface-700 pb-3">
+            <div>
+              <h3 className="font-extrabold text-white text-base flex items-center gap-2">
+                <span>🛠️</span> Управление конкурсом (Панель создателя)
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Вы можете изменять статус конкурса (активен, приостановлен, заблокирован/осторожно) и управлять участниками.
+              </p>
+            </div>
+            <span className="badge bg-brand-500/20 text-brand-400 border-brand-500/30 text-xs font-bold shrink-0 self-start sm:self-auto">
+              Организатор
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-300 block">
+              Статус конкурса:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleChangeStatus('active')}
+                className={`btn text-xs py-2 px-3 font-bold ${
+                  contest.status === 'active'
+                    ? 'bg-accent-blue text-white shadow'
+                    : 'bg-surface-700 hover:bg-surface-600 text-gray-300'
+                }`}
+              >
+                ▶️ Активен (Голосование)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleChangeStatus('registration')}
+                className={`btn text-xs py-2 px-3 font-bold ${
+                  (contest.status as string) === 'registration'
+                    ? 'bg-brand-600 text-white shadow'
+                    : 'bg-surface-700 hover:bg-surface-600 text-gray-300'
+                }`}
+              >
+                📝 Открыта регистрация
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleChangeStatus('paused')}
+                className={`btn text-xs py-2 px-3 font-bold ${
+                  contest.status === 'paused'
+                    ? 'bg-yellow-500 text-black shadow'
+                    : 'bg-surface-700 hover:bg-yellow-500/20 hover:text-yellow-300 text-gray-300'
+                }`}
+              >
+                ⏸️ Приостановить (Paused)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleChangeStatus('blocked')}
+                className={`btn text-xs py-2 px-3 font-bold ${
+                  contest.status === 'blocked'
+                    ? 'bg-red-600 text-white shadow'
+                    : 'bg-surface-700 hover:bg-red-500/20 hover:text-red-300 text-gray-300'
+                }`}
+              >
+                ⚠️ Заблокировать / Осторожно (Blocked)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleChangeStatus('completed')}
+                className={`btn text-xs py-2 px-3 font-bold ${
+                  contest.status === 'completed'
+                    ? 'bg-accent-green text-surface-900 shadow'
+                    : 'bg-surface-700 hover:bg-surface-600 text-gray-300'
+                }`}
+              >
+                🏁 Завершен
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Warning Banner: Blocked / Caution */}
@@ -361,7 +439,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
         <div className="md:col-span-2 space-y-6">
 
           {/* Registration Notice */}
-          {contest.status === 'registration' && (
+          {(contest.status as string) === 'registration' && (
             <div className="card border-brand-500/30 bg-brand-500/10 p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
               <div>
                 <h3 className="font-bold text-white text-lg">Registration is Open!</h3>
@@ -377,10 +455,10 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
             </div>
           )}
 
-          {/* Battle Format */}
-          {contest.type === 'battle' && (
+          {/* Battle Format is handled by BattleVoteView */}
+          {false && contest && (
             <div className="space-y-6">
-              <LiveBattle contestId={contest.id} participants={participants} userTrustScore={1.0} />
+              <LiveBattle contestId={(contest as any)?.id || ''} participants={participants} userTrustScore={1.0} />
 
               {/* Creator Options: Battle Competitors Management */}
               <div className="card bg-surface-800 border-surface-600 p-5 space-y-4">
@@ -543,7 +621,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           )}
 
           {/* Standard Participants & Voting */}
-          {contest.type !== 'battle' && (
+          {true && (
             <div className="card bg-surface-800 border-surface-600 p-6 space-y-5">
               <div className="flex justify-between items-center border-b border-surface-700 pb-4">
                 <h3 className="text-xl font-bold text-white">
@@ -639,7 +717,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                             />
                           </div>
 
-                          {(contest.status === 'active' || contest.status === 'registration') && (
+                          {(contest.status === 'active' || (contest.status as string) === 'registration') && (
                             <button
                               onClick={() => handleCastVote(p.id)}
                               disabled={!!userVotedParticipantId || submittingVoteId === p.id}
@@ -657,17 +735,6 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                                 ? '✓ Voted'
                                 : 'Vote for Entry'}
                             </button>
-                          )}
-
-                          {/* Share after voting */}
-                          {isVotedFor && showShareFor === p.id && (
-                            <ShareVoteCard
-                              contestId={contest.id}
-                              contestTitle={contest.title}
-                              contestType={contest.type}
-                              votedForName={name}
-                              percentageLeading={percent}
-                            />
                           )}
                         </div>
                       </div>

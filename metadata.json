@@ -1,1 +1,8 @@
-{"name":"new-light","description":"Curated spotlight feed for opinion voting contests, battles, and platform rankings.","requestFramePermissions":[],"majorCapabilities":["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]}
+{
+  "name": "Opinion Net",
+  "description": "Curated spotlight feed for opinion voting contests, battles, and platform rankings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

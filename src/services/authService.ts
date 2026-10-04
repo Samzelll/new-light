@@ -80,7 +80,7 @@ export function onAuthStateChange(
 ): () => void {
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange((_event, session) => {
+  } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
     if (session?.user) {
       callback({ id: session.user.id, email: session.user.email ?? '' });
     } else {

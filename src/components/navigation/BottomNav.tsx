@@ -37,10 +37,16 @@ export function BottomNav() {
                 <item.icon
                   size={22}
                   strokeWidth={active ? 2.5 : 2}
-                  className={`transition-all duration-300 ${active ? 'text-brand-400 drop-shadow-[0_0_8px_rgba(56,97,255,0.6)]' : 'text-gray-400'}`}
+                  className={`transition-all duration-200 ${
+                    active
+                      ? 'text-[#E85102] drop-shadow-[0_0_8px_rgba(232,81,2,0.7)]'
+                      : 'text-[#646464] hover:text-[#F9F9F9]'
+                  }`}
                 />
               </span>
-              <span className="bottomnav-label">{item.label}</span>
+              <span className={`bottomnav-label ${active ? 'text-[#E85102]' : 'text-[#646464]'}`}>
+                {item.label}
+              </span>
               {active && !isCreate && <span className="bottomnav-dot" />}
             </Link>
           );
@@ -52,19 +58,17 @@ export function BottomNav() {
             href="/auth"
             className={`bottomnav-link${pathname === '/auth' ? ' active' : ''}`}
             style={{
-              background: pathname !== '/auth'
-                ? 'linear-gradient(135deg, var(--color-brand-600), var(--color-brand-500))'
-                : undefined,
+              background: pathname !== '/auth' ? '#E85102' : undefined,
               borderRadius: '14px',
-              color: 'white',
+              color: '#F9F9F9',
               padding: '6px 14px',
-              boxShadow: pathname !== '/auth' ? '0 4px 12px rgba(56,97,255,0.35)' : undefined,
+              boxShadow: pathname !== '/auth' ? '0 4px 12px rgba(232,81,2,0.35)' : undefined,
             }}
           >
             <span className="bottomnav-icon flex items-center justify-center">
-              <LogIn size={20} strokeWidth={2.5} className="drop-shadow-md" />
+              <LogIn size={20} strokeWidth={2.5} className="drop-shadow-md text-[#F9F9F9]" />
             </span>
-            <span className="bottomnav-label">Sign In</span>
+            <span className="bottomnav-label text-[#F9F9F9]">Sign In</span>
           </Link>
         )}
       </div>

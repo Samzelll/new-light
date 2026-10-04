@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { createContest } from '@/services/contestService';
 import { addBattleParticipants } from '@/services/participantService';
@@ -111,13 +113,22 @@ export default function CreateContestPage() {
     <main className="page-container space-y-8 animate-fade-in max-w-3xl mx-auto">
       <div className="card bg-surface-800 border-surface-600 p-6 sm:p-8 space-y-6">
         <div className="flex items-center justify-between border-b border-surface-700 pb-4">
-          <h1 className="text-2xl font-bold text-white">Create New Contest</h1>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              aria-label="Назад"
+              className="w-9 h-9 rounded-xl bg-[#333333] hover:bg-[#484848] text-[#F9F9F9] flex items-center justify-center transition-colors border border-[#484848]"
+            >
+              <ArrowLeft size={18} strokeWidth={2.5} />
+            </Link>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Создать конкурс</h1>
+          </div>
           <div className="flex gap-2">
-            <span className={`badge ${step === 1 ? 'badge-blue' : 'badge-muted'} text-[10px] font-bold uppercase tracking-wider py-1 px-2.5`}>
-              1 · Details
+            <span className={`badge ${step === 1 ? 'badge-orange' : 'badge-muted'} text-[10px] font-bold uppercase tracking-wider py-1 px-2.5`}>
+              1 · Детали
             </span>
-            <span className={`badge ${step === 2 ? 'badge-blue' : 'badge-muted'} text-[10px] font-bold uppercase tracking-wider py-1 px-2.5`}>
-              2 · Settings
+            <span className={`badge ${step === 2 ? 'badge-orange' : 'badge-muted'} text-[10px] font-bold uppercase tracking-wider py-1 px-2.5`}>
+              2 · Настройки
             </span>
           </div>
         </div>

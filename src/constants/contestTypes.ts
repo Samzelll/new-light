@@ -52,8 +52,8 @@ export const CONTEST_STATUS_LABELS: Record<ContestStatus, string> = {
   draft: 'Draft',
   registration: 'Open for Applications',
   active: 'Voting Active',
-  paused: 'Paused / Приостановлен',
-  blocked: '⚠️ Caution / Осторожно',
+  paused: 'Paused',
+  blocked: '⚠️ Flagged / Caution',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };

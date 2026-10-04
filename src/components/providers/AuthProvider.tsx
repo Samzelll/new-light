@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Initial session check from local storage
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
       if (session?.user) {
         syncUserSession(session.user).finally(() => {
           if (isMounted) dispatch(setInitialized());

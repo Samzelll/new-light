@@ -69,6 +69,17 @@ export interface AddBattleParticipantPayload {
   description?: string;
 }
 
+function safeId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      // fallback
+    }
+  }
+  return `usr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export async function addBattleParticipant(
   payload: AddBattleParticipantPayload
 ): Promise<{ data: Participant | null; error: string | null }> {
@@ -77,7 +88,7 @@ export async function addBattleParticipant(
   } = await supabase.auth.getUser();
   if (!user) return { data: null, error: 'Authentication required. Please sign in.' };
 
-  const uniqueUserId = crypto.randomUUID();
+  const uniqueUserId = safeId();
 
   let { data, error } = await supabase
     .from('participants')
@@ -130,7 +141,7 @@ export async function addBattleParticipants(
 
   const rowsToInsert = validCompetitors.map((comp, idx) => ({
     contest_id: contestId,
-    user_id: idx === 0 ? user.id : crypto.randomUUID(),
+    user_id: idx === 0 ? user.id : safeId(),
     submission_data: {
       name: comp.name.trim() || `Competitor ${idx + 1}`,
       photos: [comp.photoUrl.trim() || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500'],

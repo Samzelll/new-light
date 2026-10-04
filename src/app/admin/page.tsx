@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/ui/Toast';
 import { isAdmin as checkIsAdmin } from '@/constants/permissions';
 import { getContests, updateContestStatus } from '@/services/contestService';
 import { getParticipants, updateParticipantStatus } from '@/services/participantService';
@@ -12,53 +12,53 @@ import { distributeIntoGroups } from '@/utils/groupAlgorithm';
 import { setUserRole } from '@/services/profileService';
 import { supabase } from '@/services/supabase';
 
-const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
-  draft:        { color: 'rgb(107,114,128)',          bg: 'rgba(107,114,128,0.12)' },
-  registration: { color: 'var(--color-accent-yellow)', bg: 'rgba(255,200,87,0.1)' },
-  active:       { color: 'var(--color-accent-green)',  bg: 'rgba(0,229,160,0.1)' },
-  completed:    { color: 'var(--color-brand-400)',     bg: 'rgba(56,97,255,0.1)' },
-  paused:       { color: 'var(--color-accent-red)',    bg: 'rgba(255,87,87,0.1)' },
-};
-
-const ROLE_COLORS: Record<string, string> = {
-  developer: '#a855f7',
-  admin:     '#ff5757',
-  creator:   '#ffc857',
-  moderator: '#00e5a0',
-  user:      'rgb(107,114,128)',
-};
-
 export default function AdminPage() {
   const { profile, isInitialized } = useAuth();
-  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
-  const [activeTab, setActiveTab] = useState<'overview' | 'contests' | 'participants' | 'flags' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'contests' | 'participants' | 'flags' | 'users'>('contests');
 
+  // Lists
   const [contests, setContests] = useState<any[]>([]);
   const [pendingApplications, setPendingApplications] = useState<any[]>([]);
   const [fraudFlags, setFraudFlags] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
-  const [totalVotes, setTotalVotes] = useState(0);
+  
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const isAdmin = useMemo(() => profile && checkIsAdmin(profile.role), [profile]);
+  const isAdmin = useMemo(() => {
+    return profile && checkIsAdmin(profile.role);
+  }, [profile]);
 
+  // Loading admin data
   const loadAdminData = useCallback(async () => {
     if (!isAdmin) return;
     setLoading(true);
     try {
-      const [cRes, pRes, fRes, uRes, vRes] = await Promise.all([
-        getContests(),
-        supabase.from('participants').select('*, profiles(username, display_name), contests(title)').eq('status', 'pending'),
-        supabase.from('fraud_flags').select('*, participants(id, submission_data, profiles(username))').eq('reviewed', false),
-        supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(150),
-        supabase.from('votes').select('id', { count: 'exact', head: true }),
-      ]);
-      if (cRes.data)  setContests(cRes.data);
-      if (pRes.data)  setPendingApplications(pRes.data);
-      if (fRes.data)  setFraudFlags(fRes.data);
-      if (uRes.data)  setUsersList(uRes.data);
-      if (vRes.count !== null) setTotalVotes(vRes.count);
+      // 1. Load all contests
+      const { data: cData } = await getContests();
+      if (cData) setContests(cData);
+
+      // 2. Load pending participants
+      const { data: pData } = await supabase
+        .from('participants')
+        .select('*, profiles(username, display_name), contests(title)')
+        .eq('status', 'pending');
+      if (pData) setPendingApplications(pData);
+
+      // 3. Load fraud flags
+      const { data: fData } = await supabase
+        .from('fraud_flags')
+        .select('*, participants(id, submission_data, profiles(username))')
+        .eq('reviewed', false);
+      if (fData) setFraudFlags(fData);
+
+      // 4. Load users list
+      const { data: uData } = await supabase
+        .from('profiles')
+        .select('*')
+        .limit(100);
+      if (uData) setUsersList(uData);
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -67,430 +67,422 @@ export default function AdminPage() {
   }, [isAdmin]);
 
   useEffect(() => {
-    if (isInitialized && isAdmin) loadAdminData();
-    else if (isInitialized && !isAdmin) setLoading(false);
+    if (isInitialized && isAdmin) {
+      loadAdminData();
+    }
   }, [isInitialized, isAdmin, loadAdminData]);
 
+  // Handle contest status changes
   const handleUpdateContestStatus = async (contestId: string, status: any) => {
     setActionLoading(true);
     const { error } = await updateContestStatus(contestId, status);
-    if (error) toastError(error);
-    else { toastSuccess(`Status updated to ${status}`, '✅'); loadAdminData(); }
+    if (!error) {
+      loadAdminData();
+    } else {
+      alert(error);
+    }
     setActionLoading(false);
   };
 
+  // Handle participant approval
   const handleReviewApplication = async (participantId: string, status: 'approved' | 'rejected') => {
     setActionLoading(true);
     const { error } = await updateParticipantStatus(participantId, status);
-    if (error) toastError(error);
-    else { toastSuccess(`Application ${status}`, status === 'approved' ? '✅' : '❌'); loadAdminData(); }
+    if (!error) {
+      loadAdminData();
+    } else {
+      alert(error);
+    }
     setActionLoading(false);
   };
 
+  // Form groups algorithm trigger
   const handleFormGroups = async (contestId: string) => {
     setActionLoading(true);
     try {
-      const { data: stage } = await supabase.from('contest_stages').select('*').eq('contest_id', contestId).eq('status', 'active').single();
-      if (!stage) { toastError('No active stage found. Create and activate a stage first.'); setActionLoading(false); return; }
+      // 1. Fetch active stage
+      const { data: stage } = await supabase
+        .from('contest_stages')
+        .select('*')
+        .eq('contest_id', contestId)
+        .eq('status', 'active')
+        .single();
+
+      if (!stage) {
+        alert('No active stage found for this contest. Please create and activate a stage first.');
+        setActionLoading(false);
+        return;
+      }
+
+      // 2. Fetch approved participants
       const { data: parts } = await getParticipants(contestId, 'approved');
-      if (!parts || parts.length < 2) { toastError('Need at least 2 approved participants to form groups.'); setActionLoading(false); return; }
-      const groupsList = distributeIntoGroups(parts.map(p => p.id), 6);
+      if (!parts || parts.length < 2) {
+        alert('Not enough approved participants to form groups (minimum 2).');
+        setActionLoading(false);
+        return;
+      }
+
+      // 3. Distribute using standard algorithm
+      const participantIds = parts.map(p => p.id);
+      const groupsList = distributeIntoGroups(participantIds, 6);
+
+      // 4. Save to database
       const { error } = await saveStageGroupsAndMembers(contestId, stage.id, groupsList);
-      if (error) toastError(error);
-      else toastSuccess(`Formed ${groupsList.length} groups successfully!`, '🎯');
+      if (error) {
+        alert(error);
+      } else {
+        alert(`Successfully formed ${groupsList.length} groups!`);
+      }
     } catch (err: any) {
-      toastError(err.message || 'Error forming groups');
+      alert(err.message || 'Error forming groups');
     } finally {
       setActionLoading(false);
     }
   };
 
+  // Handle fraud flag actions
   const handleResolveFlag = async (flagId: string, action: 'dismissed' | 'disqualified', participantId: string) => {
     setActionLoading(true);
     try {
-      const { error: flagErr } = await supabase.from('fraud_flags').update({ reviewed: true, admin_action: action }).eq('id', flagId);
+      // 1. Update the flag status
+      const { error: flagErr } = await supabase
+        .from('fraud_flags')
+        .update({ reviewed: true, admin_action: action })
+        .eq('id', flagId);
+
       if (flagErr) throw flagErr;
+
+      // 2. If disqualified, update participant status to eliminated
       if (action === 'disqualified') {
         const { error: partErr } = await updateParticipantStatus(participantId, 'eliminated', 'Disqualified due to fraudulent activity.');
         if (partErr) throw partErr;
       }
-      toastSuccess(`Flag resolved: ${action}`, action === 'dismissed' ? '✓' : '🚫');
+
+      alert(`Flag resolved as: ${action}`);
       loadAdminData();
     } catch (err: any) {
-      toastError(err.message || 'Error resolving flag');
+      alert(err.message || 'Error resolving flag');
     } finally {
       setActionLoading(false);
     }
   };
 
+  // Handle user role modification
   const handleUpdateRole = async (userId: string, role: any) => {
     setActionLoading(true);
     const { error } = await setUserRole(userId, role);
-    if (error) toastError(error);
-    else { toastSuccess(`Role updated to ${role}`, '🔑'); loadAdminData(); }
+    if (!error) {
+      alert('User role updated.');
+      loadAdminData();
+    } else {
+      alert(error);
+    }
     setActionLoading(false);
   };
 
-  // ── Derived stats ─────────────────────────────────────────────────────────
-  const activeContests   = contests.filter(c => c.status === 'active').length;
-  const totalContests    = contests.length;
-  const totalUsers       = usersList.length;
-  const highFlags        = fraudFlags.filter(f => f.severity === 'high').length;
-
-  const TABS = [
-    { key: 'overview',      label: '📊 Overview' },
-    { key: 'contests',      label: `🏆 Contests (${totalContests})` },
-    { key: 'participants',  label: `📋 Applications ${pendingApplications.length > 0 ? `(${pendingApplications.length})` : ''}` },
-    { key: 'flags',         label: `🚩 Flags ${fraudFlags.length > 0 ? `(${fraudFlags.length})` : ''}` },
-    { key: 'users',         label: `👥 Users (${totalUsers})` },
-  ] as const;
-
-  // ── Loading ────────────────────────────────────────────────────────────────
   if (!isInitialized || (isAdmin && loading)) {
     return (
-      <main style={{ padding: '24px', maxWidth: '960px', margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '24px' }}>
-          {[1,2,3,4].map(i => (
-            <div key={i} className="skeleton-shimmer" style={{ height: '80px', borderRadius: '16px' }} />
-          ))}
+      <main className="page-container space-y-8">
+        {/* Skeleton Header & Tabs */}
+        <div className="space-y-4">
+          <div className="h-8 w-48 bg-surface-700 rounded-lg animate-pulse" />
+          <div className="flex border-b border-surface-700 gap-4 pb-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-8 w-28 bg-surface-700/60 rounded-md animate-pulse" />
+            ))}
+          </div>
         </div>
-        <div className="skeleton-shimmer" style={{ height: '48px', borderRadius: '12px', marginBottom: '24px' }} />
-        {[1,2,3].map(i => <div key={i} className="skeleton-shimmer" style={{ height: '72px', borderRadius: '14px', marginBottom: '10px' }} />)}
+
+        {/* Skeleton Participant List Cards */}
+        <div className="space-y-6">
+          <div className="h-6 w-52 bg-surface-700/80 rounded animate-pulse" />
+          <div className="grid grid-cols-1 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="card bg-surface-800 border-surface-700 p-6 flex flex-col md:flex-row gap-6 animate-pulse">
+                <div className="w-full md:w-48 aspect-video bg-surface-700 rounded-xl" />
+                <div className="flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <div className="h-5 w-44 bg-surface-700 rounded" />
+                    <div className="h-3 w-32 bg-surface-700/60 rounded" />
+                    <div className="h-4 w-full bg-surface-700/40 rounded mt-3" />
+                    <div className="h-4 w-2/3 bg-surface-700/40 rounded" />
+                  </div>
+                  <div className="flex gap-3 justify-end pt-2">
+                    <div className="h-9 w-20 bg-surface-700 rounded-lg" />
+                    <div className="h-9 w-24 bg-surface-700 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
     );
   }
 
-  // ── Access denied ─────────────────────────────────────────────────────────
   if (!isAdmin) {
     return (
-      <main style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div style={{
-          textAlign: 'center', padding: '48px 36px', borderRadius: '24px',
-          background: 'var(--color-surface-800)', border: '1px solid rgba(255,87,87,0.2)',
-          maxWidth: '320px',
-        }}>
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>🛑</div>
-          <h2 style={{ fontSize: '20px', fontWeight: '800', color: 'white', marginBottom: '8px' }}>Access Denied</h2>
-          <p style={{ fontSize: '13px', color: 'rgb(107,114,128)' }}>Admin or Developer role required.</p>
+      <main className="page-container flex justify-center items-center py-20">
+        <div className="card text-center max-w-sm bg-surface-800 border-surface-700 p-8 space-y-6">
+          <div className="text-4xl text-accent-red">🛑</div>
+          <h2 className="text-xl font-bold text-white">Access Denied</h2>
+          <p className="text-gray-400 text-sm">
+            You do not have permission to access the feed moderation panel.
+          </p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="page-container animate-fade-in" style={{ display: 'grid', gap: '20px' }}>
-
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '900', color: 'white', margin: 0 }}>
-            Admin Panel
-          </h1>
-          <p style={{ fontSize: '13px', color: 'rgb(107,114,128)', margin: '4px 0 0' }}>
-            Logged in as <span style={{ color: ROLE_COLORS[profile?.role ?? ''] || 'white', fontWeight: '700' }}>{profile?.role}</span>
-          </p>
-        </div>
-        <button
-          onClick={loadAdminData}
-          disabled={loading}
-          style={{
-            padding: '9px 18px', borderRadius: '12px',
-            background: 'var(--color-surface-700)', border: '1px solid var(--color-surface-500)',
-            color: 'rgb(156,163,175)', fontSize: '13px', fontWeight: '600',
-            cursor: 'pointer', transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'white')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'rgb(156,163,175)')}
-        >
-          {loading ? '⏳ Refreshing…' : '↻ Refresh'}
-        </button>
-      </div>
-
-      {/* ── Stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
-        {[
-          { label: 'Total Contests', value: totalContests, emoji: '🏆', color: 'var(--color-brand-400)' },
-          { label: 'Live Now',       value: activeContests, emoji: '🔴', color: 'var(--color-accent-green)' },
-          { label: 'Total Votes',    value: totalVotes.toLocaleString(), emoji: '🗳️', color: 'var(--color-accent-yellow)' },
-          { label: 'Fraud Alerts',   value: highFlags,      emoji: '🚩', color: highFlags > 0 ? 'var(--color-accent-red)' : 'rgb(107,114,128)' },
-          { label: 'Pending Apps',   value: pendingApplications.length, emoji: '📋', color: pendingApplications.length > 0 ? 'var(--color-accent-yellow)' : 'rgb(107,114,128)' },
-          { label: 'Total Users',    value: totalUsers,     emoji: '👥', color: 'var(--color-accent-purple)' },
-        ].map(stat => (
-          <div key={stat.label} style={{
-            padding: '16px 18px', borderRadius: '16px',
-            background: 'var(--color-surface-800)', border: '1px solid var(--color-surface-600)',
-          }}>
-            <div style={{ fontSize: '20px', marginBottom: '6px' }}>{stat.emoji}</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: stat.color, lineHeight: '1' }}>{stat.value}</div>
-            <div style={{ fontSize: '11px', color: 'rgb(107,114,128)', fontWeight: '600', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{stat.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Tab bar ── */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-surface-600)', gap: '2px', overflowX: 'auto' }}>
-        {TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            style={{
-              padding: '10px 16px', fontSize: '13px', fontWeight: activeTab === tab.key ? '700' : '500',
-              color: activeTab === tab.key ? 'white' : 'rgb(107,114,128)',
-              background: 'none', border: 'none', whiteSpace: 'nowrap',
-              borderBottom: activeTab === tab.key ? '2px solid var(--color-brand-500)' : '2px solid transparent',
-              cursor: 'pointer', transition: 'all 0.15s', paddingBottom: '12px',
-            }}
+    <main className="page-container space-y-6 animate-fade-in bg-[#000000] text-[#F9F9F9]">
+      {/* ── Top Header ── */}
+      <header className="flex items-center justify-between py-3 border-b border-[#333333]">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            aria-label="Back"
+            className="w-9 h-9 rounded-xl bg-[#333333] hover:bg-[#484848] text-[#F9F9F9] flex items-center justify-center transition-colors border border-[#484848]"
           >
-            {tab.label}
+            <ArrowLeft size={18} strokeWidth={2.5} />
+          </Link>
+          <div>
+            <h1 className="text-lg font-bold text-white leading-none">Admin Dashboard</h1>
+            <span className="text-[11px] text-[#646464]">Contest management and moderation</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Tabs Menu */}
+      <div className="flex border-b border-surface-700 overflow-x-auto no-scrollbar gap-2">
+        {(['contests', 'participants', 'flags', 'users'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`py-3 px-4 text-sm font-semibold border-b-2 uppercase tracking-wider transition-colors whitespace-nowrap ${
+              activeTab === tab ? 'border-brand-500 text-white' : 'border-transparent text-gray-500 hover:text-white'
+            }`}
+          >
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* ── Overview Tab ── */}
-      {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gap: '12px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'white', margin: 0 }}>Recent Contests</h3>
-          {contests.slice(0, 8).map(c => {
-            const sc = STATUS_COLORS[c.status] || STATUS_COLORS.draft;
-            return (
-              <div key={c.id} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 18px', borderRadius: '14px',
-                background: 'var(--color-surface-800)', border: '1px solid var(--color-surface-600)',
-                flexWrap: 'wrap', gap: '10px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    padding: '3px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800',
-                    textTransform: 'uppercase', letterSpacing: '0.08em',
-                    color: sc.color, background: sc.bg, flexShrink: 0,
-                  }}>{c.status}</div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>{c.title}</div>
-                </div>
-                <Link href={`/contest/${c.id}`} style={{
-                  fontSize: '12px', color: 'var(--color-brand-400)', textDecoration: 'none', fontWeight: '600',
-                }}>View →</Link>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Contests Tab ── */}
+      {/* --- CONTESTS TAB --- */}
       {activeTab === 'contests' && (
-        <div style={{ display: 'grid', gap: '10px' }}>
-          {contests.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'rgb(107,114,128)' }}>No contests found.</div>
-          ) : contests.map(c => {
-            const sc = STATUS_COLORS[c.status] || STATUS_COLORS.draft;
-            return (
-              <div key={c.id} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '16px 20px', borderRadius: '16px',
-                background: 'var(--color-surface-800)', border: '1px solid var(--color-surface-600)',
-                flexWrap: 'wrap', gap: '12px',
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '14px', fontWeight: '700', color: 'white', marginBottom: '6px' }}>{c.title}</div>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    <span style={{
-                      padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800',
-                      textTransform: 'uppercase', color: sc.color, background: sc.bg,
-                    }}>{c.status}</span>
-                    <span style={{
-                      padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700',
-                      textTransform: 'uppercase', color: 'rgb(107,114,128)', background: 'var(--color-surface-700)',
-                    }}>{c.type}</span>
+        <div className="space-y-6">
+          <h3 className="text-xl font-bold text-white">All Active / Registered Contests</h3>
+          <div className="grid grid-cols-1 gap-4">
+            {contests.map((c) => (
+              <div key={c.id} className="card bg-surface-800 border-surface-700 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h4 className="font-bold text-white text-base">{c.title}</h4>
+                  <div className="flex gap-2 mt-2">
+                    <span className="badge badge-muted text-[9px] uppercase tracking-wider">{c.status}</span>
+                    <span className="badge badge-muted text-[9px] uppercase tracking-wider">{c.type}</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Link href={`/contest/${c.id}`} style={{
-                    padding: '7px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '600',
-                    background: 'var(--color-surface-700)', border: '1px solid var(--color-surface-500)',
-                    color: 'rgb(156,163,175)', textDecoration: 'none',
-                  }}>View</Link>
+
+                <div className="flex gap-2">
                   {c.status === 'draft' && (
-                    <button onClick={() => handleUpdateContestStatus(c.id, 'registration')} disabled={actionLoading}
-                      style={{ padding: '7px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', background: 'rgba(255,200,87,0.15)', color: 'var(--color-accent-yellow)' }}>
-                      Open Reg
+                    <button
+                      onClick={() => handleUpdateContestStatus(c.id, 'registration')}
+                      className="btn btn-primary btn-sm text-xs font-semibold"
+                      disabled={actionLoading}
+                    >
+                      Open Registration
                     </button>
                   )}
                   {c.status === 'registration' && (
-                    <button onClick={() => handleUpdateContestStatus(c.id, 'active')} disabled={actionLoading}
-                      style={{ padding: '7px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', background: 'rgba(0,229,160,0.15)', color: 'var(--color-accent-green)' }}>
+                    <button
+                      onClick={() => handleUpdateContestStatus(c.id, 'active')}
+                      className="btn btn-primary btn-sm text-xs font-semibold"
+                      disabled={actionLoading}
+                    >
                       Start Voting
                     </button>
                   )}
-                  {c.status === 'active' && (<>
-                    <button onClick={() => handleFormGroups(c.id)} disabled={actionLoading}
-                      style={{ padding: '7px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', background: 'rgba(56,97,255,0.15)', color: 'var(--color-brand-400)' }}>
-                      Form Groups
-                    </button>
-                    <button onClick={() => handleUpdateContestStatus(c.id, 'completed')} disabled={actionLoading}
-                      style={{ padding: '7px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', background: 'rgba(107,114,128,0.15)', color: 'rgb(156,163,175)' }}>
-                      Complete
-                    </button>
-                  </>)}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Participants Tab ── */}
-      {activeTab === 'participants' && (
-        <div style={{ display: 'grid', gap: '14px' }}>
-          <div style={{ fontSize: '15px', fontWeight: '700', color: 'white' }}>
-            Pending Applications ({pendingApplications.length})
-          </div>
-          {pendingApplications.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px', color: 'rgb(107,114,128)', borderRadius: '16px', background: 'var(--color-surface-800)', border: '1px solid var(--color-surface-600)' }}>
-              <div style={{ fontSize: '32px', marginBottom: '10px' }}>✅</div>
-              All caught up — no pending applications.
-            </div>
-          ) : pendingApplications.map(app => {
-            const name = app.profiles?.display_name || app.profiles?.username || 'Anonymous';
-            const image = app.submission_data.photos?.[0];
-            return (
-              <div key={app.id} style={{
-                display: 'flex', gap: '16px', padding: '18px', borderRadius: '18px',
-                background: 'var(--color-surface-800)', border: '1px solid var(--color-surface-600)',
-                flexWrap: 'wrap',
-              }}>
-                {image && (
-                  <div style={{ width: '100px', flexShrink: 0, aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', background: 'var(--color-surface-700)' }}>
-                    <img src={image} alt="Entry" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                )}
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: 'white', marginBottom: '3px' }}>{name}</div>
-                    <div style={{ fontSize: '11px', color: 'rgb(107,114,128)' }}>→ {app.contests?.title}</div>
-                    {app.submission_data.description && (
-                      <p style={{ fontSize: '12px', color: 'rgb(156,163,175)', marginTop: '8px', lineHeight: '1.5' }}>
-                        {app.submission_data.description.slice(0, 180)}
-                      </p>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                    <button onClick={() => handleReviewApplication(app.id, 'rejected')} disabled={actionLoading}
-                      style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', background: 'rgba(255,87,87,0.12)', color: 'var(--color-accent-red)' }}>
-                      ✗ Reject
-                    </button>
-                    <button onClick={() => handleReviewApplication(app.id, 'approved')} disabled={actionLoading}
-                      style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', background: 'rgba(0,229,160,0.12)', color: 'var(--color-accent-green)' }}>
-                      ✓ Approve
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Flags Tab ── */}
-      {activeTab === 'flags' && (
-        <div style={{ display: 'grid', gap: '10px' }}>
-          <div style={{ fontSize: '15px', fontWeight: '700', color: 'white' }}>
-            Anti-Fraud Queue ({fraudFlags.length})
-          </div>
-          {fraudFlags.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px', color: 'rgb(107,114,128)', borderRadius: '16px', background: 'var(--color-surface-800)', border: '1px solid var(--color-surface-600)' }}>
-              <div style={{ fontSize: '32px', marginBottom: '10px' }}>🛡️</div>
-              No suspicious activity detected.
-            </div>
-          ) : fraudFlags.map(flag => {
-            const sev = flag.severity;
-            const sevColor = sev === 'high' ? 'var(--color-accent-red)' : sev === 'medium' ? 'var(--color-accent-yellow)' : 'rgb(107,114,128)';
-            return (
-              <div key={flag.id} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '16px 20px', borderRadius: '16px',
-                background: 'var(--color-surface-800)',
-                border: `1px solid ${sev === 'high' ? 'rgba(255,87,87,0.2)' : 'var(--color-surface-600)'}`,
-                flexWrap: 'wrap', gap: '12px',
-              }}>
-                <div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ padding: '2px 9px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', color: sevColor, background: `${sevColor}18` }}>
-                      {sev}
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'rgb(107,114,128)' }}>{flag.flag_type}</span>
-                  </div>
-                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'white' }}>
-                    @{flag.participants?.profiles?.username || 'unknown'}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => handleResolveFlag(flag.id, 'dismissed', flag.participant_id)} disabled={actionLoading}
-                    style={{ padding: '7px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', background: 'rgba(107,114,128,0.12)', color: 'rgb(156,163,175)' }}>
-                    Dismiss
-                  </button>
-                  <button onClick={() => handleResolveFlag(flag.id, 'disqualified', flag.participant_id)} disabled={actionLoading}
-                    style={{ padding: '7px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', background: 'rgba(255,87,87,0.12)', color: 'var(--color-accent-red)' }}>
-                    Disqualify
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Users Tab ── */}
-      {activeTab === 'users' && (
-        <div style={{ display: 'grid', gap: '10px' }}>
-          <div style={{ fontSize: '15px', fontWeight: '700', color: 'white' }}>
-            User Management ({usersList.length})
-          </div>
-          {usersList.map(u => {
-            const rc = ROLE_COLORS[u.role] || 'rgb(107,114,128)';
-            return (
-              <div key={u.id} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 18px', borderRadius: '14px',
-                background: 'var(--color-surface-800)', border: '1px solid var(--color-surface-600)',
-                flexWrap: 'wrap', gap: '10px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-                    background: `${rc}22`, border: `1px solid ${rc}44`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '14px', fontWeight: '800', color: rc,
-                  }}>
-                    {(u.display_name || u.username || 'U')[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'white' }}>
-                      {u.display_name || u.username || 'Anonymous'}
-                    </div>
-                    <span style={{
-                      fontSize: '10px', fontWeight: '700', textTransform: 'uppercase',
-                      letterSpacing: '0.08em', color: rc,
-                    }}>{u.role}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {(['admin', 'developer', 'creator', 'moderator', 'user'] as const)
-                    .filter(r => r !== u.role)
-                    .map(r => (
-                      <button key={r} onClick={() => handleUpdateRole(u.id, r)} disabled={actionLoading}
-                        style={{
-                          padding: '5px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '700',
-                          border: `1px solid ${ROLE_COLORS[r]}30`, cursor: 'pointer', transition: 'all 0.15s',
-                          background: `${ROLE_COLORS[r]}10`, color: ROLE_COLORS[r],
-                        }}>
-                        {r}
+                  {c.status === 'active' && (
+                    <>
+                      <button
+                        onClick={() => handleFormGroups(c.id)}
+                        className="btn btn-secondary btn-sm text-xs font-semibold"
+                        disabled={actionLoading}
+                      >
+                        Form Groups
                       </button>
-                    ))
-                  }
+                      <button
+                        onClick={() => handleUpdateContestStatus(c.id, 'completed')}
+                        className="btn btn-primary btn-sm text-xs font-semibold"
+                        disabled={actionLoading}
+                      >
+                        Complete Contest
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* --- PARTICIPANTS TAB --- */}
+      {activeTab === 'participants' && (
+        <div className="space-y-6">
+          <h3 className="text-xl font-bold text-white font-semibold">Pending Applications ({pendingApplications.length})</h3>
+          
+          {pendingApplications.length === 0 ? (
+            <div className="card text-center py-10 bg-surface-800 border-surface-700">
+              <p className="text-gray-400 text-sm">No applications pending review.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {pendingApplications.map((app) => {
+                const name = app.profiles?.display_name || app.profiles?.username || 'Anonymous';
+                const image = app.submission_data.photos?.[0];
+
+                return (
+                  <div key={app.id} className="card bg-surface-800 border-surface-700 p-6 flex flex-col md:flex-row gap-6">
+                    <div className="w-full md:w-48 aspect-video bg-surface-900 overflow-hidden rounded-xl border border-surface-700">
+                      {image ? (
+                        <img src={image} alt="Application" className="object-cover w-full h-full" />
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-xs text-gray-600">No media</div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4 className="font-bold text-white text-base">{name}</h4>
+                        <span className="text-[10px] text-gray-500">Applied to: {app.contests?.title}</span>
+                        {app.submission_data.description && (
+                          <p className="text-gray-300 text-xs mt-3 leading-relaxed">{app.submission_data.description}</p>
+                        )}
+                      </div>
+
+                      <div className="flex gap-3 mt-4 justify-end">
+                        <button
+                          onClick={() => handleReviewApplication(app.id, 'rejected')}
+                          className="btn btn-secondary btn-sm font-semibold"
+                          disabled={actionLoading}
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={() => handleReviewApplication(app.id, 'approved')}
+                          className="btn btn-primary btn-sm font-semibold"
+                          disabled={actionLoading}
+                        >
+                          Approve
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* --- FLAGS TAB --- */}
+      {activeTab === 'flags' && (
+        <div className="space-y-6">
+          <h3 className="text-xl font-bold text-white font-semibold">Anti-Fraud Logs ({fraudFlags.length})</h3>
+          
+          {fraudFlags.length === 0 ? (
+            <div className="card text-center py-10 bg-surface-800 border-surface-700">
+              <p className="text-gray-400 text-sm">No suspicious activity reported.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {fraudFlags.map((flag) => {
+                const pName = flag.participants?.profiles?.username || 'Anonymous';
+                
+                return (
+                  <div key={flag.id} className="card bg-surface-800 border-surface-700 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`badge ${
+                          flag.severity === 'high' ? 'badge-red' : 
+                          flag.severity === 'medium' ? 'badge-yellow' : 'badge-muted'
+                        } uppercase text-[9px] font-bold px-2 py-0.5 rounded`}>
+                          {flag.severity} Severity
+                        </span>
+                        <span className="text-[10px] text-gray-500 font-semibold">{flag.flag_type}</span>
+                      </div>
+                      <h4 className="font-bold text-white text-sm mt-2">Suspected Participant: @{pName}</h4>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleResolveFlag(flag.id, 'dismissed', flag.participant_id)}
+                        className="btn btn-secondary btn-sm text-xs font-semibold"
+                        disabled={actionLoading}
+                      >
+                        Dismiss
+                      </button>
+                      <button
+                        onClick={() => handleResolveFlag(flag.id, 'disqualified', flag.participant_id)}
+                        className="btn btn-danger btn-sm text-xs font-semibold"
+                        disabled={actionLoading}
+                      >
+                        Disqualify
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* --- USERS TAB --- */}
+      {activeTab === 'users' && (
+        <div className="space-y-6">
+          <h3 className="text-xl font-bold text-white font-semibold">Role Control</h3>
+          <div className="space-y-3">
+            {usersList.map((u) => (
+              <div key={u.id} className="card bg-surface-800 border-surface-700 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h4 className="font-bold text-white text-sm">{u.display_name || u.username || 'Anonymous User'}</h4>
+                  <span className="text-[10px] text-gray-500 font-medium">Role: {u.role}</span>
+                </div>
+
+                <div className="flex gap-2">
+                  {u.role !== 'admin' && (
+                    <button
+                      onClick={() => handleUpdateRole(u.id, 'admin')}
+                      className="btn btn-secondary btn-sm text-xs font-semibold"
+                      disabled={actionLoading}
+                    >
+                      Make Admin
+                    </button>
+                  )}
+                  {u.role !== 'developer' && (
+                    <button
+                      onClick={() => handleUpdateRole(u.id, 'developer')}
+                      className="btn btn-secondary btn-sm text-xs font-semibold"
+                      disabled={actionLoading}
+                    >
+                      Make Dev
+                    </button>
+                  )}
+                  {u.role !== 'user' && (
+                    <button
+                      onClick={() => handleUpdateRole(u.id, 'user')}
+                      className="btn btn-ghost btn-sm text-xs font-semibold text-gray-400 hover:text-white"
+                      disabled={actionLoading}
+                    >
+                      Reset Role
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </main>

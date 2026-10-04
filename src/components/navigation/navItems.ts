@@ -8,7 +8,7 @@ export type NavItem = {
 
 export const navItems: NavItem[] = [
   {
-    label: 'Feed',
+    label: 'Home',
     href: '/',
     icon: Home,
   },

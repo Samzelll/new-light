@@ -10,7 +10,7 @@
 export type UserRole = 'user' | 'expert' | 'moderator' | 'admin' | 'developer' | 'creator';
 
 // Roles allowed to create contests.
-export const CONTEST_CREATOR_ROLES: UserRole[] = ['admin', 'developer', 'user', 'creator', 'expert', 'moderator'];
+export const CONTEST_CREATOR_ROLES: UserRole[] = ['admin', 'developer', 'creator', 'moderator'];
 
 // Roles allowed to approve/reject participant applications
 export const CONTEST_MODERATOR_ROLES: UserRole[] = ['admin', 'developer', 'moderator'];

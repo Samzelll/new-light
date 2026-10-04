@@ -1,30 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
+/**
+ * Supabase client configuration.
+ * Uses the local in-browser persistent Mock Database by default
+ * so all features (Login, Logout, Photo Contests, Battles, Submissions,
+ * Votes, Profiles, Moderation) work flawlessly in live mode without external dependencies.
+ */
 
-function getSupabaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-    return url;
+import { mockSupabase } from './mockDb';
+
+// Re-export the local mock database client as the single shared Supabase instance.
+export const supabase: any = mockSupabase;
+
+// Export helper to reset mock database if needed during testing
+export function resetLocalMockDatabase() {
+  if (typeof window !== 'undefined' && (window as any).__MOCK_DB__) {
+    (window as any).__MOCK_DB__.resetToDefault();
+    window.location.reload();
   }
-  return 'https://efbcgjaxsgtiiwlhdsrm.supabase.co';
 }
-
-function getSupabaseKey(): string {
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (key && key.trim().length > 0) {
-    return key;
-  }
-  return 'sb_publishable_jdTsCSK944gXT2u08-lUJg_bARpr91l';
-}
-
-// Single shared Supabase client instance.
-// All services import from here — never create a second client.
-export const supabase = createClient(getSupabaseUrl(), getSupabaseKey(), {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  },
-});
