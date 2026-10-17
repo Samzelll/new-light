@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getPublicUrl } from '@/services/storageService';
 import { formatPercentage } from '@/utils/formatters';
 import { supabase } from '@/services/supabase';
+import { LazyImage } from '@/components/common/LazyImage';
 
 interface LiveBattleProps {
   contestId: string;
@@ -128,8 +129,8 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
             >
               ✕
             </button>
-            <div className="max-h-[60vh] bg-black overflow-hidden flex items-center justify-center">
-              <img src={previewPhoto.url} alt={previewPhoto.title} className="max-h-[60vh] object-contain w-full" />
+            <div className="max-h-[60vh] bg-black overflow-hidden flex items-center justify-center relative min-h-[200px]">
+              <LazyImage src={previewPhoto.url} alt={previewPhoto.title} fill className="object-contain" priority sizes="100vw" />
             </div>
             <div className="p-5">
               <h3 className="text-xl font-bold text-white mb-2">{previewPhoto.title}</h3>
@@ -155,7 +156,7 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
               onClick={() => setPreviewPhoto({ url: p1Photo, title: p1Name, desc: p1Desc })}
               className="aspect-square w-full max-w-[260px] rounded-2xl bg-surface-900 border border-surface-700 overflow-hidden mb-4 relative shadow-lg group cursor-pointer"
             >
-              <img src={p1Photo} alt={p1Name} loading="lazy" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" />
+              <LazyImage src={p1Photo} alt={p1Name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="260px" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
               {votedId === p1.id && (
                 <span className="absolute bottom-3 left-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow">
@@ -209,7 +210,7 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
               onClick={() => setPreviewPhoto({ url: p2Photo, title: p2Name, desc: p2Desc })}
               className="aspect-square w-full max-w-[260px] rounded-2xl bg-surface-900 border border-surface-700 overflow-hidden mb-4 relative shadow-lg group cursor-pointer"
             >
-              <img src={p2Photo} alt={p2Name} loading="lazy" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" />
+              <LazyImage src={p2Photo} alt={p2Name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="260px" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
               {votedId === p2.id && (
                 <span className="absolute bottom-3 right-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow">

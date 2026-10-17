@@ -990,3 +990,19 @@
 .animate-fade-in {
   animation: fadeIn 200ms ease-out forwards;
 }
+
+/* Shimmer for image loading skeletons */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.6s ease-in-out infinite;
+  will-change: background-position;
+}
+
+/* Prevent layout shift on images during load */
+img {
+  content-visibility: auto;
+}

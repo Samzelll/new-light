@@ -81,28 +81,74 @@ export async function uploadContestCover(
 }
 
 /**
- * Retreives the public URL for a file in a bucket.
- * Supports on-the-fly resizing and optimization parameters.
+ * Returns the public URL for a file stored in a Supabase Storage bucket.
+ *
+ * For Supabase-hosted files, we append Supabase's Image Transformation
+ * query params so the CDN returns a properly resized, compressed image
+ * (WebP/AVIF) — the user only streams what they need, never the full original.
+ *
+ * For external URLs (Unsplash, etc.) the URL is passed through unchanged.
  */
 export function getPublicUrl(
   bucketName: 'avatars' | 'submissions' | 'contests',
   path: string,
-  options?: { width?: number; quality?: number }
+  options?: {
+    width?: number;
+    height?: number;
+    quality?: number;
+    /** 'origin' | 'cover' | 'fill' | 'inside' | 'outside' (default: 'cover') */
+    resize?: 'origin' | 'cover' | 'fill' | 'inside' | 'outside';
+  }
 ): string {
   if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+
+  // Pass-through for absolute external URLs (Unsplash CDN, data-URIs, etc.)
+  if (
+    path.startsWith('http://') ||
+    path.startsWith('https://') ||
+    path.startsWith('data:')
+  ) {
     return path;
   }
-  const { data } = supabase.storage.from(bucketName).getPublicUrl(path);
-  let url = data.publicUrl;
 
-  if (options && (options.width || options.quality)) {
-    // If using Supabase image optimization
-    const params = new URLSearchParams();
-    if (options.width) params.append('width', options.width.toString());
-    if (options.quality) params.append('quality', options.quality.toString());
-    url = `${url}?${params.toString()}`;
+  // Use Supabase's built-in image transformation API for resize + compression
+  const transformOptions = options
+    ? {
+        width: options.width,
+        height: options.height,
+        quality: options.quality ?? 80,
+        resize: options.resize ?? 'cover',
+      }
+    : undefined;
+
+  if (transformOptions) {
+    const { data } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(path, { transform: transformOptions as any });
+    return data.publicUrl;
   }
 
-  return url;
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(path);
+  return data.publicUrl;
 }
+
+/**
+ * Convenience helpers for common image sizes.
+ * These produce correctly-sized thumbnails directly from the CDN.
+ */
+export const imgUrl = {
+  avatar: (path: string) =>
+    getPublicUrl('avatars', path, { width: 128, height: 128, resize: 'cover' }),
+
+  avatarLarge: (path: string) =>
+    getPublicUrl('avatars', path, { width: 256, height: 256, resize: 'cover' }),
+
+  contestCover: (path: string, width = 640) =>
+    getPublicUrl('contests', path, { width, resize: 'cover', quality: 85 }),
+
+  submission: (path: string, width = 800) =>
+    getPublicUrl('submissions', path, { width, resize: 'cover', quality: 85 }),
+
+  submissionThumb: (path: string) =>
+    getPublicUrl('submissions', path, { width: 400, height: 400, resize: 'cover', quality: 75 }),
+};

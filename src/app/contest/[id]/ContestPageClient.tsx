@@ -14,6 +14,7 @@ import { supabase } from '@/services/supabase';
 import { BattleVoteView } from '@/components/contest/BattleVoteView';
 import { ContestPage as RegistrationContestPage } from '@/components/contest/RegistrationContestPage';
 import { PhotoLightbox } from '@/components/common/PhotoLightbox';
+import { LazyImage } from '@/components/common/LazyImage';
 
 const LiveBattle = dynamic(
   () => import('@/components/contest/LiveBattle').then((mod) => mod.LiveBattle),
@@ -582,7 +583,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
                     {newBattleCompPhoto && (
                       <div className="aspect-square w-32 rounded-xl overflow-hidden bg-surface-900 border border-surface-700 relative shadow-inner">
-                        <img src={newBattleCompPhoto} alt="Preview" className="object-cover w-full h-full" />
+                        <LazyImage src={newBattleCompPhoto} alt="Preview" fill className="object-cover" priority />
                       </div>
                     )}
 
@@ -627,8 +628,8 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                         const desc = p.submission_data?.description;
                         return (
                           <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-surface-900 border border-surface-700 gap-3">
-                            <div className="flex items-center gap-3 overflow-hidden">
-                              <img src={photo} alt={name} className="w-12 h-12 rounded-lg object-cover shrink-0 border border-surface-700" />
+                              <div className="w-12 h-12 rounded-lg overflow-hidden border border-surface-700 shrink-0 relative">
+                                <LazyImage src={photo} alt={name} fill className="object-cover" />
                               <div className="truncate">
                                 <h6 className="font-bold text-white text-xs truncate">{name}</h6>
                                 {desc && <p className="text-[11px] text-gray-400 truncate">{desc}</p>}

@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getPublicUrl } from '@/services/storageService';
 import { Check, Maximize2 } from 'lucide-react';
 import { PhotoLightbox } from '@/components/common/PhotoLightbox';
+import { LazyImage } from '@/components/common/LazyImage';
 
 interface Profile {
   username?: string | null;
@@ -136,11 +137,12 @@ export function GroupVoting({
               {/* Submission Image (Tall vertical rectangle) */}
               <div className="relative aspect-[3/4] sm:aspect-[4/5] w-full bg-surface-900 rounded-xl overflow-hidden mb-3">
                 {photoUrl ? (
-                  <img
+                  <LazyImage
                     src={photoUrl}
                     alt={displayName}
-                    className="object-cover w-full h-full"
-                    loading="lazy"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 45vw, 200px"
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-600 text-xs">

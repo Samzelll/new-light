@@ -177,7 +177,7 @@ export default function HomePage() {
     loadBattlesData();
   }, [loadBattlesData]);
 
-  // Real-time synchronization whenever contests/battles are created or updated
+  // Re-sync data only when local mock DB is updated (dev-only event)
   useEffect(() => {
     const handleDbUpdate = () => {
       loadContestsData();
@@ -186,10 +186,8 @@ export default function HomePage() {
 
     if (typeof window !== 'undefined') {
       window.addEventListener('mockdb:updated', handleDbUpdate);
-      window.addEventListener('focus', handleDbUpdate);
       return () => {
         window.removeEventListener('mockdb:updated', handleDbUpdate);
-        window.removeEventListener('focus', handleDbUpdate);
       };
     }
   }, [loadContestsData, loadBattlesData]);
