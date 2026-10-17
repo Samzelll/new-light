@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Search, Maximize2 } from 'lucide-react';
@@ -687,13 +688,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                     return (
                       <div
                         key={p.id}
-                        className={`card bg-surface-900 border p-4 space-y-3 flex flex-col justify-between transition-all duration-300 origin-center ${
+                        className={`rounded-2xl sm:rounded-3xl bg-[#121215] border p-4 space-y-3 flex flex-col justify-between transition-all duration-300 origin-center ${
                           isVotedFor
-                            ? 'scale-[0.88] border-brand-500 ring-2 ring-brand-500/40 shadow-lg z-10'
-                            : 'border-surface-700 hover:border-surface-500'
+                            ? 'scale-[0.98] border-emerald-500/80 ring-2 ring-emerald-500/30 shadow-xl shadow-emerald-500/10 z-10'
+                            : 'border-neutral-800/80 hover:border-neutral-700'
                         }`}
                       >
-                        {/* Image (Uniform square crop on page, inspectable via PhotoLightbox) */}
+                        {/* Photo Stage: Ambient blur + clean proportional display */}
                         <div
                           onClick={() => {
                             if (photoUrl) {
@@ -713,23 +714,43 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                               });
                             }
                           }}
-                          className={`relative aspect-square rounded-xl overflow-hidden bg-surface-800 border border-surface-700 ${photoUrl ? 'cursor-pointer group' : ''}`}
+                          className={`relative w-full h-64 sm:h-72 rounded-xl sm:rounded-2xl overflow-hidden bg-black/60 border border-neutral-800/80 flex items-center justify-center ${
+                            photoUrl ? 'cursor-pointer group' : ''
+                          }`}
                         >
                           {photoUrl ? (
                             <>
-                              <img src={photoUrl} alt={name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                              <span className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 opacity-0 group-hover:opacity-100">
+                              {/* Ambient blurred backdrop to eliminate dead black gaps */}
+                              <div
+                                className="absolute inset-0 bg-cover bg-center filter blur-2xl scale-125 opacity-30 pointer-events-none"
+                                style={{ backgroundImage: `url(${photoUrl})` }}
+                              />
+
+                              {/* Natural unclipped photo */}
+                              <div className="relative w-full h-full flex items-center justify-center p-1.5 z-10">
+                                <Image
+                                  src={photoUrl}
+                                  alt={name}
+                                  fill
+                                  sizes="(max-width: 640px) 100vw, 400px"
+                                  className="object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+                                  referrerPolicy="no-referrer"
+                                />
+                              </div>
+
+                              {/* Discreet zoom icon on hover */}
+                              <span className="absolute top-2.5 right-2.5 z-20 w-7 h-7 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-xs transition-opacity duration-200 border border-white/20 opacity-0 group-hover:opacity-100">
                                 <Maximize2 size={13} strokeWidth={2.4} />
                               </span>
                             </>
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
+                            <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
                               No Photo
                             </div>
                           )}
 
                           {isVotedFor && (
-                            <div className="absolute bottom-2 left-2 bg-brand-600 text-white font-extrabold text-[10px] uppercase px-2.5 py-1 rounded-full shadow-lg z-10">
+                            <div className="absolute bottom-2.5 left-2.5 bg-emerald-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-lg z-20 border border-emerald-400/40">
                               Your Vote
                             </div>
                           )}
@@ -747,26 +768,26 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                                 Remove
                               </button>
                             ) : p.profiles?.username ? (
-                              <span className="text-xs text-gray-400 truncate">@{p.profiles.username}</span>
+                              <span className="text-xs text-neutral-400 truncate">@{p.profiles.username}</span>
                             ) : null}
                           </div>
                           {p.submission_data.description && (
-                            <p className="text-xs text-gray-400 line-clamp-2">
+                            <p className="text-xs text-neutral-400 line-clamp-2">
                               {p.submission_data.description}
                             </p>
                           )}
                         </div>
 
                         {/* Vote bar & Vote Button */}
-                        <div className="pt-2 border-t border-surface-800 space-y-2">
-                          <div className="flex justify-between items-center text-xs text-gray-300 font-semibold">
+                        <div className="pt-2 border-t border-neutral-800/80 space-y-2">
+                          <div className="flex justify-between items-center text-xs text-neutral-300 font-semibold">
                             <span>{count} votes</span>
-                            <span>{percent}%</span>
+                            <span className="text-emerald-400">{percent}%</span>
                           </div>
 
-                          <div className="w-full bg-surface-800 rounded-full h-2 overflow-hidden border border-surface-700">
+                          <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden border border-neutral-800">
                             <div
-                              className="bg-brand-500 h-full transition-all duration-500"
+                              className="bg-emerald-500 h-full transition-all duration-500"
                               style={{ width: `${percent}%` }}
                             />
                           </div>
@@ -775,9 +796,9 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                             <button
                               onClick={() => handleCastVote(p.id)}
                               disabled={!!userVotedParticipantId || submittingVoteId === p.id}
-                              className={`btn w-full py-2 text-xs font-bold transition-all ${
+                              className={`btn w-full py-2 text-xs font-bold transition-all rounded-xl ${
                                 isVotedFor
-                                  ? 'bg-brand-600 text-white cursor-default'
+                                  ? 'bg-emerald-600 text-white cursor-default shadow-md shadow-emerald-600/20'
                                   : userVotedParticipantId
                                   ? 'btn-secondary opacity-50 cursor-not-allowed'
                                   : 'btn-primary'

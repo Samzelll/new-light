@@ -216,7 +216,7 @@ export function TikTokFeedView({
       ref={containerRef}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className="flex-1 flex flex-col relative select-none px-1 pt-0 pb-16 lg:pb-0 overflow-hidden h-full w-full min-h-0"
+      className="flex-1 flex flex-col relative select-none px-1 pt-0 pb-1 md:pb-16 lg:pb-0 overflow-hidden h-full w-full min-h-0"
     >
       {/* ── Top Bar: Centered Clickable Contest Title (Slightly larger, clearly interactive) ── */}
       <header className="flex items-center justify-center px-3 py-1.5 shrink-0 z-20 bg-transparent border-none w-full">

@@ -669,10 +669,14 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Mobile-first max-w-md App Container */}
+      {/* Responsive App Container: mobile-first max-w-md, with clean desktop expansion */}
       <div
-        className={`w-full max-w-md flex flex-col bg-[#0b0b0d] relative ${
-          mainTab === 'contests' ? 'min-h-screen pb-24' : 'h-[100dvh] pb-0 overflow-hidden'
+        className={`w-full flex flex-col bg-[#0b0b0d] relative transition-all duration-300 ${
+          mainTab === 'contests'
+            ? 'max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl min-h-screen pb-8 md:pb-24'
+            : mainTab === 'battles'
+            ? 'max-w-md lg:max-w-lg xl:max-w-xl h-[100dvh] pb-0 overflow-hidden'
+            : 'max-w-md md:max-w-lg lg:max-w-xl h-[100dvh] pb-0 overflow-hidden'
         }`}
       >
         {/* ── Top Header with 3 Tabs: Contests | Feed | Battles ── */}

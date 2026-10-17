@@ -4,10 +4,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
-import { ChevronRight, ChevronUp, ChevronDown, Check, Maximize2 } from 'lucide-react';
+import { ChevronRight, ChevronUp, ChevronDown, Check, Maximize2, Sparkles } from 'lucide-react';
 import { DescriptionSheet } from '../feed/DescriptionSheet';
 import { PhotoLightbox } from '../common/PhotoLightbox';
+import { PinchZoomImage } from '../common/PinchZoomImage';
 import { preloadBattleImages } from '@/services/recommendationService';
+import { useDeviceMode } from '@/hooks/useDeviceMode';
+import { useUiPreferences } from '@/hooks/useUiPreferences';
 
 export interface CompetitorDetails {
   id: string;
@@ -62,6 +65,16 @@ export function TikTokBattleView({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const [showPinchNotice, setShowPinchNotice] = useState(false);
+
+  const { isMobile, isDesktop } = useDeviceMode();
+  const {
+    cleanMode,
+    toggleCleanMode,
+    hasSeenPinchTip,
+    markPinchTipSeen,
+  } = useUiPreferences();
+
   const [lightboxData, setLightboxData] = useState<{
     photoUrl: string;
     photos?: string[];
@@ -86,6 +99,18 @@ export function TikTokBattleView({
   const containerRef = useRef<HTMLDivElement>(null);
   const isTransitioningRef = useRef(false);
   const touchStartY = useRef<number | null>(null);
+
+  // Auto-hide pinch & clean tips on mobile after first encounter
+  useEffect(() => {
+    if (isMobile && !hasSeenPinchTip) {
+      setShowPinchNotice(true);
+      const timer = setTimeout(() => {
+        setShowPinchNotice(false);
+        markPinchTipSeen();
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile, hasSeenPinchTip, markPinchTipSeen]);
 
   // Keep index within bounds when filtered battles change
   useEffect(() => {
@@ -138,30 +163,43 @@ export function TikTokBattleView({
     const deltaY = touchStartY.current - e.changedTouches[0].clientY;
     touchStartY.current = null;
 
-    if (deltaY > 40) {
+    if (deltaY > 45) {
       // Swiped UP -> Next battle
       goToNext();
-    } else if (deltaY < -40) {
+    } else if (deltaY < -45) {
       // Swiped DOWN -> Previous battle
       goToPrev();
     }
   };
 
-  // Keyboard navigation (ArrowUp, ArrowDown)
+  // Keyboard navigation & quick voting for Desktop (PC)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isDescriptionOpen || lightboxData) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      const current = battles[currentIndex];
+      if (!current) return;
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         goToNext();
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         goToPrev();
+      } else if (e.key === '1') {
+        // Quick vote Top
+        e.preventDefault();
+        onVote(current.id, 'red');
+      } else if (e.key === '2') {
+        // Quick vote Bottom
+        e.preventDefault();
+        onVote(current.id, 'green');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToNext, goToPrev, isDescriptionOpen, lightboxData]);
+  }, [goToNext, goToPrev, isDescriptionOpen, lightboxData, battles, currentIndex, onVote]);
 
   // Framer-motion pan drag fallback for desktop dragging
   const handleDragEnd = (_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -236,11 +274,6 @@ export function TikTokBattleView({
     : null;
   const userVote = battleVotes[currentBattle.id] || null;
 
-  const shortTitle =
-    currentBattle.title?.replace(/·.*/, '').trim() ||
-    currentContest?.title ||
-    '1v1 BATTLE';
-
   const targetContestId = currentBattle.contestId || currentBattle.id;
 
   return (
@@ -248,13 +281,15 @@ export function TikTokBattleView({
       ref={containerRef}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className="flex-1 flex flex-col relative select-none px-1 pt-0 pb-16 lg:pb-0 overflow-hidden h-full w-full min-h-0"
+      className="flex-1 flex flex-col relative select-none px-1 pt-0 pb-1 md:pb-16 lg:pb-0 overflow-hidden h-full w-full min-h-0"
     >
-      {/* ── Top Bar: Centered Clickable Contest Title (Slightly larger, clearly interactive) ── */}
-      <header className="flex items-center justify-center px-3 py-1.5 shrink-0 z-20 bg-transparent border-none w-full">
+      {/* ── Top Bar: Contest Title ── */}
+      <header className="flex items-center justify-between px-3 py-1.5 shrink-0 z-30 transition-all duration-300 w-full">
+        <div className="w-8 shrink-0" />
+
         <Link
           href={`/contest/${targetContestId}`}
-          className="group inline-flex items-center justify-center gap-1.5 max-w-[92%] text-center cursor-pointer transition-all active:scale-95"
+          className="group inline-flex items-center justify-center gap-1.5 max-w-[80%] text-center cursor-pointer transition-all active:scale-95"
           title="Open contest details & rules"
         >
           <span className="text-sm sm:text-base font-black tracking-wide text-white group-hover:text-[#ff6a2b] transition-colors truncate drop-shadow-md">
@@ -265,9 +300,20 @@ export function TikTokBattleView({
             className="text-neutral-500 group-hover:text-[#ff6a2b] group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
           />
         </Link>
+
+        {/* Balanced spacer */}
+        <div className="w-8 shrink-0" />
       </header>
 
-      {/* ── Vertical 50/50 Split 1v1 Arena (Smooth Animated Slide, Maximizing Vertical Space) ── */}
+      {/* Mobile Pinch Tip (Shown once to mobile users, then auto-hidden) */}
+      {showPinchNotice && (
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-40 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-[#ff6a2b]/40 text-white text-[11px] font-bold flex items-center gap-2 shadow-2xl pointer-events-none animate-slide-down">
+          <Sparkles size={13} className="text-[#ff6a2b] shrink-0" />
+          <span>Сведите пальцы для зума</span>
+        </div>
+      )}
+
+      {/* ── Vertical 50/50 Split 1v1 Arena (Maximizing Touch Space & Smooth Pinch-to-zoom) ── */}
       <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full h-full pb-0.5">
         <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
@@ -275,7 +321,7 @@ export function TikTokBattleView({
             custom={direction}
             variants={{
               enter: (d: number) => ({
-                y: d > 0 ? 90 : -90,
+                y: d > 0 ? 80 : -80,
                 opacity: 0,
                 scale: 0.98,
               }),
@@ -289,7 +335,7 @@ export function TikTokBattleView({
                 },
               },
               exit: (d: number) => ({
-                y: d > 0 ? -90 : 90,
+                y: d > 0 ? -80 : 80,
                 opacity: 0,
                 scale: 0.98,
                 transition: { duration: 0.16 },
@@ -305,20 +351,20 @@ export function TikTokBattleView({
             className="flex-1 flex flex-col h-full min-h-0 relative bg-transparent border-none shadow-none cursor-grab active:cursor-grabbing gap-1.5"
           >
             {/* ══════════════════════════════════════════════════════════ */}
-            {/* 1. TOP CARD (Takes Exactly 50% Height, Standalone Card)    */}
+            {/* 1. TOP CARD (Takes Exactly 50% Height)                     */}
             {/* ══════════════════════════════════════════════════════════ */}
             <div
               onClick={() => onVote(currentBattle.id, 'red')}
               className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden cursor-pointer transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
                 userVote === 'red'
-                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  ? 'scale-[0.98] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
                   : userVote
-                  ? 'opacity-70 brightness-[0.7]'
-                  : 'hover:brightness-105 active:scale-[0.98]'
+                  ? 'opacity-85 brightness-[0.8]'
+                  : 'hover:brightness-105 active:scale-[0.99]'
               }`}
             >
-              {/* Photo filling top half */}
-              <Image
+              {/* Photo with Instagram-style pinch-to-zoom on mobile */}
+              <PinchZoomImage
                 src={currentBattle.red.photo}
                 alt={currentBattle.red.name}
                 fill
@@ -328,13 +374,22 @@ export function TikTokBattleView({
                 }`}
                 priority
                 referrerPolicy="no-referrer"
+                containerClassName="w-full h-full"
               />
 
-              {/* Scrim Gradients */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+              {/* Scrim Gradients: smoothly fades out in clean mode */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none transition-opacity duration-300 ${
+                  cleanMode ? 'opacity-0' : 'opacity-100'
+                }`}
+              />
 
               {/* Top Bar inside Card: Selection Badge + Enlarge Icon */}
-              <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
+              <div
+                className={`absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between transition-opacity duration-300 ${
+                  cleanMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`}
+              >
                 <div>
                   {userVote === 'red' && (
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in">
@@ -344,7 +399,7 @@ export function TikTokBattleView({
                   )}
                 </div>
 
-                {/* Enlarge / Full Details Icon (Opens author details, work title, sponsors, social links) */}
+                {/* Enlarge / Full Details Icon: subtle on mobile, visible on desktop hover or click */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -365,15 +420,21 @@ export function TikTokBattleView({
                       onVote: () => onVote(currentBattle.id, 'red'),
                     });
                   }}
-                  aria-label={`Enlarge photo & view details`}
-                  className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
+                  aria-label="Enlarge photo & view details"
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-all active:scale-90 border border-white/20 shadow-md ml-auto ${
+                    isMobile ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
                 >
-                  <Maximize2 size={14} strokeWidth={2.4} />
+                  <Maximize2 size={13} strokeWidth={2.4} />
                 </button>
               </div>
 
-              {/* Bottom Info on Photo: Author Avatar + Author Name + Work Title */}
-              <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
+              {/* Bottom Info on Photo: Author Avatar + Name + Work Title */}
+              <div
+                className={`absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none transition-opacity duration-300 ${
+                  cleanMode ? 'opacity-0' : 'opacity-100'
+                }`}
+              >
                 <div className="flex items-center gap-2">
                   {currentBattle.red.author && currentBattle.red.authorAvatar && (
                     <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
@@ -393,7 +454,13 @@ export function TikTokBattleView({
                       </span>
                     )}
                     {currentBattle.red.name && (
-                      <span className={`${currentBattle.red.author ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5' : 'text-sm sm:text-base font-black text-white'} drop-shadow truncate block leading-tight`}>
+                      <span
+                        className={`${
+                          currentBattle.red.author
+                            ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5'
+                            : 'text-sm sm:text-base font-black text-white'
+                        } drop-shadow truncate block leading-tight`}
+                      >
                         {currentBattle.red.name}
                       </span>
                     )}
@@ -401,9 +468,13 @@ export function TikTokBattleView({
                 </div>
               </div>
 
-              {/* Percentage if voted (Highlighted green when picked) */}
+              {/* Percentage if voted */}
               {userVote && (
-                <div className="absolute bottom-2.5 right-3 z-10">
+                <div
+                  className={`absolute bottom-2.5 right-3 z-10 transition-opacity duration-300 ${
+                    cleanMode ? 'opacity-0' : 'opacity-100'
+                  }`}
+                >
                   <div
                     className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
                       userVote === 'red'
@@ -418,30 +489,32 @@ export function TikTokBattleView({
             </div>
 
             {/* ══════════════════════════════════════════════════════════ */}
-            {/* CENTER "VS" BADGE (Centered on the 50% split boundary)     */}
+            {/* CENTER "VS" BADGE (Disappears in Clean Mode)               */}
             {/* ══════════════════════════════════════════════════════════ */}
             <div
               aria-hidden="true"
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] border-2 border-[#0b0b0d] flex items-center justify-center font-black text-xs text-white shadow-2xl pointer-events-none ring-2 ring-white/20 animate-pulse"
+              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] border-2 border-[#0b0b0d] flex items-center justify-center font-black text-xs text-white shadow-2xl pointer-events-none ring-2 ring-white/20 transition-all duration-300 ${
+                cleanMode ? 'opacity-0 scale-75' : 'opacity-100 scale-100 animate-pulse'
+              }`}
             >
               VS
             </div>
 
             {/* ══════════════════════════════════════════════════════════ */}
-            {/* 2. BOTTOM CARD (Takes Exactly 50% Height, Standalone Card) */}
+            {/* 2. BOTTOM CARD (Takes Exactly 50% Height)                  */}
             {/* ══════════════════════════════════════════════════════════ */}
             <div
               onClick={() => onVote(currentBattle.id, 'green')}
               className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden cursor-pointer transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
                 userVote === 'green'
-                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  ? 'scale-[0.98] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
                   : userVote
-                  ? 'opacity-70 brightness-[0.7]'
-                  : 'hover:brightness-105 active:scale-[0.98]'
+                  ? 'opacity-85 brightness-[0.8]'
+                  : 'hover:brightness-105 active:scale-[0.99]'
               }`}
             >
-              {/* Photo filling bottom half */}
-              <Image
+              {/* Photo with Instagram-style pinch-to-zoom on mobile */}
+              <PinchZoomImage
                 src={currentBattle.green.photo}
                 alt={currentBattle.green.name}
                 fill
@@ -451,13 +524,22 @@ export function TikTokBattleView({
                 }`}
                 priority
                 referrerPolicy="no-referrer"
+                containerClassName="w-full h-full"
               />
 
-              {/* Scrim Gradients */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+              {/* Scrim Gradients: smoothly fades out in clean mode */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none transition-opacity duration-300 ${
+                  cleanMode ? 'opacity-0' : 'opacity-100'
+                }`}
+              />
 
               {/* Top Bar inside Bottom Card: Selection Badge + Enlarge Icon */}
-              <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
+              <div
+                className={`absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between transition-opacity duration-300 ${
+                  cleanMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`}
+              >
                 <div>
                   {userVote === 'green' && (
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in">
@@ -467,7 +549,7 @@ export function TikTokBattleView({
                   )}
                 </div>
 
-                {/* Enlarge / Full Details Icon (Opens author details, work title, sponsors, social links) */}
+                {/* Enlarge / Full Details Icon: subtle on mobile, visible on desktop hover */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -488,15 +570,21 @@ export function TikTokBattleView({
                       onVote: () => onVote(currentBattle.id, 'green'),
                     });
                   }}
-                  aria-label={`Enlarge photo & view details`}
-                  className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
+                  aria-label="Enlarge photo & view details"
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-all active:scale-90 border border-white/20 shadow-md ml-auto ${
+                    isMobile ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
                 >
-                  <Maximize2 size={14} strokeWidth={2.4} />
+                  <Maximize2 size={13} strokeWidth={2.4} />
                 </button>
               </div>
 
-              {/* Bottom Info on Photo: Author Avatar + Author Name + Work Title */}
-              <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
+              {/* Bottom Info on Photo: Author Avatar + Name + Work Title */}
+              <div
+                className={`absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none transition-opacity duration-300 ${
+                  cleanMode ? 'opacity-0' : 'opacity-100'
+                }`}
+              >
                 <div className="flex items-center gap-2">
                   {currentBattle.green.author && currentBattle.green.authorAvatar && (
                     <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
@@ -516,7 +604,13 @@ export function TikTokBattleView({
                       </span>
                     )}
                     {currentBattle.green.name && (
-                      <span className={`${currentBattle.green.author ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5' : 'text-sm sm:text-base font-black text-white'} drop-shadow truncate block leading-tight`}>
+                      <span
+                        className={`${
+                          currentBattle.green.author
+                            ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5'
+                            : 'text-sm sm:text-base font-black text-white'
+                        } drop-shadow truncate block leading-tight`}
+                      >
                         {currentBattle.green.name}
                       </span>
                     )}
@@ -524,9 +618,13 @@ export function TikTokBattleView({
                 </div>
               </div>
 
-              {/* Percentage if voted (Highlighted green when picked) */}
+              {/* Percentage if voted */}
               {userVote && (
-                <div className="absolute bottom-2.5 right-3 z-10">
+                <div
+                  className={`absolute bottom-2.5 right-3 z-10 transition-opacity duration-300 ${
+                    cleanMode ? 'opacity-0' : 'opacity-100'
+                  }`}
+                >
                   <div
                     className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
                       userVote === 'green'
@@ -543,8 +641,14 @@ export function TikTokBattleView({
         </AnimatePresence>
       </div>
 
-      {/* ── Desktop-Only Navigation Buttons (Strictly hidden on phone and tablet) ── */}
-      <footer className="mt-1 pt-0.5 hidden lg:flex items-center justify-end text-neutral-400 text-xs shrink-0 z-20">
+      {/* ── Desktop-Only Status Bar: Keyboard Shortcuts + Arrow Nav Buttons (Strictly hidden on Mobile) ── */}
+      <footer className="mt-1 pt-1 hidden lg:flex items-center justify-between text-neutral-400 text-xs shrink-0 z-20 px-2 border-t border-neutral-900">
+        <div className="flex items-center gap-3 text-[11px] text-neutral-500">
+          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">1</kbd> Голос за верхний</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">2</kbd> Голос за нижний</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">↑/↓</kbd> Навигация</span>
+        </div>
+
         <div className="flex items-center gap-1.5">
           <button
             type="button"
@@ -570,11 +674,13 @@ export function TikTokBattleView({
       <DescriptionSheet
         isOpen={isDescriptionOpen}
         onClose={() => setIsDescriptionOpen(false)}
-        contest={currentContest || {
-          title: currentBattle.title,
-          description: `Live 1v1 battle duel between ${currentBattle.red.name} and ${currentBattle.green.name}. Cast your vote to crown the winner of this round!`,
-          category: currentBattle.category,
-        }}
+        contest={
+          currentContest || {
+            title: currentBattle.title,
+            description: `Live 1v1 battle duel between ${currentBattle.red.name} and ${currentBattle.green.name}. Cast your vote to crown the winner of this round!`,
+            category: currentBattle.category,
+          }
+        }
         stageInfo="1v1 Battle Duel"
       />
 

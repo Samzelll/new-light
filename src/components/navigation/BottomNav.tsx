@@ -28,8 +28,8 @@ export function BottomNav() {
 
   return (
     <nav
-      aria-label="Mobile bottom navigation"
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0e0e12]/92 backdrop-blur-xl border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.6)]"
+      aria-label="Desktop and tablet navigation"
+      className="hidden md:flex fixed bottom-0 left-0 right-0 z-40 bg-[#0e0e12]/92 backdrop-blur-xl border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.6)]"
     >
       <div className="w-full max-w-md mx-auto px-3 py-1.5 flex items-center justify-around pb-[calc(env(safe-area-inset-bottom,0px)+0.375rem)]">
         {visibleItems.map((item) => {
