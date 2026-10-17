@@ -2,10 +2,32 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
-import { Info, ChevronUp, ChevronDown, Check } from 'lucide-react';
-import type { Contest } from '@/services/types';
+import { ChevronRight, ChevronUp, ChevronDown, Check, Maximize2 } from 'lucide-react';
 import { DescriptionSheet } from '../feed/DescriptionSheet';
+import { PhotoLightbox } from '../common/PhotoLightbox';
+import { preloadBattleImages } from '@/services/recommendationService';
+
+export interface CompetitorDetails {
+  id: string;
+  name: string;
+  author: string;
+  photo: string;
+  photos?: string[];
+  percent: number;
+  authorAvatar?: string;
+  authorBio?: string;
+  sponsorName?: string;
+  sponsorTier?: string;
+  prizePool?: string;
+  socialLinks?: {
+    instagram?: string;
+    telegram?: string;
+    twitter?: string;
+    portfolio?: string;
+  };
+}
 
 export interface BattleItem {
   id: string;
@@ -15,20 +37,9 @@ export interface BattleItem {
   timeRemaining?: string;
   tags?: string[];
   isPopular?: boolean;
-  red: {
-    id: string;
-    name: string;
-    author: string;
-    photo: string;
-    percent: number;
-  };
-  green: {
-    id: string;
-    name: string;
-    author: string;
-    photo: string;
-    percent: number;
-  };
+  sponsorName?: string;
+  red: CompetitorDetails;
+  green: CompetitorDetails;
 }
 
 export interface TikTokBattleViewProps {
@@ -37,6 +48,7 @@ export interface TikTokBattleViewProps {
   battleVotes: Record<string, 'red' | 'green'>;
   onVote: (battleId: string, corner: 'red' | 'green') => void;
   onResetFilters?: () => void;
+  onLoadMore?: () => void;
 }
 
 export function TikTokBattleView({
@@ -45,12 +57,35 @@ export function TikTokBattleView({
   battleVotes,
   onVote,
   onResetFilters,
+  onLoadMore,
 }: TikTokBattleViewProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const [lightboxData, setLightboxData] = useState<{
+    photoUrl: string;
+    photos?: string[];
+    title: string;
+    author?: string;
+    authorAvatar?: string;
+    authorBio?: string;
+    category?: string;
+    sponsorName?: string;
+    sponsorTier?: string;
+    prizePool?: string;
+    socialLinks?: {
+      instagram?: string;
+      telegram?: string;
+      twitter?: string;
+      portfolio?: string;
+    };
+    isSelected?: boolean;
+    onVote?: () => void;
+  } | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const isTransitioningRef = useRef(false);
+  const touchStartY = useRef<number | null>(null);
 
   // Keep index within bounds when filtered battles change
   useEffect(() => {
@@ -59,30 +94,19 @@ export function TikTokBattleView({
     }
   }, [battles.length, currentIndex]);
 
-  // Preload upcoming and previous battle images into browser cache
+  // Proactive preloading of upcoming battle photos
   useEffect(() => {
-    if (battles.length === 0) return;
-
-    const indicesToPreload = [
-      (currentIndex + 1) % battles.length,
-      (currentIndex + 2) % battles.length,
-      (currentIndex - 1 + battles.length) % battles.length,
-    ];
-
-    indicesToPreload.forEach((idx) => {
-      const b = battles[idx];
-      if (b && typeof window !== 'undefined') {
-        if (b.red?.photo) {
-          const img1 = new window.Image();
-          img1.src = b.red.photo;
-        }
-        if (b.green?.photo) {
-          const img2 = new window.Image();
-          img2.src = b.green.photo;
-        }
-      }
-    });
+    preloadBattleImages(battles, currentIndex);
   }, [currentIndex, battles]);
+
+  // Infinite recommendation threshold: request more battles when near end
+  useEffect(() => {
+    if (battles.length > 0 && currentIndex >= battles.length - 2) {
+      if (onLoadMore) {
+        onLoadMore();
+      }
+    }
+  }, [currentIndex, battles.length, onLoadMore]);
 
   const goToNext = useCallback(() => {
     if (battles.length <= 1 || isTransitioningRef.current) return;
@@ -91,7 +115,7 @@ export function TikTokBattleView({
     setCurrentIndex((prev) => (prev + 1) % battles.length);
     setTimeout(() => {
       isTransitioningRef.current = false;
-    }, 320);
+    }, 280);
   }, [battles.length]);
 
   const goToPrev = useCallback(() => {
@@ -101,13 +125,32 @@ export function TikTokBattleView({
     setCurrentIndex((prev) => (prev - 1 + battles.length) % battles.length);
     setTimeout(() => {
       isTransitioningRef.current = false;
-    }, 320);
+    }, 280);
   }, [battles.length]);
+
+  // Native mobile touch swipe listeners
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    const deltaY = touchStartY.current - e.changedTouches[0].clientY;
+    touchStartY.current = null;
+
+    if (deltaY > 40) {
+      // Swiped UP -> Next battle
+      goToNext();
+    } else if (deltaY < -40) {
+      // Swiped DOWN -> Previous battle
+      goToPrev();
+    }
+  };
 
   // Keyboard navigation (ArrowUp, ArrowDown)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isDescriptionOpen) return;
+      if (isDescriptionOpen || lightboxData) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         goToNext();
@@ -118,12 +161,12 @@ export function TikTokBattleView({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToNext, goToPrev, isDescriptionOpen]);
+  }, [goToNext, goToPrev, isDescriptionOpen, lightboxData]);
 
-  // Touch Drag handler for TikTok-style swipe
+  // Framer-motion pan drag fallback for desktop dragging
   const handleDragEnd = (_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const offsetThreshold = 40;
-    const velocityThreshold = 180;
+    const offsetThreshold = 35;
+    const velocityThreshold = 140;
 
     if (info.offset.y < -offsetThreshold || info.velocity.y < -velocityThreshold) {
       goToNext();
@@ -132,7 +175,7 @@ export function TikTokBattleView({
     }
   };
 
-  // Mouse wheel scroll handler
+  // Mouse wheel scroll handler (TikTok desktop feel with debounce)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -141,18 +184,18 @@ export function TikTokBattleView({
     let accumulatedDelta = 0;
 
     const handleWheel = (e: WheelEvent) => {
-      if (isDescriptionOpen) return;
+      if (isDescriptionOpen || lightboxData) return;
       accumulatedDelta += e.deltaY;
 
       if (wheelTimer) clearTimeout(wheelTimer);
       wheelTimer = setTimeout(() => {
-        if (accumulatedDelta > 40) {
+        if (accumulatedDelta > 35) {
           goToNext();
-        } else if (accumulatedDelta < -40) {
+        } else if (accumulatedDelta < -35) {
           goToPrev();
         }
         accumulatedDelta = 0;
-      }, 70);
+      }, 60);
     };
 
     el.addEventListener('wheel', handleWheel, { passive: true });
@@ -160,7 +203,7 @@ export function TikTokBattleView({
       el.removeEventListener('wheel', handleWheel);
       if (wheelTimer) clearTimeout(wheelTimer);
     };
-  }, [goToNext, goToPrev, isDescriptionOpen]);
+  }, [goToNext, goToPrev, isDescriptionOpen, lightboxData]);
 
   if (battles.length === 0) {
     return (
@@ -193,74 +236,63 @@ export function TikTokBattleView({
     : null;
   const userVote = battleVotes[currentBattle.id] || null;
 
-  // Short clean title
   const shortTitle =
     currentBattle.title?.replace(/·.*/, '').trim() ||
     currentContest?.title ||
     '1v1 BATTLE';
 
+  const targetContestId = currentBattle.contestId || currentBattle.id;
+
   return (
     <div
       ref={containerRef}
-      className="flex-1 flex flex-col justify-between relative select-none touch-pan-x px-3 pt-1 pb-2 overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className="flex-1 flex flex-col relative select-none px-1 pt-0 pb-16 lg:pb-0 overflow-hidden h-full w-full min-h-0"
     >
-      {/* ── Top Bar: Short Title + Live Pill + "Details" Button ── */}
-      <header className="flex items-center justify-between bg-[#141418] border border-neutral-800/80 px-3 py-2 rounded-2xl mb-2 shrink-0">
-        <div className="min-w-0 pr-2">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <h2 className="text-xs font-black text-white uppercase tracking-tight truncate">
-              {shortTitle}
-            </h2>
-            <span className="text-[10px] text-neutral-400 font-bold shrink-0">
-              · 1v1
-            </span>
-          </div>
-        </div>
-
-        {/* Right side: Counter & "Details" button */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="px-2 py-0.5 rounded-full bg-neutral-900 border border-neutral-800 text-[10px] font-bold text-neutral-300 tabular-nums">
-            {currentIndex + 1} / {battles.length}
+      {/* ── Top Bar: Centered Clickable Contest Title (Slightly larger, clearly interactive) ── */}
+      <header className="flex items-center justify-center px-3 py-1.5 shrink-0 z-20 bg-transparent border-none w-full">
+        <Link
+          href={`/contest/${targetContestId}`}
+          className="group inline-flex items-center justify-center gap-1.5 max-w-[92%] text-center cursor-pointer transition-all active:scale-95"
+          title="Open contest details & rules"
+        >
+          <span className="text-sm sm:text-base font-black tracking-wide text-white group-hover:text-[#ff6a2b] transition-colors truncate drop-shadow-md">
+            {currentBattle.title}
           </span>
-          <button
-            type="button"
-            onClick={() => setIsDescriptionOpen(true)}
-            aria-label="Battle details"
-            className="px-2.5 py-1 rounded-full bg-[#202026] hover:bg-[#2b2b34] text-neutral-200 hover:text-white text-[11px] font-bold flex items-center gap-1 transition-colors border border-neutral-700/60"
-          >
-            <Info size={13} className="text-[#ff6a2b]" strokeWidth={2.4} />
-            <span>Details</span>
-          </button>
-        </div>
+          <ChevronRight
+            size={16}
+            className="text-neutral-500 group-hover:text-[#ff6a2b] group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
+          />
+        </Link>
       </header>
 
-      {/* ── Interactive TikTok-style 1v1 Arena (Draggable Vertical Swipe) ── */}
-      <div className="flex-1 flex flex-col relative overflow-hidden min-h-[440px]">
+      {/* ── Vertical 50/50 Split 1v1 Arena (Smooth Animated Slide, Maximizing Vertical Space) ── */}
+      <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full h-full pb-0.5">
         <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
             key={currentBattle.id}
             custom={direction}
             variants={{
               enter: (d: number) => ({
-                y: d > 0 ? 120 : -120,
+                y: d > 0 ? 90 : -90,
                 opacity: 0,
-                scale: 0.96,
+                scale: 0.98,
               }),
               center: {
                 y: 0,
                 opacity: 1,
                 scale: 1,
                 transition: {
-                  y: { type: 'spring', stiffness: 350, damping: 32 },
-                  opacity: { duration: 0.2 },
+                  y: { type: 'spring', stiffness: 360, damping: 32 },
+                  opacity: { duration: 0.18 },
                 },
               },
               exit: (d: number) => ({
-                y: d > 0 ? -120 : 120,
+                y: d > 0 ? -90 : 90,
                 opacity: 0,
-                scale: 0.96,
-                transition: { duration: 0.18 },
+                scale: 0.98,
+                transition: { duration: 0.16 },
               }),
             }}
             initial="enter"
@@ -268,124 +300,242 @@ export function TikTokBattleView({
             exit="exit"
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.22}
+            dragElastic={0.2}
             onDragEnd={handleDragEnd}
-            className="flex-1 flex flex-col justify-between cursor-grab active:cursor-grabbing"
+            className="flex-1 flex flex-col h-full min-h-0 relative bg-transparent border-none shadow-none cursor-grab active:cursor-grabbing gap-1.5"
           >
-            {/* Split Screen 1v1 Arena */}
-            <div className="relative rounded-3xl overflow-hidden border border-neutral-800 bg-[#161619] shadow-2xl flex-1 flex flex-col min-h-0">
-              <div className="grid grid-cols-2 flex-1 relative min-h-0">
-                {/* Red Corner (Left) */}
-                <div
-                  onClick={() => onVote(currentBattle.id, 'red')}
-                  className={`group relative overflow-hidden cursor-pointer transition-all border-r border-black/50 ${
-                    userVote === 'red' ? 'ring-2 ring-red-500 z-10' : ''
-                  }`}
-                >
-                  <Image
-                    src={currentBattle.red.photo}
-                    alt={currentBattle.red.name}
-                    fill
-                    sizes="(max-width: 448px) 50vw, 220px"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40 pointer-events-none" />
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* 1. TOP CARD (Takes Exactly 50% Height, Standalone Card)    */}
+            {/* ══════════════════════════════════════════════════════════ */}
+            <div
+              onClick={() => onVote(currentBattle.id, 'red')}
+              className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden cursor-pointer transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
+                userVote === 'red'
+                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  : userVote
+                  ? 'opacity-70 brightness-[0.7]'
+                  : 'hover:brightness-105 active:scale-[0.98]'
+              }`}
+            >
+              {/* Photo filling top half */}
+              <Image
+                src={currentBattle.red.photo}
+                alt={currentBattle.red.name}
+                fill
+                sizes="(max-width: 640px) 100vw, 480px"
+                className={`object-cover object-center transition-transform duration-500 ${
+                  userVote === 'red' ? '' : 'group-hover:scale-105'
+                }`}
+                priority
+                referrerPolicy="no-referrer"
+              />
 
-                  {/* Corner Badge */}
-                  <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded-full bg-red-600/90 text-white font-bold text-[10px] shadow">
-                    Red Corner
-                  </div>
+              {/* Scrim Gradients */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
 
-                  {/* Selected check */}
+              {/* Top Bar inside Card: Selection Badge + Enlarge Icon */}
+              <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
+                <div>
                   {userVote === 'red' && (
-                    <div className="absolute top-2.5 right-2.5 z-10 px-2 py-0.5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center gap-1 shadow">
-                      <Check size={11} strokeWidth={3} />
-                      <span>Your Pick</span>
-                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in">
+                      <Check size={12} strokeWidth={3} />
+                      <span>Selected</span>
+                    </span>
                   )}
-
-                  {/* Percentage share if voted */}
-                  {userVote && (
-                    <div className="absolute bottom-12 left-2.5 z-10 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-xs font-black text-xs text-red-400 border border-red-500/40">
-                      {currentBattle.red.percent}%
-                    </div>
-                  )}
-
-                  <div className="absolute bottom-3 left-3 right-3 z-10">
-                    <h3 className="text-xs sm:text-sm font-black text-white leading-tight truncate">
-                      {currentBattle.red.name}
-                    </h3>
-                    <p className="text-[10px] text-neutral-400 mt-0.5 truncate">
-                      {currentBattle.red.author}
-                    </p>
-                  </div>
                 </div>
 
-                {/* VS Badge in Center */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-[#ff6a2b] border-2 border-black flex items-center justify-center font-black text-xs text-white shadow-xl pointer-events-none">
-                  VS
-                </div>
-
-                {/* Green Corner (Right) */}
-                <div
-                  onClick={() => onVote(currentBattle.id, 'green')}
-                  className={`group relative overflow-hidden cursor-pointer transition-all ${
-                    userVote === 'green' ? 'ring-2 ring-emerald-500 z-10' : ''
-                  }`}
+                {/* Enlarge / Full Details Icon (Opens author details, work title, sponsors, social links) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxData({
+                      photoUrl: currentBattle.red.photo,
+                      photos: currentBattle.red.photos || [currentBattle.red.photo],
+                      title: currentBattle.red.name,
+                      author: currentBattle.red.author,
+                      authorAvatar: currentBattle.red.authorAvatar,
+                      authorBio: currentBattle.red.authorBio,
+                      category: currentBattle.category,
+                      sponsorName: currentBattle.red.sponsorName || currentBattle.sponsorName,
+                      sponsorTier: currentBattle.red.sponsorTier,
+                      prizePool: currentBattle.red.prizePool,
+                      socialLinks: currentBattle.red.socialLinks,
+                      isSelected: userVote === 'red',
+                      onVote: () => onVote(currentBattle.id, 'red'),
+                    });
+                  }}
+                  aria-label={`Enlarge photo & view details`}
+                  className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
                 >
-                  <Image
-                    src={currentBattle.green.photo}
-                    alt={currentBattle.green.name}
-                    fill
-                    sizes="(max-width: 448px) 50vw, 220px"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40 pointer-events-none" />
+                  <Maximize2 size={14} strokeWidth={2.4} />
+                </button>
+              </div>
 
-                  {/* Corner Badge */}
-                  <div className="absolute top-2.5 right-2.5 z-10 px-2 py-0.5 rounded-full bg-emerald-600/90 text-white font-bold text-[10px] shadow">
-                    Green Corner
-                  </div>
-
-                  {/* Selected check */}
-                  {userVote === 'green' && (
-                    <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center gap-1 shadow">
-                      <Check size={11} strokeWidth={3} />
-                      <span>Your Pick</span>
+              {/* Bottom Info on Photo: Author Avatar + Author Name + Work Title */}
+              <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
+                <div className="flex items-center gap-2">
+                  {currentBattle.red.author && currentBattle.red.authorAvatar && (
+                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                      <Image
+                        src={currentBattle.red.authorAvatar}
+                        alt={currentBattle.red.author}
+                        fill
+                        className="object-cover"
+                        referrerPolicy="no-referrer"
+                      />
                     </div>
                   )}
-
-                  {/* Percentage share if voted */}
-                  {userVote && (
-                    <div className="absolute bottom-12 right-2.5 z-10 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-xs font-black text-xs text-emerald-400 border border-emerald-500/40">
-                      {currentBattle.green.percent}%
-                    </div>
-                  )}
-
-                  <div className="absolute bottom-3 left-3 right-3 z-10 text-right">
-                    <h3 className="text-xs sm:text-sm font-black text-white leading-tight truncate">
-                      {currentBattle.green.name}
-                    </h3>
-                    <p className="text-[10px] text-neutral-400 mt-0.5 truncate">
-                      {currentBattle.green.author}
-                    </p>
+                  <div className="min-w-0">
+                    {currentBattle.red.author && (
+                      <span className="text-xs sm:text-sm font-black text-white drop-shadow-lg truncate block leading-tight">
+                        {currentBattle.red.author}
+                      </span>
+                    )}
+                    {currentBattle.red.name && (
+                      <span className={`${currentBattle.red.author ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5' : 'text-sm sm:text-base font-black text-white'} drop-shadow truncate block leading-tight`}>
+                        {currentBattle.red.name}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Live percent progress bar */}
+              {/* Percentage if voted (Highlighted green when picked) */}
               {userVote && (
-                <div className="h-1.5 w-full flex bg-neutral-900 shrink-0">
+                <div className="absolute bottom-2.5 right-3 z-10">
                   <div
-                    className="bg-red-500 transition-all duration-700"
-                    style={{ width: `${currentBattle.red.percent}%` }}
-                  />
+                    className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
+                      userVote === 'red'
+                        ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/60'
+                        : 'bg-black/80 text-neutral-300 border-neutral-700/60'
+                    }`}
+                  >
+                    {currentBattle.red.percent}%
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* CENTER "VS" BADGE (Centered on the 50% split boundary)     */}
+            {/* ══════════════════════════════════════════════════════════ */}
+            <div
+              aria-hidden="true"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] border-2 border-[#0b0b0d] flex items-center justify-center font-black text-xs text-white shadow-2xl pointer-events-none ring-2 ring-white/20 animate-pulse"
+            >
+              VS
+            </div>
+
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* 2. BOTTOM CARD (Takes Exactly 50% Height, Standalone Card) */}
+            {/* ══════════════════════════════════════════════════════════ */}
+            <div
+              onClick={() => onVote(currentBattle.id, 'green')}
+              className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden cursor-pointer transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
+                userVote === 'green'
+                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  : userVote
+                  ? 'opacity-70 brightness-[0.7]'
+                  : 'hover:brightness-105 active:scale-[0.98]'
+              }`}
+            >
+              {/* Photo filling bottom half */}
+              <Image
+                src={currentBattle.green.photo}
+                alt={currentBattle.green.name}
+                fill
+                sizes="(max-width: 640px) 100vw, 480px"
+                className={`object-cover object-center transition-transform duration-500 ${
+                  userVote === 'green' ? '' : 'group-hover:scale-105'
+                }`}
+                priority
+                referrerPolicy="no-referrer"
+              />
+
+              {/* Scrim Gradients */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+
+              {/* Top Bar inside Bottom Card: Selection Badge + Enlarge Icon */}
+              <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
+                <div>
+                  {userVote === 'green' && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in">
+                      <Check size={12} strokeWidth={3} />
+                      <span>Selected</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Enlarge / Full Details Icon (Opens author details, work title, sponsors, social links) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxData({
+                      photoUrl: currentBattle.green.photo,
+                      photos: currentBattle.green.photos || [currentBattle.green.photo],
+                      title: currentBattle.green.name,
+                      author: currentBattle.green.author,
+                      authorAvatar: currentBattle.green.authorAvatar,
+                      authorBio: currentBattle.green.authorBio,
+                      category: currentBattle.category,
+                      sponsorName: currentBattle.green.sponsorName || currentBattle.sponsorName,
+                      sponsorTier: currentBattle.green.sponsorTier,
+                      prizePool: currentBattle.green.prizePool,
+                      socialLinks: currentBattle.green.socialLinks,
+                      isSelected: userVote === 'green',
+                      onVote: () => onVote(currentBattle.id, 'green'),
+                    });
+                  }}
+                  aria-label={`Enlarge photo & view details`}
+                  className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
+                >
+                  <Maximize2 size={14} strokeWidth={2.4} />
+                </button>
+              </div>
+
+              {/* Bottom Info on Photo: Author Avatar + Author Name + Work Title */}
+              <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
+                <div className="flex items-center gap-2">
+                  {currentBattle.green.author && currentBattle.green.authorAvatar && (
+                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                      <Image
+                        src={currentBattle.green.authorAvatar}
+                        alt={currentBattle.green.author}
+                        fill
+                        className="object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    {currentBattle.green.author && (
+                      <span className="text-xs sm:text-sm font-black text-white drop-shadow-lg truncate block leading-tight">
+                        {currentBattle.green.author}
+                      </span>
+                    )}
+                    {currentBattle.green.name && (
+                      <span className={`${currentBattle.green.author ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5' : 'text-sm sm:text-base font-black text-white'} drop-shadow truncate block leading-tight`}>
+                        {currentBattle.green.name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Percentage if voted (Highlighted green when picked) */}
+              {userVote && (
+                <div className="absolute bottom-2.5 right-3 z-10">
                   <div
-                    className="bg-emerald-500 transition-all duration-700"
-                    style={{ width: `${currentBattle.green.percent}%` }}
-                  />
+                    className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
+                      userVote === 'green'
+                        ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/60'
+                        : 'bg-black/80 text-neutral-300 border-neutral-700/60'
+                    }`}
+                  >
+                    {currentBattle.green.percent}%
+                  </div>
                 </div>
               )}
             </div>
@@ -393,21 +543,15 @@ export function TikTokBattleView({
         </AnimatePresence>
       </div>
 
-      {/* ── Minimalist TikTok Swipe Navigation Footer ── */}
-      <footer className="mt-2 pt-1 flex items-center justify-between text-neutral-400 text-xs shrink-0">
-        <div className="flex items-center gap-1.5 text-[11px]">
-          <span className="text-neutral-500">Swipe up / down</span>
-          <span className="text-[10px] text-neutral-600">or use arrows</span>
-        </div>
-
-        {/* Up / Down Chevrons for Desktop / Click */}
-        <div className="flex items-center gap-1">
+      {/* ── Desktop-Only Navigation Buttons (Strictly hidden on phone and tablet) ── */}
+      <footer className="mt-1 pt-0.5 hidden lg:flex items-center justify-end text-neutral-400 text-xs shrink-0 z-20">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={goToPrev}
             disabled={currentIndex === 0}
             aria-label="Previous battle"
-            className="w-7 h-7 rounded-full bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-neutral-300 transition-colors"
+            className="w-7 h-7 rounded-full bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-neutral-300 transition-colors active:scale-95"
           >
             <ChevronUp size={16} />
           </button>
@@ -415,36 +559,45 @@ export function TikTokBattleView({
             type="button"
             onClick={goToNext}
             aria-label="Next battle"
-            className="w-7 h-7 rounded-full bg-[#ff6a2b] hover:bg-[#ff7a3d] flex items-center justify-center text-white transition-colors shadow-md shadow-[#ff6a2b]/20"
+            className="w-7 h-7 rounded-full bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 flex items-center justify-center text-neutral-300 transition-colors active:scale-95"
           >
             <ChevronDown size={16} />
           </button>
         </div>
       </footer>
 
-      {/* ── Full Description Sheet (Opened by "Details" button) ── */}
+      {/* ── Contest Description Bottom Sheet ── */}
       <DescriptionSheet
         isOpen={isDescriptionOpen}
         onClose={() => setIsDescriptionOpen(false)}
-        contest={
-          currentContest || {
-            id: currentBattle.id,
-            title: currentBattle.title,
-            description: `Live 1v1 battle in category ${currentBattle.category}. Pick your favorite entrant to advance.`,
-            categoryId: currentBattle.category,
-            prize: '$1,000 + Trophy',
-            quickRules: [
-              'Vote once for one of the two competitors',
-              'Live percentages available after casting vote',
-              'Winner advances to playoffs',
-            ],
-            status: 'active',
-            type: 'battle',
-            isFeatured: currentBattle.isPopular,
-          } as any
-        }
-        stageInfo={`Battle ${currentIndex + 1} of ${battles.length}`}
+        contest={currentContest || {
+          title: currentBattle.title,
+          description: `Live 1v1 battle duel between ${currentBattle.red.name} and ${currentBattle.green.name}. Cast your vote to crown the winner of this round!`,
+          category: currentBattle.category,
+        }}
+        stageInfo="1v1 Battle Duel"
       />
+
+      {/* ── Photo Lightbox (High-Resolution Zoom & Full Creator/Sponsor Page) ── */}
+      {lightboxData && (
+        <PhotoLightbox
+          isOpen={Boolean(lightboxData)}
+          onClose={() => setLightboxData(null)}
+          photoUrl={lightboxData.photoUrl}
+          photos={lightboxData.photos}
+          title={lightboxData.title}
+          author={lightboxData.author}
+          authorAvatar={lightboxData.authorAvatar}
+          authorBio={lightboxData.authorBio}
+          category={lightboxData.category}
+          sponsorName={lightboxData.sponsorName}
+          sponsorTier={lightboxData.sponsorTier}
+          prizePool={lightboxData.prizePool}
+          socialLinks={lightboxData.socialLinks}
+          isSelected={lightboxData.isSelected}
+          onVote={lightboxData.onVote}
+        />
+      )}
     </div>
   );
 }

@@ -113,7 +113,8 @@ export async function createContest(
 
   if (!user) return { data: null, error: 'Authentication required. Please sign in.' };
 
-  const initialStatus = payload.status || 'registration';
+  const isBattle = payload.type === 'battle';
+  const initialStatus = payload.status || (isBattle ? 'active' : 'registration');
 
   const { data, error } = await supabase
     .from('contests')
@@ -125,14 +126,14 @@ export async function createContest(
       status: initialStatus,
       category_id: payload.category_id ?? null,
       cover_url: payload.cover_url ?? null,
-      max_participants: payload.max_participants ?? null,
-      group_size: payload.group_size ?? 6,
-      registration_start: payload.registration_start ?? new Date().toISOString(),
-      registration_end: payload.registration_end ?? null,
-      voting_start: payload.voting_start ?? null,
+      max_participants: isBattle ? 2 : (payload.max_participants ?? null),
+      group_size: isBattle ? 2 : (payload.group_size ?? 6),
+      registration_start: isBattle ? null : (payload.registration_start ?? new Date().toISOString()),
+      registration_end: isBattle ? null : (payload.registration_end ?? null),
+      voting_start: payload.voting_start ?? (isBattle ? new Date().toISOString() : null),
       voting_end: payload.voting_end ?? null,
       created_by: user.id,
-      is_featured: payload.is_featured ?? false,
+      is_featured: payload.is_featured ?? true,
     })
     .select()
     .single();
@@ -155,6 +156,81 @@ export async function updateContestStatus(
     .eq('id', id);
 
   return { error: error?.message ?? null };
+}
+
+// ── updateContest (Full Post-Production Editing) ───────────────────
+export async function updateContest(
+  id: string,
+  updates: Partial<Contest>
+): Promise<{ data: Contest | null; error: string | null }> {
+  const cleanUpdates = { ...updates, updated_at: new Date().toISOString() };
+  delete (cleanUpdates as any).categories;
+
+  const { data, error } = await supabase
+    .from('contests')
+    .update(cleanUpdates)
+    .eq('id', id)
+    .select('*, categories(name, slug, icon_url)')
+    .single();
+
+  return { data: (data as Contest) ?? null, error: error?.message ?? null };
+}
+
+// ── deleteContest ─────────────────────────────────────────────────
+export async function deleteContest(
+  id: string
+): Promise<{ error: string | null }> {
+  // Delete associated participants first
+  await supabase.from('participants').delete().eq('contest_id', id);
+  const { error } = await supabase.from('contests').delete().eq('id', id);
+  return { error: error?.message ?? null };
+}
+
+// ── toggleFreezeContest (Freeze/Unfreeze) ──────────────────────────
+export async function toggleFreezeContest(
+  id: string,
+  currentlyFrozen: boolean,
+  previousStatus: ContestStatus = 'active'
+): Promise<{ error: string | null; newStatus: ContestStatus }> {
+  const newStatus: ContestStatus = currentlyFrozen ? (previousStatus === 'paused' ? 'active' : previousStatus) : 'paused';
+  const { error } = await supabase
+    .from('contests')
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  return { error: error?.message ?? null, newStatus };
+}
+
+// ── toggleHideContest (Hide/Unhide from Public Feeds) ───────────────
+export async function toggleHideContest(
+  id: string,
+  currentlyHidden: boolean
+): Promise<{ error: string | null; newVisibility: 'public' | 'private' }> {
+  const newVisibility = currentlyHidden ? 'public' : 'private';
+  const { error } = await supabase
+    .from('contests')
+    .update({ visibility: newVisibility, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  return { error: error?.message ?? null, newVisibility };
+}
+
+// ── extendContestDeadline (Add days to voting deadline) ───────────
+export async function extendContestDeadline(
+  id: string,
+  daysToAdd: number
+): Promise<{ error: string | null; newEnd: string }> {
+  const { data: contest } = await getContestById(id);
+  const currentEnd = contest?.voting_end ? new Date(contest.voting_end) : new Date();
+  currentEnd.setDate(currentEnd.getDate() + daysToAdd);
+  const newEndIso = currentEnd.toISOString();
+
+  const { error } = await supabase
+    .from('contests')
+    .update({ voting_end: newEndIso, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  return { error: error?.message ?? null, newEnd: newEndIso };
 }
 
 // ── subscribeToContest ────────────────────────────────────────────

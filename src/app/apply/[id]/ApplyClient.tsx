@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getContestById, Contest } from '@/services/contestService';
 import { submitApplication } from '@/services/participantService';
 import { uploadSubmissionPhoto, getPublicUrl } from '@/services/storageService';
+import { LazyImage } from '@/components/common/LazyImage';
 
 export default function ApplyClient({ id: propId }: { id?: string }) {
   const routeParams = useParams();
@@ -229,8 +230,8 @@ export default function ApplyClient({ id: propId }: { id?: string }) {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filePreview && (
                 <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-brand-500 group bg-surface-900">
-                  <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
-                  <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                  <LazyImage src={filePreview} alt="Preview" fill className="object-cover" />
+                  <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
                     Uploaded File
                   </span>
                   <button
@@ -239,7 +240,7 @@ export default function ApplyClient({ id: propId }: { id?: string }) {
                       setSelectedFile(null);
                       setFilePreview(null);
                     }}
-                    className="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shadow"
+                    className="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shadow z-10"
                   >
                     ×
                   </button>
@@ -248,11 +249,11 @@ export default function ApplyClient({ id: propId }: { id?: string }) {
 
               {uploadedPhotos.map((url, idx) => (
                 <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-surface-600 bg-surface-900">
-                  <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                  <LazyImage src={url} alt={`Photo ${idx + 1}`} fill className="object-cover" />
                   <button
                     type="button"
                     onClick={() => handleRemovePhoto(idx)}
-                    className="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shadow"
+                    className="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shadow z-10"
                   >
                     ×
                   </button>

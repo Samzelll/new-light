@@ -1,9 +1,9 @@
 "use client";
 
 import React from 'react';
-import Image from 'next/image';
 import { ChevronLeft, Pencil, User } from 'lucide-react';
 import { isAdmin, canModerateContests } from '@/constants/permissions';
+import { LazyImage } from '@/components/common/LazyImage';
 
 export interface ProfileHeaderProps {
   displayName: string;
@@ -61,12 +61,12 @@ export function ProfileHeader({
         {/* Avatar (72px, orange ring) */}
         <div className="relative w-[72px] h-[72px] rounded-full ring-2 ring-[#ff6a2b] ring-offset-2 ring-offset-[#0b0b0d] overflow-hidden bg-[#241712] flex items-center justify-center shadow-lg">
           {avatarUrl ? (
-            <Image
+            <LazyImage
               src={avatarUrl}
               alt={displayName}
               fill
               className="object-cover"
-              referrerPolicy="no-referrer"
+              fallbackText={displayName}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-[#ff824c] to-[#ff6a2b] text-white">

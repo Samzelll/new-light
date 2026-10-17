@@ -2,6 +2,7 @@
 
 import { formatPercentage } from '@/utils/formatters';
 import { getPublicUrl } from '@/services/storageService';
+import { LazyImage } from '@/components/common/LazyImage';
 
 interface Profile {
   username?: string | null;
@@ -49,11 +50,15 @@ export function ResultsView({ results }: ResultsViewProps) {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   {avatarUrl ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt={displayName} 
-                      className="w-10 h-10 rounded-full object-cover border border-surface-600" 
-                    />
+                    <div className="w-10 h-10 rounded-full overflow-hidden border border-surface-600 relative shrink-0">
+                      <LazyImage 
+                        src={avatarUrl} 
+                        alt={displayName} 
+                        fill
+                        className="object-cover" 
+                        fallbackText={displayName}
+                      />
+                    </div>
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-surface-600 flex items-center justify-center font-bold text-white text-sm">
                       {displayName.charAt(0).toUpperCase()}

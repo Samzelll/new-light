@@ -146,7 +146,7 @@ export interface VoteHistoryItem {
   sharePercent: number | null;
 }
 
-export type UserRole = 'user' | 'critic' | 'moderator' | 'admin';
+export type UserRole = 'user' | 'critic' | 'expert' | 'moderator' | 'admin' | 'developer' | 'creator';
 
 export type TrustLevel = 'new' | 'regular' | 'trusted' | 'senior';
 

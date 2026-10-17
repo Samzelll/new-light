@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, Search, Maximize2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getContestById, Contest, updateContestStatus } from '@/services/contestService';
 import { getParticipants, Participant, addBattleParticipant, deleteParticipant } from '@/services/participantService';
@@ -12,6 +12,7 @@ import { castVote } from '@/services/voteService';
 import { supabase } from '@/services/supabase';
 import { BattleVoteView } from '@/components/contest/BattleVoteView';
 import { ContestPage as RegistrationContestPage } from '@/components/contest/RegistrationContestPage';
+import { PhotoLightbox } from '@/components/common/PhotoLightbox';
 
 const LiveBattle = dynamic(
   () => import('@/components/contest/LiveBattle').then((mod) => mod.LiveBattle),
@@ -44,8 +45,8 @@ function statusLabel(status: string) {
     case 'draft': return <span className="badge bg-surface-700 text-gray-400">Draft</span>;
     case 'registration': return <span className="badge bg-brand-500 text-white shadow-[0_0_10px_rgba(var(--brand-500-rgb),0.5)]">Registration Open</span>;
     case 'active': return <span className="badge bg-accent-blue text-white shadow-[0_0_10px_rgba(var(--accent-blue-rgb),0.5)] font-bold">Active Voting</span>;
-    case 'paused': return <span className="badge bg-yellow-500 text-black font-extrabold">⏸️ Paused / Приостановлен</span>;
-    case 'blocked': return <span className="badge bg-red-600 text-white font-extrabold shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse">⚠️ Caution / Заблокирован</span>;
+    case 'paused': return <span className="badge bg-yellow-500 text-black font-extrabold">⏸️ Paused</span>;
+    case 'blocked': return <span className="badge bg-red-600 text-white font-extrabold shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse">⚠️ Flagged / Caution</span>;
     case 'completed': return <span className="badge bg-accent-green text-surface-900 font-bold">Completed</span>;
     case 'cancelled': return <span className="badge bg-red-500 text-white">Cancelled</span>;
     default: return <span className="badge">{status}</span>;
@@ -65,6 +66,23 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   const [submittingVoteId, setSubmittingVoteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [lightboxData, setLightboxData] = useState<{
+    photoUrl: string;
+    photos?: string[];
+    title: string;
+    author?: string;
+    authorAvatar?: string;
+    authorBio?: string;
+    category?: string;
+    isSelected?: boolean;
+    onVote?: () => void;
+  } | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3200);
+  };
 
   // Creator Battle Competitor modal / inline form state
   const [showAddBattleModal, setShowAddBattleModal] = useState(false);
@@ -81,20 +99,20 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   };
 
   const handleDeleteCompetitor = async (participantId: string) => {
-    if (!confirm('Are you sure you want to remove this participant / competitor?')) return;
     const { success, error: delErr } = await deleteParticipant(participantId);
     if (success) {
       setParticipants((prev) => prev.filter((p) => p.id !== participantId));
       await reloadParticipants();
+      showToast('Participant removed.');
     } else if (delErr) {
-      alert(delErr);
+      showToast(delErr);
     }
   };
 
   const handleAddBattleCompetitor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBattleCompName.trim() || !newBattleCompPhoto.trim()) {
-      alert('Please provide both a competitor name and photo image URL.');
+      showToast('Please provide both a competitor name and photo image URL.');
       return;
     }
     if (!contest) return;
@@ -108,12 +126,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     });
 
     if (addErr) {
-      alert(addErr);
+      showToast(addErr);
     } else {
       setNewBattleCompName('');
       setNewBattleCompPhoto('');
       setNewBattleCompDesc('');
       setShowAddBattleModal(false);
+      showToast('Competitor added successfully!');
       await reloadParticipants();
     }
     setAddingBattleComp(false);
@@ -123,9 +142,10 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     if (!contest) return;
     const { error: statusErr } = await updateContestStatus(contest.id, newStatus);
     if (statusErr) {
-      alert(statusErr);
+      showToast(statusErr);
     } else {
       setContest((prev) => prev ? { ...prev, status: newStatus } : null);
+      showToast(`Status updated to ${newStatus}`);
     }
   };
 
@@ -172,11 +192,11 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
   const handleCastVote = async (participantId: string) => {
     if (!isAuthenticated || !user) {
-      alert('Please sign in to vote in this contest.');
+      showToast('Please sign in to vote in this contest.');
       return;
     }
     if (userVotedParticipantId) {
-      alert('You have already cast your vote in this contest.');
+      showToast('You have already cast your vote in this contest.');
       return;
     }
 
@@ -190,13 +210,14 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     });
 
     if (voteErr) {
-      alert(voteErr);
+      showToast(voteErr);
     } else {
       setUserVotedParticipantId(participantId);
       setVotes((prev) => [
         ...prev,
         { id: `local_${Date.now()}`, participant_id: participantId, voter_id: user.id },
       ]);
+      showToast('Vote successfully recorded!');
     }
     setSubmittingVoteId(null);
   };
@@ -229,7 +250,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     );
   }
 
-  // Registration Open status page (dedicated mobile-first view)
+  // Pure 1v1 Battle View (Pinterest / TikTok-style duel arena)
+  // Battles have no registration, group size, or participant caps - always open for live voting
+  if (contest.type === 'battle') {
+    return <BattleVoteView initialContestId={contest.id} />;
+  }
+
+  // Registration Open status page (dedicated mobile-first view for standard tournaments)
   if (contest.status === 'registration') {
     return (
       <RegistrationContestPage
@@ -240,13 +267,15 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     );
   }
 
-  // Pure 1v1 Battle View (Pinterest-style game-like arena)
-  if (contest.type === 'battle') {
-    return <BattleVoteView initialContestId={contest.id} />;
-  }
-
   return (
-    <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-8 animate-fade-in bg-[#000000] text-[#F9F9F9]">
+    <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-8 animate-fade-in bg-[#000000] text-[#F9F9F9] relative">
+      {/* Toast Feedback */}
+      {toastMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#ff6a2b] text-white text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
+          {toastMessage}
+        </div>
+      )}
+
       {/* ── Top Navigation Bar ── */}
       <div className="flex items-center justify-between pb-1">
         <Link
@@ -254,11 +283,11 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           className="inline-flex items-center gap-2 text-xs font-bold text-[#F9F9F9] bg-[#141414] hover:bg-[#222222] border border-[#333333] px-3.5 py-2 rounded-xl transition-all"
         >
           <ArrowLeft size={16} strokeWidth={2.5} />
-          <span>Назад в ленту</span>
+          <span>Back to feed</span>
         </Link>
         <Link
           href="/search"
-          aria-label="Поиск"
+          aria-label="Search"
           className="w-9 h-9 rounded-xl bg-[#141414] hover:bg-[#222222] text-[#F9F9F9] flex items-center justify-center transition-colors border border-[#333333]"
         >
           <Search size={16} strokeWidth={2} />
@@ -324,20 +353,20 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-surface-700 pb-3">
             <div>
               <h3 className="font-extrabold text-white text-base flex items-center gap-2">
-                <span>🛠️</span> Управление конкурсом (Панель создателя)
+                <span>🛠️</span> Contest Management (Creator Panel)
               </h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Вы можете изменять статус конкурса (активен, приостановлен, заблокирован/осторожно) и управлять участниками.
+                You can change the contest status (active, open, paused, caution/blocked) and manage participants.
               </p>
             </div>
             <span className="badge bg-brand-500/20 text-brand-400 border-brand-500/30 text-xs font-bold shrink-0 self-start sm:self-auto">
-              Организатор
+              Organizer
             </span>
           </div>
 
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-gray-300 block">
-              Статус конкурса:
+              Contest Status:
             </label>
             <div className="flex flex-wrap gap-2">
               <button
@@ -349,7 +378,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                     : 'bg-surface-700 hover:bg-surface-600 text-gray-300'
                 }`}
               >
-                ▶️ Активен (Голосование)
+                ▶️ Active (Voting)
               </button>
 
               <button
@@ -361,7 +390,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                     : 'bg-surface-700 hover:bg-surface-600 text-gray-300'
                 }`}
               >
-                📝 Открыта регистрация
+                📝 Registration Open
               </button>
 
               <button
@@ -373,7 +402,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                     : 'bg-surface-700 hover:bg-yellow-500/20 hover:text-yellow-300 text-gray-300'
                 }`}
               >
-                ⏸️ Приостановить (Paused)
+                ⏸️ Pause (Paused)
               </button>
 
               <button
@@ -385,7 +414,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                     : 'bg-surface-700 hover:bg-red-500/20 hover:text-red-300 text-gray-300'
                 }`}
               >
-                ⚠️ Заблокировать / Осторожно (Blocked)
+                ⚠️ Flag / Caution (Blocked)
               </button>
 
               <button
@@ -397,7 +426,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                     : 'bg-surface-700 hover:bg-surface-600 text-gray-300'
                 }`}
               >
-                🏁 Завершен
+                🏁 Completed
               </button>
             </div>
           </div>
@@ -410,10 +439,10 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           <span className="text-3xl shrink-0">⚠️</span>
           <div>
             <h4 className="font-extrabold text-red-400 text-sm uppercase tracking-wide">
-              ВНИМАНИЕ: КОНКУРС ЗАБЛОКИРОВАН / «ОСТОРОЖНО»
+              NOTICE: CONTEST FLAGGED / CAUTION
             </h4>
             <p className="text-xs text-red-200/90 mt-1 leading-relaxed">
-              Этот конкурс заблокирован или приостановлен администрацией/создателем. Прием заявок и голосование недоступны. Он скрыт из общей ленты и доступен только по прямому поиску или в избранном с плашкой «⚠️ Осторожно».
+              This contest is suspended or flagged by administration/organizer. Submissions and voting are disabled. It is unlisted from the global feed and accessible only via direct search or favorites with a &quot;⚠️ Caution&quot; badge.
             </p>
           </div>
         </div>
@@ -425,10 +454,10 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           <span className="text-3xl shrink-0">⏸️</span>
           <div>
             <h4 className="font-extrabold text-yellow-400 text-sm uppercase tracking-wide">
-              КОНКУРС ПРИОСТАНОВЛЕН
+              CONTEST TEMPORARILY PAUSED
             </h4>
             <p className="text-xs text-yellow-200/90 mt-1 leading-relaxed">
-              Голосование и подача новых заявок временно приостановлены организатором конкурса.
+              Voting and submissions are temporarily paused by the contest organizer.
             </p>
           </div>
         </div>
@@ -487,7 +516,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                       <label className="label text-[11px] text-gray-400 block mb-1 font-semibold">Item / Competitor Name *</label>
                       <input
                         type="text"
-                        placeholder="e.g. Red Corner Fighter / Item A"
+                        placeholder="e.g. Challenger 1 / Entry A"
                         value={newBattleCompName}
                         onChange={(e) => setNewBattleCompName(e.target.value)}
                         className="input text-xs py-2"
@@ -658,16 +687,41 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                     return (
                       <div
                         key={p.id}
-                        className={`card bg-surface-900 border p-4 space-y-3 flex flex-col justify-between transition-all ${
+                        className={`card bg-surface-900 border p-4 space-y-3 flex flex-col justify-between transition-all duration-300 origin-center ${
                           isVotedFor
-                            ? 'border-brand-500 ring-2 ring-brand-500/40'
+                            ? 'scale-[0.88] border-brand-500 ring-2 ring-brand-500/40 shadow-lg z-10'
                             : 'border-surface-700 hover:border-surface-500'
                         }`}
                       >
-                        {/* Image */}
-                        <div className="relative aspect-square rounded-xl overflow-hidden bg-surface-800 border border-surface-700">
+                        {/* Image (Uniform square crop on page, inspectable via PhotoLightbox) */}
+                        <div
+                          onClick={() => {
+                            if (photoUrl) {
+                              const submissionPhotos = p.submission_data?.photos && p.submission_data.photos.length > 0
+                                ? p.submission_data.photos
+                                : [photoUrl];
+                              setLightboxData({
+                                photoUrl,
+                                photos: submissionPhotos,
+                                title: name,
+                                author: p.profiles?.username ? `@${p.profiles.username}` : undefined,
+                                authorAvatar: p.profiles?.avatar_url || undefined,
+                                authorBio: p.submission_data?.description,
+                                category: contest.title,
+                                isSelected: isVotedFor,
+                                onVote: !userVotedParticipantId ? () => handleCastVote(p.id) : undefined,
+                              });
+                            }
+                          }}
+                          className={`relative aspect-square rounded-xl overflow-hidden bg-surface-800 border border-surface-700 ${photoUrl ? 'cursor-pointer group' : ''}`}
+                        >
                           {photoUrl ? (
-                            <img src={photoUrl} alt={name} loading="lazy" className="w-full h-full object-cover" />
+                            <>
+                              <img src={photoUrl} alt={name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                              <span className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 opacity-0 group-hover:opacity-100">
+                                <Maximize2 size={13} strokeWidth={2.4} />
+                              </span>
+                            </>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
                               No Photo
@@ -675,7 +729,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                           )}
 
                           {isVotedFor && (
-                            <div className="absolute top-2 right-2 bg-brand-600 text-white font-extrabold text-[10px] uppercase px-2.5 py-1 rounded-full shadow-lg">
+                            <div className="absolute bottom-2 left-2 bg-brand-600 text-white font-extrabold text-[10px] uppercase px-2.5 py-1 rounded-full shadow-lg z-10">
                               Your Vote
                             </div>
                           )}
@@ -756,6 +810,23 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           </div>
         </div>
       </div>
+
+      {/* ── Photo Lightbox (High-Resolution Zoom & Detail Inspection) ── */}
+      {lightboxData && (
+        <PhotoLightbox
+          isOpen={Boolean(lightboxData)}
+          onClose={() => setLightboxData(null)}
+          photoUrl={lightboxData.photoUrl}
+          photos={lightboxData.photos}
+          title={lightboxData.title}
+          author={lightboxData.author}
+          authorAvatar={lightboxData.authorAvatar}
+          authorBio={lightboxData.authorBio}
+          category={lightboxData.category}
+          isSelected={lightboxData.isSelected}
+          onVote={lightboxData.onVote}
+        />
+      )}
     </main>
   );
 }

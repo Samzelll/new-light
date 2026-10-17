@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getPublicUrl } from '@/services/storageService';
-import { Check } from 'lucide-react';
+import { Check, Maximize2 } from 'lucide-react';
+import { PhotoLightbox } from '@/components/common/PhotoLightbox';
 
 interface Profile {
   username?: string | null;
@@ -47,6 +48,12 @@ export function GroupVoting({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [lightboxData, setLightboxData] = useState<{
+    photoUrl: string;
+    photos?: string[];
+    title: string;
+    author?: string;
+  } | null>(null);
 
   const handleSelect = (participantId: string) => {
     if (hasVoted) return;
@@ -100,7 +107,8 @@ export function GroupVoting({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Grid: 4 vertically oriented rectangles when 4 participants, maximizing screen presence */}
+      <div className={participants.length === 4 ? "grid grid-cols-2 gap-3 sm:gap-4" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"}>
         {participants.map((p) => {
           const isSelected = selectedId === p.id;
           const isVotedFor = votedParticipantId === p.id;
@@ -113,16 +121,20 @@ export function GroupVoting({
             <div
               key={p.id}
               onClick={() => handleSelect(p.id)}
-              className={`card flex flex-col justify-between overflow-hidden relative transition-all duration-200 ${
+              className={`card flex flex-col justify-between overflow-hidden relative transition-all duration-300 origin-center ${
+                (isSelected || isVotedFor) ? 'scale-[0.88] z-10' : ''
+              } ${
                 hasVoted 
                   ? isVotedFor 
-                    ? 'border-brand-500 ring-2 ring-brand-500/50' 
+                    ? 'border-brand-500 ring-2 ring-brand-500/50 shadow-[0_0_25px_rgba(255,106,43,0.3)]' 
                     : 'opacity-60 border-surface-600'
-                  : 'cursor-pointer hover:border-surface-400 hover:shadow-lg'
+                  : isSelected
+                    ? 'border-brand-500 ring-2 ring-brand-500/50 shadow-[0_0_25px_rgba(255,106,43,0.3)]'
+                    : 'cursor-pointer hover:border-surface-400 hover:shadow-lg'
               }`}
             >
-              {/* Submission Image */}
-              <div className="relative aspect-square w-full bg-surface-900 rounded-xl overflow-hidden mb-4">
+              {/* Submission Image (Tall vertical rectangle) */}
+              <div className="relative aspect-[3/4] sm:aspect-[4/5] w-full bg-surface-900 rounded-xl overflow-hidden mb-3">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
@@ -135,22 +147,46 @@ export function GroupVoting({
                     No image uploaded
                   </div>
                 )}
+
+                {/* Inspect Photo Zoom Button */}
+                {photoUrl && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const submissionPhotos = (p.submission_data.photos || []).map((ph) =>
+                        ph.startsWith('http') ? ph : getPublicUrl('submissions', ph, { width: 1200, quality: 85 })
+                      );
+                      const allPhotos = submissionPhotos.length > 0 ? submissionPhotos : (photoUrl ? [photoUrl] : []);
+                      setLightboxData({
+                        photoUrl: allPhotos[0] || photoUrl,
+                        photos: allPhotos,
+                        title: displayName,
+                        author: p.profiles?.username ? `@${p.profiles.username}` : undefined,
+                      });
+                    }}
+                    aria-label={`Inspect ${displayName} photo`}
+                    className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20"
+                  >
+                    <Maximize2 size={13} strokeWidth={2.4} />
+                  </button>
+                )}
               </div>
 
               {/* Card Footer */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-white text-sm">
+                  <span className="font-bold text-white text-xs sm:text-sm truncate">
                     {displayName}
                   </span>
                   {p.profiles?.username && (
-                    <span className="text-[10px] text-gray-500 font-semibold">
+                    <span className="text-[10px] text-gray-500 font-semibold truncate ml-1">
                       @{p.profiles.username}
                     </span>
                   )}
                 </div>
                 {p.submission_data.description && (
-                  <p className="text-gray-400 text-xs line-clamp-2">
+                  <p className="text-gray-400 text-[11px] line-clamp-2">
                     {p.submission_data.description}
                   </p>
                 )}
@@ -158,7 +194,7 @@ export function GroupVoting({
 
               {/* Status Ribbon */}
               {isVotedFor && (
-                <div className="absolute top-3 right-3 bg-brand-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded shadow">
+                <div className="absolute top-3 left-3 bg-brand-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded shadow">
                   Your Vote
                 </div>
               )}
@@ -166,6 +202,19 @@ export function GroupVoting({
           );
         })}
       </div>
+
+      {/* Photo Lightbox */}
+      {lightboxData && (
+        <PhotoLightbox
+          isOpen={Boolean(lightboxData)}
+          onClose={() => setLightboxData(null)}
+          photoUrl={lightboxData.photoUrl}
+          photos={lightboxData.photos}
+          title={lightboxData.title}
+          author={lightboxData.author}
+          category="Participant Submission"
+        />
+      )}
 
       {/* Confirmation Modal */}
       {confirmOpen && !hasVoted && (

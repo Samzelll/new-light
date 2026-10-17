@@ -60,3 +60,17 @@ Note: filled orange buttons use `accent-solid` so white text passes AA contrast.
 - **Search + filter is one button**: opens bottom sheet with search field, category chips, status chips, sort (popular, for you, ending soon), "My subscriptions" chip. Dot shown on icon while filters active.
 - **Avatar opens the side drawer**: profile, my votes, my entries, favorites, rules and prizes, help. Admin/moderator tools appear only for those roles.
 - **Hidden details pattern**: every screen shows the minimum. More info is one tap away: `i` button on battle, "Show full rules and conditions" on contest page.
+
+## 5. Feed & Battle Viewport Architecture
+- **1v1 Battles Vertical 50/50 Split**:
+  - Battles occupy exactly 50% height each along the vertical axis (one on top, one on bottom), maximizing screen real estate for portrait mobile photography.
+  - Centered glowing 'VS' emblem positioned right at the 50% vertical junction.
+- **Groups of 4 (4 Tall Vertical Rectangles)**:
+  - Structured as 4 tall, vertically-oriented portrait rectangles (2x2 grid filling 100% of available viewport height).
+  - Optimized so users can inspect fine photo details without wasted borders or letterboxing.
+  - Dedicated Photo Lightbox inspection mode (`Maximize2` icon) on each card to examine every detail in high resolution.
+- **TikTok / Reels / Shorts Recommendation Stream**:
+  - Fluid mobile vertical touch swipe (swipe up for next, swipe down for previous) with tactile spring physics.
+  - Desktop navigation controls (floating up/down chevrons, keyboard arrows, debounced wheel scroll).
+  - Proactive background image preloading (`recommendationService`) so next battles render instantaneously with zero latency.
+  - Endless recommendation engine that automatically pre-fetches and generates new batches before reaching the end of the queue.

@@ -23,7 +23,7 @@ export interface SideDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   profile: Profile | null;
-  onSwitchUser?: (kind: 'guest' | 'user' | 'entrant' | 'moderator' | 'admin') => void;
+  onSwitchUser?: (kind: 'guest' | 'user' | 'entrant' | 'moderator' | 'admin' | 'creator') => void;
   onAdvanceCycle?: () => void;
 }
 
@@ -174,42 +174,15 @@ export function SideDrawer({
             </div>
           )}
 
-          {/* Main Navigation Links */}
+          {/* Main Navigation Links (Clean, non-redundant - profile sub-tabs live on /profile) */}
           <nav className="space-y-1">
             <Link
-              href="/profile"
-              onClick={onClose}
-              className="menu-item flex items-center gap-3"
-            >
-              <User size={18} className="text-accent" strokeWidth={2.2} />
-              <span>My Profile</span>
-            </Link>
-
-            <Link
-              href="/profile?tab=votes"
+              href="/"
               onClick={onClose}
               className="menu-item flex items-center gap-3"
             >
               <Vote size={18} className="text-accent" strokeWidth={2.2} />
-              <span>My Votes</span>
-            </Link>
-
-            <Link
-              href="/profile?tab=applications"
-              onClick={onClose}
-              className="menu-item flex items-center gap-3"
-            >
-              <FileText size={18} className="text-accent" strokeWidth={2.2} />
-              <span>My Entries</span>
-            </Link>
-
-            <Link
-              href="/profile?tab=subscriptions"
-              onClick={onClose}
-              className="menu-item flex items-center gap-3"
-            >
-              <Star size={18} className="text-accent" strokeWidth={2.2} />
-              <span>Favorites</span>
+              <span>Explore Contests</span>
             </Link>
 
             <Link
@@ -231,35 +204,35 @@ export function SideDrawer({
             </Link>
           </nav>
 
-          {/* Admin / Moderator Tools (only visible for those roles) */}
-          {isAdminOrMod && (
+          {/* Admin / Creator / Moderator Tools */}
+          {(isAdminOrMod || activeProfile?.role === 'creator') && (
             <div className="pt-4 border-t border-ink/10 space-y-2">
               <span className="font-display text-[10px] font-bold uppercase tracking-wider text-faint block px-2">
-                Staff Tools
+                Management & Tools
               </span>
-              {activeProfile?.role === 'admin' && (
-                <Link
-                  href="/create"
-                  onClick={onClose}
-                  className="menu-item flex items-center gap-3 text-accent font-semibold"
-                >
-                  <PlusCircle size={18} strokeWidth={2.2} />
-                  <span>Create Contest</span>
-                </Link>
-              )}
+              <Link
+                href="/create"
+                onClick={onClose}
+                className="menu-item flex items-center gap-3 text-accent font-semibold"
+              >
+                <PlusCircle size={18} strokeWidth={2.2} />
+                <span>Create Contest</span>
+              </Link>
               <Link
                 href="/admin"
                 onClick={onClose}
                 className="menu-item flex items-center gap-3"
               >
                 <Shield size={18} strokeWidth={2.2} className="text-accent" />
-                <span>Moderation Panel</span>
+                <span>
+                  {activeProfile?.role === 'creator' ? 'Creator Studio' : 'Admin & Post-Production'}
+                </span>
               </Link>
             </div>
           )}
         </div>
 
-        {/* Dev Tools Footer (Section 20 of Project Documentation) */}
+        {/* Dev Tools Footer (Quick Role Switcher) */}
         <div className="pt-6 border-t border-ink/10 mt-6 space-y-3">
           <div className="flex items-center justify-between text-[11px] text-faint">
             <span className="flex items-center gap-1 font-bold">
@@ -269,7 +242,7 @@ export function SideDrawer({
             <span className="tabular-nums">06:00 UTC</span>
           </div>
 
-          {/* User role quick switcher */}
+          {/* User role quick switcher: Admin / Creator / User / Guest */}
           <div className="grid grid-cols-4 gap-1 text-[11px]">
             <button
               type="button"
@@ -284,14 +257,14 @@ export function SideDrawer({
             </button>
             <button
               type="button"
-              onClick={() => onSwitchUser?.('moderator')}
+              onClick={() => onSwitchUser?.('creator')}
               className={`p-1.5 rounded text-center font-bold border transition-colors ${
-                profile?.role === 'moderator'
+                profile?.role === 'creator'
                   ? 'bg-accent-solid text-ink border-accent-solid'
                   : 'bg-surface text-muted border-ink/10 hover:text-ink'
               }`}
             >
-              Mod
+              Creator
             </button>
             <button
               type="button"

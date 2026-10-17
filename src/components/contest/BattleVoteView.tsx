@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Maximize2, Check } from 'lucide-react';
+import { PhotoLightbox } from '@/components/common/PhotoLightbox';
 import {
   BattleContest,
   BattleCompetitor,
@@ -25,6 +26,26 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
   const [userVotedCorner, setUserVotedCorner] = useState<'red' | 'blue' | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [activeTapCorner, setActiveTapCorner] = useState<'red' | 'blue' | null>(null);
+  const [lightboxData, setLightboxData] = useState<{
+    photoUrl: string;
+    photos?: string[];
+    title: string;
+    author?: string;
+    authorAvatar?: string;
+    authorBio?: string;
+    category?: string;
+    sponsorName?: string;
+    sponsorTier?: string;
+    prizePool?: string;
+    socialLinks?: {
+      instagram?: string;
+      telegram?: string;
+      twitter?: string;
+      portfolio?: string;
+    };
+    isSelected?: boolean;
+    onVote?: () => void;
+  } | null>(null);
 
   // Cached next battle for instant swipe transition
   const nextBattleRef = useRef<BattleContest | null>(null);
@@ -115,16 +136,25 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
     // Optimistic UI update
     setUserVotedCorner(competitor.corner);
 
+    let weightToAdd = 1.0;
+    try {
+      const { getMyTrust } = await import('@/services/trustService');
+      const { data: trustData } = await getMyTrust();
+      if (trustData?.score && trustData.score > 0) {
+        weightToAdd = Number(trustData.score);
+      }
+    } catch {}
+
     const updatedCompetitors = battle.competitors.map((c) => {
       const isPick = c.id === competitor.id;
       return {
         ...c,
-        votes: isPick ? c.votes + 1 : c.votes,
+        votes: isPick ? Math.round((c.votes + weightToAdd) * 10) / 10 : c.votes,
         isUserPick: isPick,
       };
     }) as [BattleCompetitor, BattleCompetitor];
 
-    const total = updatedCompetitors[0].votes + updatedCompetitors[1].votes;
+    const total = Math.round((updatedCompetitors[0].votes + updatedCompetitors[1].votes) * 10) / 10;
     if (total > 0) {
       updatedCompetitors[0].percentage = Number(((updatedCompetitors[0].votes / total) * 100).toFixed(1));
       updatedCompetitors[1].percentage = Number((100 - updatedCompetitors[0].percentage).toFixed(1));
@@ -132,7 +162,7 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
 
     setBattle({
       ...battle,
-      totalVotes: total,
+      totalVotes: Math.round(total),
       competitors: updatedCompetitors,
       userVotedId: competitor.id,
     });
@@ -189,218 +219,361 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
       className="fixed inset-0 z-30 bg-[#0b0b0d] text-white flex items-center justify-center overflow-hidden font-sans"
     >
       <div
-        className={`w-full max-w-md h-full flex flex-col justify-between p-3.5 sm:p-4 select-none relative overflow-hidden transition-all duration-200 ${
+        className={`w-full max-w-md h-full flex flex-col justify-between px-1.5 sm:px-2 pt-1 pb-1 select-none relative overflow-hidden transition-all duration-200 ${
           isTransitioning ? 'opacity-60 scale-[0.99]' : 'opacity-100 scale-100'
         }`}
       >
-        {/* ── Top Bar ── */}
-      <header className="flex items-center justify-between py-1 relative z-20 shrink-0">
-        {/* Back Button (Round) */}
-        <button
-          type="button"
-          onClick={() => router.push('/')}
-          aria-label="Back to feed"
-          className="w-9 h-9 rounded-full bg-[#18181b] hover:bg-[#27272a] text-white/90 hover:text-white flex items-center justify-center transition-all active:scale-95 border border-white/5 shadow-sm"
-        >
-          <ChevronLeft size={20} strokeWidth={2.5} />
-        </button>
+        {/* ── Top Bar: Back Button + Centered Clickable Contest Title (Seamless, no extra info button) ── */}
+        <header className="flex items-center justify-between px-1 py-1 relative z-20 shrink-0 bg-transparent border-none">
+          {/* Back Button (Seamless) */}
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            aria-label="Back to feed"
+            className="w-8 h-8 rounded-full bg-transparent hover:bg-white/10 text-white/80 hover:text-white flex items-center justify-center transition-all active:scale-95 border-none shrink-0"
+          >
+            <ChevronLeft size={20} strokeWidth={2.5} />
+          </button>
 
-        {/* Centered Title + Subtitle */}
-        <div className="text-center px-2 flex-1 min-w-0">
-          <h1 className="text-sm sm:text-base font-black tracking-wider text-white uppercase truncate drop-shadow-sm">
-            {battle.title}
-          </h1>
-          <p className="text-[11px] sm:text-xs text-white/50 truncate mt-0.5 font-medium">
-            {hasVoted ? 'Thanks, your vote counted' : `${battle.category} · battle`}
-          </p>
-        </div>
-
-        {/* Info Button (Round with orange 'i') */}
-        <button
-          type="button"
-          onClick={() => setIsDetailsOpen(true)}
-          aria-label="Contest information"
-          className="w-9 h-9 rounded-full bg-[#18181b] hover:bg-[#27272a] text-[#ff6a2b] flex items-center justify-center font-serif italic text-base font-bold transition-all active:scale-95 border border-white/5 shadow-sm"
-        >
-          i
-        </button>
-      </header>
-
-      {/* ── Arena: Two vertically stacked photo cards with central VS badge ── */}
-      <div className="flex-1 min-h-0 flex flex-col justify-between py-2 relative my-1">
-        {/* 1. Top Photo Card: Red Corner */}
-        <button
-          type="button"
-          onClick={() => handleVote(redComp)}
-          disabled={hasVoted}
-          aria-label={`Vote Red corner: ${redComp.name}`}
-          className={`relative flex-1 min-h-0 w-full rounded-3xl overflow-hidden cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white transition-all duration-300 ${
-            activeTapCorner === 'red' ? 'scale-[0.98]' : 'active:scale-[0.98]'
-          } ${
-            hasVoted
-              ? userVotedCorner === 'red'
-                ? 'ring-2 ring-[#ef4444] shadow-[0_0_25px_rgba(239,68,68,0.4)]'
-                : 'opacity-70 brightness-[0.7]'
-              : 'hover:brightness-105'
-          }`}
-        >
-          {/* Corner Pill Top-Left */}
-          <div className="absolute top-3.5 left-3.5 z-10 pointer-events-none">
-            <span
-              className="px-3 py-1 rounded-full text-xs font-bold text-white shadow-md inline-flex items-center gap-1 transition-all"
-              style={{ backgroundColor: '#ef4444' }}
-            >
-              {hasVoted && userVotedCorner === 'red' ? 'Red corner ✓ your pick' : 'Red corner'}
+          {/* Centered Clickable Title */}
+          <button
+            type="button"
+            onClick={() => setIsDetailsOpen(true)}
+            className="group inline-flex items-center justify-center gap-1.5 px-2 flex-1 min-w-0 transition-all cursor-pointer text-center active:scale-95"
+            title="Open contest details & rules"
+          >
+            <span className="text-sm sm:text-base font-black tracking-wider text-white uppercase truncate drop-shadow-sm group-hover:text-[#ff6a2b] transition-colors">
+              {battle.title}
             </span>
-          </div>
+            <ChevronRight
+              size={15}
+              className="text-neutral-500 group-hover:text-[#ff6a2b] group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
+            />
+          </button>
 
-          {/* Photo */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={redComp.photoUrl}
-            alt={redComp.name}
-            className="w-full h-full object-cover object-center pointer-events-none"
-          />
+          {/* Spacer to balance the Back button on left */}
+          <div className="w-8 shrink-0" />
+        </header>
 
-          {/* Bottom Dark Scrim */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+        {/* ── Arena: Two vertically stacked photo cards with central VS badge (Maximizes screen space) ── */}
+        <div className="flex-1 min-h-0 flex flex-col justify-between relative my-1 gap-1.5 bg-transparent border-0">
+          {/* 1. Top Photo Card: Competitor 1 */}
+          <div
+            role="button"
+            tabIndex={hasVoted ? -1 : 0}
+            onClick={() => !hasVoted && handleVote(redComp)}
+            onKeyDown={(e) => {
+              if (!hasVoted && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                handleVote(redComp);
+              }
+            }}
+            aria-label={`Vote for: ${redComp.name}`}
+            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden ${hasVoted ? 'cursor-default' : 'cursor-pointer'} text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-300 origin-center border border-neutral-800/80 bg-[#121215] ${
+              hasVoted
+                ? userVotedCorner === 'red'
+                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  : 'opacity-70 brightness-[0.7]'
+                : activeTapCorner === 'red'
+                ? 'scale-[0.98]'
+                : 'hover:brightness-105 active:scale-[0.98]'
+            }`}
+          >
+            {/* Selected Badge Top-Left (Only when selected) */}
+            {hasVoted && userVotedCorner === 'red' && (
+              <div className="absolute top-3 left-3 z-10 pointer-events-none animate-fade-in">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 shadow-md inline-flex items-center gap-1 border border-emerald-400/40">
+                  <Check size={12} strokeWidth={3} />
+                  <span>Selected</span>
+                </span>
+              </div>
+            )}
 
-          {/* Entry Title & Tap Hint */}
-          <div className="absolute bottom-3.5 left-4 right-24 z-10 pointer-events-none">
-            <h2 className="font-extrabold text-white text-base sm:text-lg leading-tight drop-shadow-md truncate">
-              {redComp.name}
-            </h2>
-            {!hasVoted && (
-              <p className="text-xs text-white/60 font-medium mt-0.5 drop-shadow-sm">
-                Tap to vote
-              </p>
+            {/* Top-Right: Zoom inspect button */}
+            <div className="absolute top-3 right-3 z-20">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const authorTag = redComp.author || undefined;
+                  setLightboxData({
+                    photoUrl: redComp.photoUrl,
+                    photos: redComp.photos || [redComp.photoUrl],
+                    title: redComp.name,
+                    author: authorTag,
+                    authorAvatar: redComp.author ? redComp.authorAvatar : undefined,
+                    authorBio: redComp.author ? ((redComp as any).authorBio || `Challenger in ${battle.title}.`) : undefined,
+                    category: battle.title,
+                    sponsorName: (battle as any).sponsorName || 'Alpha Lab & Creator Fund',
+                    sponsorTier: 'Official Contest Sponsor',
+                    prizePool: '$2,500 Prize Pool',
+                    socialLinks: authorTag ? {
+                      instagram: `https://instagram.com/${authorTag.replace('@', '')}`,
+                      telegram: `https://t.me/${authorTag.replace('@', '')}`,
+                      twitter: `https://x.com/${authorTag.replace('@', '')}`,
+                      portfolio: `https://${authorTag.replace('@', '')}.design`,
+                    } : undefined,
+                    isSelected: userVotedCorner === 'red',
+                    onVote: () => handleVote(redComp),
+                  });
+                }}
+                aria-label={`Inspect ${redComp.name} photo`}
+                className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white/90 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md"
+              >
+                <Maximize2 size={14} strokeWidth={2.4} />
+              </button>
+            </div>
+
+            {/* Photo */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={redComp.photoUrl}
+              alt={redComp.name}
+              className="w-full h-full object-cover object-center pointer-events-none"
+            />
+
+            {/* Bottom Dark Scrim */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+
+            {/* Entry Author Avatar + Handle + Work Title */}
+            <div className="absolute bottom-3 left-3.5 right-24 z-10 pointer-events-none">
+              <div className="flex items-center gap-2">
+                {redComp.author && redComp.authorAvatar && (
+                  <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={redComp.authorAvatar}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  {redComp.author && (
+                    <span className="text-xs sm:text-sm font-black text-white drop-shadow-md truncate block leading-tight">
+                      {redComp.author}
+                    </span>
+                  )}
+                  <span className={`${redComp.author ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5' : 'text-sm sm:text-base font-black text-white'} drop-shadow-md truncate block leading-tight tracking-wide`}>
+                    {redComp.name}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Percentage & Points (Shown after voting, green if picked) */}
+            {hasVoted && (
+              <div className="absolute bottom-3 right-3.5 z-10 pointer-events-none text-right animate-fade-in">
+                <span
+                  className={`font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md ${
+                    userVotedCorner === 'red' ? 'text-emerald-400' : 'text-neutral-300'
+                  }`}
+                >
+                  {redComp.percentage.toFixed(1)}%
+                </span>
+                <span className="block text-[11px] font-bold text-white/80 tracking-wide mt-0.5 drop-shadow">
+                  {redComp.votes} {redComp.votes === 1 ? 'pt' : 'pts'}
+                </span>
+              </div>
             )}
           </div>
 
-          {/* Percentage (Shown after voting) */}
-          {hasVoted && (
-            <div className="absolute bottom-3.5 right-4 z-10 pointer-events-none text-right animate-fade-in">
-              <span
-                className="font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md"
-                style={{ color: '#ef4444' }}
-              >
-                {redComp.percentage.toFixed(1)}%
-              </span>
-            </div>
-          )}
-        </button>
-
-        {/* 2. Circular "VS" Badge (Centered on the gap between cards) */}
-        <div
-          aria-hidden="true"
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white text-black font-black text-xs flex items-center justify-center shadow-2xl border-2 border-[#0b0b0d] select-none pointer-events-none"
-        >
-          VS
-        </div>
-
-        {/* 3. Bottom Photo Card: Blue Corner */}
-        <button
-          type="button"
-          onClick={() => handleVote(blueComp)}
-          disabled={hasVoted}
-          aria-label={`Vote Blue corner: ${blueComp.name}`}
-          className={`relative flex-1 min-h-0 w-full rounded-3xl overflow-hidden cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white transition-all duration-300 mt-2.5 ${
-            activeTapCorner === 'blue' ? 'scale-[0.98]' : 'active:scale-[0.98]'
-          } ${
-            hasVoted
-              ? userVotedCorner === 'blue'
-                ? 'ring-2 ring-[#10b981] shadow-[0_0_25px_rgba(16,185,129,0.4)]'
-                : 'opacity-70 brightness-[0.7]'
-              : 'hover:brightness-105'
-          }`}
-        >
-          {/* Corner Pill Top-Left */}
-          <div className="absolute top-3.5 left-3.5 z-10 pointer-events-none">
-            <span
-              className="px-3 py-1 rounded-full text-xs font-bold text-white shadow-md inline-flex items-center gap-1 transition-all"
-              style={{ backgroundColor: '#10b981' }}
-            >
-              {hasVoted && userVotedCorner === 'blue' ? 'Blue corner ✓ your pick' : 'Blue corner'}
-            </span>
+          {/* 2. Circular "VS" Badge (Centered on the gap between cards) */}
+          <div
+            aria-hidden="true"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] text-white font-black text-xs flex items-center justify-center shadow-2xl border-2 border-[#0b0b0d] select-none pointer-events-none ring-2 ring-white/20 animate-pulse"
+          >
+            VS
           </div>
 
-          {/* Photo */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={blueComp.photoUrl}
-            alt={blueComp.name}
-            className="w-full h-full object-cover object-center pointer-events-none"
-          />
+          {/* 3. Bottom Photo Card: Competitor 2 */}
+          <div
+            role="button"
+            tabIndex={hasVoted ? -1 : 0}
+            onClick={() => !hasVoted && handleVote(blueComp)}
+            onKeyDown={(e) => {
+              if (!hasVoted && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                handleVote(blueComp);
+              }
+            }}
+            aria-label={`Vote for: ${blueComp.name}`}
+            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden ${hasVoted ? 'cursor-default' : 'cursor-pointer'} text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-300 origin-center border border-neutral-800/80 bg-[#121215] ${
+              hasVoted
+                ? userVotedCorner === 'blue'
+                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  : 'opacity-70 brightness-[0.7]'
+                : activeTapCorner === 'blue'
+                ? 'scale-[0.98]'
+                : 'hover:brightness-105 active:scale-[0.98]'
+            }`}
+          >
+            {/* Selected Badge Top-Left (Only when selected) */}
+            {hasVoted && userVotedCorner === 'blue' && (
+              <div className="absolute top-3 left-3 z-10 pointer-events-none animate-fade-in">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 shadow-md inline-flex items-center gap-1 border border-emerald-400/40">
+                  <Check size={12} strokeWidth={3} />
+                  <span>Selected</span>
+                </span>
+              </div>
+            )}
 
-          {/* Bottom Dark Scrim */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+            {/* Top-Right: Zoom inspect button */}
+            <div className="absolute top-3 right-3 z-20">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const authorTag = blueComp.author || undefined;
+                  setLightboxData({
+                    photoUrl: blueComp.photoUrl,
+                    photos: blueComp.photos || [blueComp.photoUrl],
+                    title: blueComp.name,
+                    author: authorTag,
+                    authorAvatar: blueComp.author ? blueComp.authorAvatar : undefined,
+                    authorBio: blueComp.author ? ((blueComp as any).authorBio || `Challenger in ${battle.title}.`) : undefined,
+                    category: battle.title,
+                    sponsorName: (battle as any).sponsorName || 'Alpha Lab & Creator Fund',
+                    sponsorTier: 'Official Contest Sponsor',
+                    prizePool: '$2,500 Prize Pool',
+                    socialLinks: authorTag ? {
+                      instagram: `https://instagram.com/${authorTag.replace('@', '')}`,
+                      telegram: `https://t.me/${authorTag.replace('@', '')}`,
+                      twitter: `https://x.com/${authorTag.replace('@', '')}`,
+                      portfolio: `https://${authorTag.replace('@', '')}.design`,
+                    } : undefined,
+                    isSelected: userVotedCorner === 'blue',
+                    onVote: () => handleVote(blueComp),
+                  });
+                }}
+                aria-label={`Inspect ${blueComp.name} photo`}
+                className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white/90 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md"
+              >
+                <Maximize2 size={14} strokeWidth={2.4} />
+              </button>
+            </div>
 
-          {/* Entry Title & Tap Hint */}
-          <div className="absolute bottom-3.5 left-4 right-24 z-10 pointer-events-none">
-            <h2 className="font-extrabold text-white text-base sm:text-lg leading-tight drop-shadow-md truncate">
-              {blueComp.name}
-            </h2>
-            {!hasVoted && (
-              <p className="text-xs text-white/60 font-medium mt-0.5 drop-shadow-sm">
-                Tap to vote
-              </p>
+            {/* Photo */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={blueComp.photoUrl}
+              alt={blueComp.name}
+              className="w-full h-full object-cover object-center pointer-events-none"
+            />
+
+            {/* Bottom Dark Scrim */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+
+            {/* Entry Author Avatar + Handle + Work Title */}
+            <div className="absolute bottom-3 left-3.5 right-24 z-10 pointer-events-none">
+              <div className="flex items-center gap-2">
+                {blueComp.author && blueComp.authorAvatar && (
+                  <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={blueComp.authorAvatar}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  {blueComp.author && (
+                    <span className="text-xs sm:text-sm font-black text-white drop-shadow-md truncate block leading-tight">
+                      {blueComp.author}
+                    </span>
+                  )}
+                  <span className={`${blueComp.author ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5' : 'text-sm sm:text-base font-black text-white'} drop-shadow-md truncate block leading-tight tracking-wide`}>
+                    {blueComp.name}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Percentage & Points (Shown after voting, green if picked) */}
+            {hasVoted && (
+              <div className="absolute bottom-3 right-3.5 z-10 pointer-events-none text-right animate-fade-in">
+                <span
+                  className={`font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md ${
+                    userVotedCorner === 'blue' ? 'text-emerald-400' : 'text-neutral-300'
+                  }`}
+                >
+                  {blueComp.percentage.toFixed(1)}%
+                </span>
+                <span className="block text-[11px] font-bold text-white/80 tracking-wide mt-0.5 drop-shadow">
+                  {blueComp.votes} {blueComp.votes === 1 ? 'pt' : 'pts'}
+                </span>
+              </div>
             )}
           </div>
+        </div>
 
-          {/* Percentage (Shown after voting) */}
-          {hasVoted && (
-            <div className="absolute bottom-3.5 right-4 z-10 pointer-events-none text-right animate-fade-in">
-              <span
-                className="font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md"
-                style={{ color: '#10b981' }}
-              >
-                {blueComp.percentage.toFixed(1)}%
-              </span>
-            </div>
-          )}
-        </button>
-      </div>
-
-      {/* ── Bottom Section: Hint / Split Bar & Next Battle ── */}
+      {/* ── Bottom Section: Thin Split Bar after voting & Desktop-Only Controls ── */}
       <footer className="shrink-0 pt-1 pb-1">
         {hasVoted ? (
-          <div className="space-y-1 animate-fade-in">
+          <div className="space-y-1.5 animate-fade-in">
             {/* Thin Split Bar with Corner Colors */}
             <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-white/10 shadow-inner">
               <div
-                style={{ width: `${redComp.percentage}%`, backgroundColor: '#ef4444' }}
+                style={{ width: `${redComp.percentage}%`, backgroundColor: userVotedCorner === 'red' ? '#10b981' : '#52525b' }}
                 className="h-full transition-all duration-500"
               />
               <div
-                style={{ width: `${blueComp.percentage}%`, backgroundColor: '#10b981' }}
+                style={{ width: `${blueComp.percentage}%`, backgroundColor: userVotedCorner === 'blue' ? '#10b981' : '#52525b' }}
                 className="h-full transition-all duration-500"
               />
             </div>
 
-            {/* Next Battle Action */}
+            {/* Desktop-only Next Battle controls */}
+            <div className="hidden lg:flex items-center justify-end pt-1">
+              <button
+                type="button"
+                onClick={goToNextBattle}
+                aria-label="Next battle"
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors active:scale-95"
+              >
+                <ChevronDown size={16} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="hidden lg:flex items-center justify-end text-xs text-white/40 py-1">
             <button
               type="button"
               onClick={goToNextBattle}
-              className="text-xs font-bold text-[#ff6a2b] hover:text-white transition-colors py-1.5 flex items-center justify-center gap-1 mx-auto focus:outline-none focus-visible:underline"
+              aria-label="Next battle"
+              className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors active:scale-95"
             >
-              <span>Next battle</span>
-              <span>↑</span>
+              <ChevronDown size={16} />
             </button>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={goToNextBattle}
-            className="w-full text-xs text-white/40 hover:text-white/70 text-center py-2 font-medium tracking-wide transition-colors focus:outline-none"
-          >
-            Swipe up for next battle ↑
-          </button>
         )}
       </footer>
 
       {/* ── Details Bottom Sheet (State 3: "i" button) ── */}
       {isDetailsOpen && (
         <DetailsSheet battle={battle} onClose={() => setIsDetailsOpen(false)} />
+      )}
+
+      {/* ── Photo Lightbox (High-Resolution Zoom & Detail Inspection) ── */}
+      {lightboxData && (
+        <PhotoLightbox
+          isOpen={Boolean(lightboxData)}
+          onClose={() => setLightboxData(null)}
+          photoUrl={lightboxData.photoUrl}
+          photos={lightboxData.photos}
+          title={lightboxData.title}
+          author={lightboxData.author}
+          authorAvatar={lightboxData.authorAvatar}
+          authorBio={lightboxData.authorBio}
+          category={lightboxData.category}
+          sponsorName={lightboxData.sponsorName}
+          sponsorTier={lightboxData.sponsorTier}
+          prizePool={lightboxData.prizePool}
+          socialLinks={lightboxData.socialLinks}
+          isSelected={lightboxData.isSelected}
+          onVote={lightboxData.onVote}
+        />
       )}
       </div>
     </main>
@@ -446,18 +619,13 @@ export function DetailsSheet({ battle, onClose }: DetailsSheetProps) {
         {/* Key-Value Rows */}
         <div className="space-y-3 pt-2 border-t border-white/10 text-xs">
           <div className="flex items-center justify-between py-1">
-            <span className="text-white/50 font-medium">Category</span>
-            <span className="text-white font-semibold">{battle.category}</span>
-          </div>
-
-          <div className="flex items-center justify-between py-1 border-t border-white/5">
             <span className="text-white/50 font-medium">Format</span>
             <span className="text-white font-semibold">{battle.format}</span>
           </div>
 
           <div className="flex items-center justify-between py-1 border-t border-white/5">
-            <span className="text-white/50 font-medium">Votes so far</span>
-            <span className="text-white font-bold">{battle.totalVotes}</span>
+            <span className="text-white/50 font-medium">Votes / Points</span>
+            <span className="text-white font-bold">{battle.totalVotes} pts</span>
           </div>
 
           <div className="flex items-center justify-between py-1 border-t border-white/5">

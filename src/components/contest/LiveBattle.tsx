@@ -20,7 +20,13 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
   const [votes, setVotes] = useState<any[]>([]);
   const [votedId, setVotedId] = useState<string | null>(null);
   const [voting, setVoting] = useState(false);
+  const [voteToast, setVoteToast] = useState<string | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; title: string; desc?: string } | null>(null);
+
+  const showToast = (msg: string) => {
+    setVoteToast(msg);
+    setTimeout(() => setVoteToast(null), 3000);
+  };
 
   // Load existing votes for this contest
   useEffect(() => {
@@ -58,8 +64,9 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
     const { error } = await voteInGroup(contestId, contestId, contestId, participantId, userTrustScore);
     if (!error) {
       setVotedId(participantId);
+      showToast('Vote counted!');
     } else {
-      alert(error);
+      showToast(error);
     }
     setVoting(false);
   };
@@ -99,7 +106,12 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
   const p2Percent = getPercent(p2.id);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {voteToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#ff6a2b] text-white text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
+          {voteToast}
+        </div>
+      )}
       {/* Lightbox / High Res Photo View */}
       {previewPhoto && (
         <div 
@@ -134,8 +146,8 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
         {/* Challenger 1 */}
         <div 
-          className={`card bg-surface-800 border-surface-600 p-6 flex flex-col items-center justify-between text-center relative ${
-            votedId === p1.id ? 'border-accent-red ring-2 ring-accent-red/30' : ''
+          className={`card bg-surface-800 border-surface-600 p-6 flex flex-col items-center justify-between text-center relative transition-all duration-300 origin-center ${
+            votedId === p1.id ? 'scale-[0.88] border-emerald-500 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/20 z-10' : ''
           }`}
         >
           <div className="w-full flex flex-col items-center">
@@ -145,9 +157,11 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
             >
               <img src={p1Photo} alt={p1Name} loading="lazy" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
-              <span className="absolute bottom-3 left-3 text-[10px] font-extrabold bg-accent-red text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow">
-                RED CORNER
-              </span>
+              {votedId === p1.id && (
+                <span className="absolute bottom-3 left-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow">
+                  ✓ Selected
+                </span>
+              )}
               <span className="absolute top-3 right-3 text-[10px] bg-black/60 text-gray-200 px-2 py-0.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
                 🔍 View Photo
               </span>
@@ -162,7 +176,9 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
             )}
 
             <div className="my-2">
-              <span className="text-3xl font-black text-accent-red tracking-tight">{formatPercentage(p1Percent)}</span>
+              <span className={`text-3xl font-black tracking-tight ${votedId === p1.id ? 'text-emerald-400' : 'text-white'}`}>
+                {formatPercentage(p1Percent)}
+              </span>
               <span className="block text-[10px] uppercase font-bold text-gray-400 mt-0.5">Current Votes</span>
             </div>
           </div>
@@ -172,20 +188,20 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
             disabled={!isAuthenticated || !!votedId || voting}
             className={`w-full mt-4 btn text-xs py-3 font-extrabold uppercase tracking-wider transition-all ${
               votedId === p1.id
-                ? 'bg-accent-red text-white'
+                ? 'bg-emerald-600 text-white'
                 : !votedId && isAuthenticated
-                ? 'bg-accent-red/20 text-accent-red hover:bg-accent-red hover:text-white border border-accent-red/40'
+                ? 'bg-surface-700 hover:bg-emerald-600 text-white border border-surface-600 hover:border-emerald-500'
                 : 'bg-surface-700 text-gray-400 cursor-not-allowed'
             }`}
           >
-            {votedId === p1.id ? '✓ Voted Red Corner' : votedId ? 'Vote Recorded' : 'Vote Red Corner 🥊'}
+            {votedId === p1.id ? '✓ Selected' : votedId ? 'Vote Recorded' : 'Vote for Competitor'}
           </button>
         </div>
 
         {/* Challenger 2 */}
         <div 
-          className={`card bg-surface-800 border-surface-600 p-6 flex flex-col items-center justify-between text-center relative ${
-            votedId === p2.id ? 'border-accent-green ring-2 ring-accent-green/30' : ''
+          className={`card bg-surface-800 border-surface-600 p-6 flex flex-col items-center justify-between text-center relative transition-all duration-300 origin-center ${
+            votedId === p2.id ? 'scale-[0.88] border-emerald-500 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/20 z-10' : ''
           }`}
         >
           <div className="w-full flex flex-col items-center">
@@ -195,9 +211,11 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
             >
               <img src={p2Photo} alt={p2Name} loading="lazy" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
-              <span className="absolute bottom-3 right-3 text-[10px] font-extrabold bg-accent-green text-surface-900 px-2.5 py-1 rounded-md uppercase tracking-wider shadow">
-                BLUE CORNER
-              </span>
+              {votedId === p2.id && (
+                <span className="absolute bottom-3 right-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow">
+                  ✓ Selected
+                </span>
+              )}
               <span className="absolute top-3 left-3 text-[10px] bg-black/60 text-gray-200 px-2 py-0.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
                 🔍 View Photo
               </span>
@@ -212,7 +230,9 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
             )}
 
             <div className="my-2">
-              <span className="text-3xl font-black text-accent-green tracking-tight">{formatPercentage(p2Percent)}</span>
+              <span className={`text-3xl font-black tracking-tight ${votedId === p2.id ? 'text-emerald-400' : 'text-white'}`}>
+                {formatPercentage(p2Percent)}
+              </span>
               <span className="block text-[10px] uppercase font-bold text-gray-400 mt-0.5">Current Votes</span>
             </div>
           </div>
@@ -222,13 +242,13 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
             disabled={!isAuthenticated || !!votedId || voting}
             className={`w-full mt-4 btn text-xs py-3 font-extrabold uppercase tracking-wider transition-all ${
               votedId === p2.id
-                ? 'bg-accent-green text-surface-900'
+                ? 'bg-emerald-600 text-white'
                 : !votedId && isAuthenticated
-                ? 'bg-accent-green/20 text-accent-green hover:bg-accent-green hover:text-surface-900 border border-accent-green/40'
+                ? 'bg-surface-700 hover:bg-emerald-600 text-white border border-surface-600 hover:border-emerald-500'
                 : 'bg-surface-700 text-gray-400 cursor-not-allowed'
             }`}
           >
-            {votedId === p2.id ? '✓ Voted Blue Corner' : votedId ? 'Vote Recorded' : 'Vote Blue Corner 🥊'}
+            {votedId === p2.id ? '✓ Selected' : votedId ? 'Vote Recorded' : 'Vote for Competitor'}
           </button>
         </div>
       </div>
@@ -236,22 +256,22 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
       {/* Mid Split Percentage Indicator */}
       <div className="space-y-2 card bg-surface-800 border-surface-700 p-4">
         <div className="flex justify-between items-center text-xs font-extrabold uppercase tracking-wider">
-          <span className="text-accent-red flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-accent-red"></span>
+          <span className={`flex items-center gap-1.5 ${votedId === p1.id ? 'text-emerald-400' : 'text-neutral-300'}`}>
+            <span className={`w-2.5 h-2.5 rounded-full ${votedId === p1.id ? 'bg-emerald-500' : 'bg-neutral-500'}`}></span>
             {p1Name} ({formatPercentage(p1Percent)})
           </span>
-          <span className="text-accent-green flex items-center gap-1.5">
+          <span className={`flex items-center gap-1.5 ${votedId === p2.id ? 'text-emerald-400' : 'text-neutral-300'}`}>
             {p2Name} ({formatPercentage(p2Percent)})
-            <span className="w-2.5 h-2.5 rounded-full bg-accent-green"></span>
+            <span className={`w-2.5 h-2.5 rounded-full ${votedId === p2.id ? 'bg-emerald-500' : 'bg-neutral-500'}`}></span>
           </span>
         </div>
-        <div className="h-5 w-full rounded-full overflow-hidden flex bg-surface-900 border border-surface-700 shadow-inner p-0.5">
+        <div className="h-4 w-full rounded-full overflow-hidden flex bg-surface-900 border border-surface-700 shadow-inner p-0.5">
           <div 
-            className="h-full bg-gradient-to-r from-accent-red to-accent-red/80 rounded-l-full transition-all duration-500"
+            className={`h-full rounded-l-full transition-all duration-500 ${votedId === p1.id ? 'bg-emerald-500' : 'bg-neutral-600'}`}
             style={{ width: `${p1Percent}%` }}
           />
           <div 
-            className="h-full bg-gradient-to-r from-accent-green/80 to-accent-green rounded-r-full transition-all duration-500"
+            className={`h-full rounded-r-full transition-all duration-500 ${votedId === p2.id ? 'bg-emerald-500' : 'bg-neutral-600'}`}
             style={{ width: `${p2Percent}%` }}
           />
         </div>

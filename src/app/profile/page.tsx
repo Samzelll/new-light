@@ -23,6 +23,7 @@ import {
   type SubscriptionItem,
 } from '@/components/profile/ProfileTabs';
 import { EditProfileSheet } from '@/components/profile/EditProfileSheet';
+import { ProfilePageSkeleton } from '@/components/common/Skeletons';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -252,22 +253,8 @@ export default function ProfilePage() {
   /* ── 1. Loading State ── */
   if (loading || (isInitialized && isAuthenticated && trustLoading)) {
     return (
-      <main className="min-h-screen bg-[#0b0b0d] text-white flex justify-center p-4">
-        <div className="w-full max-w-md space-y-4 animate-pulse pt-8">
-          <div className="h-10 w-full flex justify-between">
-            <div className="w-10 h-10 rounded-full bg-neutral-900" />
-            <div className="w-10 h-10 rounded-full bg-neutral-900" />
-          </div>
-          <div className="w-20 h-20 rounded-full bg-neutral-900 mx-auto mt-4" />
-          <div className="h-6 w-36 bg-neutral-900 rounded mx-auto" />
-          <div className="h-4 w-24 bg-neutral-900 rounded mx-auto" />
-          <div className="h-16 w-full bg-neutral-900 rounded-2xl mt-6" />
-          <div className="grid grid-cols-3 gap-2.5 mt-4">
-            <div className="h-20 bg-neutral-900 rounded-2xl" />
-            <div className="h-20 bg-neutral-900 rounded-2xl" />
-            <div className="h-20 bg-neutral-900 rounded-2xl" />
-          </div>
-        </div>
+      <main className="min-h-screen bg-[#0b0b0d] text-white flex justify-center">
+        <ProfilePageSkeleton />
       </main>
     );
   }

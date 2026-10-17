@@ -21,6 +21,7 @@ import {
   ArrowRight,
   SlidersHorizontal,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDispatch } from 'react-redux';
 import { setAuth, clearAuth } from '@/features/auth/authSlice';
@@ -29,9 +30,22 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { SideDrawer } from '@/components/layout/SideDrawer';
 import { TikTokFeedView } from '@/components/feed/TikTokFeedView';
 import { TikTokBattleView, BattleItem } from '@/components/contest/TikTokBattleView';
+import { getMoreRecommendedBattles } from '@/services/recommendationService';
 import { getContests, getMySubscriptions, Contest } from '@/services/contestService';
+import {
+  getAllBattleItems,
+  SEED_SAMPLE_BATTLES,
+  castVote as castBattleVote,
+} from '@/services/battleDataService';
 import { feedService, voteService } from '@/services/mock';
 import type { Group } from '@/services/types';
+import { LazyImage } from '@/components/common/LazyImage';
+import {
+  ContestGridSkeleton,
+  BattleArenaSkeleton,
+  FeedGroupSkeleton,
+} from '@/components/common/Skeletons';
+import { LazyScrollTrigger } from '@/components/common/LazyScrollTrigger';
 
 // Available categories/tags
 const ALL_TAGS = ['Sports', 'Photography', 'Art', 'Design', 'Creative'];
@@ -72,17 +86,29 @@ export default function HomePage() {
   const [groupVotes, setGroupVotes] = useState<Record<string, string>>({}); // groupId -> participantId
   const [loadingFeed, setLoadingFeed] = useState(true);
 
-  // Battles state
+  // Battles state (Dynamic from DB + Seeds)
+  const [dbBattles, setDbBattles] = useState<BattleItem[]>([]);
+  const [loadingBattles, setLoadingBattles] = useState(false);
+  const [extraBattles, setExtraBattles] = useState<BattleItem[]>([]);
   const [battleVotes, setBattleVotes] = useState<Record<string, 'red' | 'green'>>({});
+  const [battleOverrides, setBattleOverrides] = useState<Record<string, { redPercent: number; greenPercent: number }>>({});
 
   // Filter & Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'popular' | 'for_you' | 'ending_soon'>('popular');
+  const [sortBy, setSortBy] = useState<'popular' | 'for_you' | 'ending_soon' | 'newest'>('popular');
   const [onlySubscribed, setOnlySubscribed] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['battle', 'race', 'standard', 'eternal']);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['registration', 'active', 'completed']);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Progressive lazy pagination for Contests list
+  const [visibleContestsCount, setVisibleContestsCount] = useState(10);
+
+  // Reset pagination when filter/search/sort change
+  useEffect(() => {
+    setVisibleContestsCount(10);
+  }, [appliedSearch, onlySubscribed, selectedTypes, selectedStatuses, selectedTags, sortBy]);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,25 +137,62 @@ export default function HomePage() {
   };
 
   // 1. Load Contests catalog & Subscriptions
-  useEffect(() => {
-    async function loadContestsData() {
-      setLoadingContests(true);
-      try {
-        const { data } = await getContests({ includePausedOrBlocked: false });
-        if (data) setContests(data);
+  const loadContestsData = useCallback(async () => {
+    setLoadingContests(true);
+    try {
+      const { data } = await getContests({ includePausedOrBlocked: false });
+      if (data) setContests(data);
 
-        if (isAuthenticated) {
-          const { data: subs } = await getMySubscriptions();
-          if (subs) setSubscriptions(subs);
-        }
-      } catch (err) {
-        console.error('Error loading contests:', err);
-      } finally {
-        setLoadingContests(false);
+      if (isAuthenticated) {
+        const { data: subs } = await getMySubscriptions();
+        if (subs) setSubscriptions(subs);
       }
+    } catch (err) {
+      console.error('Error loading contests:', err);
+    } finally {
+      setLoadingContests(false);
     }
-    loadContestsData();
   }, [isAuthenticated]);
+
+  // 2. Load Battle items from database & seeds
+  const loadBattlesData = useCallback(async () => {
+    setLoadingBattles(true);
+    try {
+      const items = await getAllBattleItems();
+      if (items && items.length > 0) {
+        setDbBattles(items);
+      }
+    } catch (err) {
+      console.error('Error loading battles:', err);
+    } finally {
+      setLoadingBattles(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadContestsData();
+  }, [loadContestsData]);
+
+  useEffect(() => {
+    loadBattlesData();
+  }, [loadBattlesData]);
+
+  // Real-time synchronization whenever contests/battles are created or updated
+  useEffect(() => {
+    const handleDbUpdate = () => {
+      loadContestsData();
+      loadBattlesData();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('mockdb:updated', handleDbUpdate);
+      window.addEventListener('focus', handleDbUpdate);
+      return () => {
+        window.removeEventListener('mockdb:updated', handleDbUpdate);
+        window.removeEventListener('focus', handleDbUpdate);
+      };
+    }
+  }, [loadContestsData, loadBattlesData]);
 
   // 2. Load Feed Groups (Groups of 4)
   useEffect(() => {
@@ -233,13 +296,26 @@ export default function HomePage() {
     }
 
     // Sorting
+    if (sortBy === 'newest') {
+      return list.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+    }
+
     if (sortBy === 'for_you') {
       return list.sort((a, b) => {
         const aSub = subscriptions.includes(a.id);
         const bSub = subscriptions.includes(b.id);
         if (aSub && !bSub) return -1;
         if (!aSub && bSub) return 1;
-        return (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0);
+        if (b.is_featured !== a.is_featured) {
+          return (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0);
+        }
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
       });
     }
 
@@ -249,24 +325,39 @@ export default function HomePage() {
         const isBVoting = (b.status as string) === 'active' || (b.status as string) === 'voting';
         if (isAVoting && !isBVoting) return -1;
         if (!isAVoting && isBVoting) return 1;
-        return 0;
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
       });
     }
 
-    // Default 'popular'
+    // Default 'popular': featured first, and within featured / non-featured, newest first!
     return list.sort((a, b) => {
       if (a.is_featured && !b.is_featured) return -1;
       if (!a.is_featured && b.is_featured) return 1;
-      return 0;
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
     });
   }, [contests, appliedSearch, onlySubscribed, selectedTypes, selectedStatuses, selectedTags, sortBy, subscriptions]);
+
+  // Progressive lazy batching for Contests catalog
+  const paginatedContests = useMemo(() => {
+    return displayedContests.slice(0, visibleContestsCount);
+  }, [displayedContests, visibleContestsCount]);
+
+  const hasMoreContests = visibleContestsCount < displayedContests.length;
+
+  const handleLoadMoreContests = useCallback(() => {
+    setVisibleContestsCount((prev) => Math.min(prev + 8, displayedContests.length));
+  }, [displayedContests.length]);
 
   // Distribute into 2 Pinterest columns for masonry layout
   const { column1, column2 } = useMemo(() => {
     const col1: Array<{ contest: Contest; heightClass: string; isRegistration: boolean }> = [];
     const col2: Array<{ contest: Contest; heightClass: string; isRegistration: boolean }> = [];
 
-    displayedContests.forEach((contest, index) => {
+    paginatedContests.forEach((contest, index) => {
       const isRegistration = contest.status === 'registration';
       const isCol1 = index % 2 === 0;
 
@@ -290,7 +381,7 @@ export default function HomePage() {
     });
 
     return { column1: col1, column2: col2 };
-  }, [displayedContests]);
+  }, [paginatedContests]);
 
   // Contests map for instant lookup across tabs
   const contestsMap = useMemo(() => {
@@ -311,134 +402,77 @@ export default function HomePage() {
     }
   };
 
-  // ── Tab 3: Battles data & vote handler ──
-  const sampleBattles: BattleItem[] = useMemo(
-    () => [
-      {
-        id: 'battle-01',
-        contestId: 'contest-neon-shinjuku',
-        title: 'NEON TOKYO · 1v1 Duel',
-        category: 'Cyberpunk & Neon',
-        tags: ['Art', 'Design', 'Photography'],
-        timeRemaining: '12h left',
-        isPopular: true,
-        red: {
-          id: 'red-01',
-          name: 'Shinjuku in Rain',
-          author: '@kenji_lens',
-          photo: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=700&q=80',
-          percent: 58,
-        },
-        green: {
-          id: 'green-01',
-          name: 'Neon Crossing',
-          author: '@yuki_street',
-          photo: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=700&q=80',
-          percent: 42,
-        },
-      },
-      {
-        id: 'battle-02',
-        contestId: 'contest-tennis-apply',
-        title: 'TENNIS CHAMPIONSHIP · Final Set',
-        category: 'Sports & Motion',
-        tags: ['Sports'],
-        timeRemaining: '4h left',
-        isPopular: true,
-        red: {
-          id: 'red-02',
-          name: 'Ace Serve',
-          author: '@alex_shot',
-          photo: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=700&q=80',
-          percent: 64,
-        },
-        green: {
-          id: 'green-02',
-          name: 'Ball on the Line',
-          author: '@daria_pro',
-          photo: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=700&q=80',
-          percent: 36,
-        },
-      },
-      {
-        id: 'battle-03',
-        contestId: 'contest-nature-stars',
-        title: 'HORIZON NATURE · 1v1',
-        category: 'Landscape & Mountains',
-        tags: ['Photography', 'Creative'],
-        timeRemaining: '18h left',
-        isPopular: false,
-        red: {
-          id: 'red-03',
-          name: 'Alpine Sunrise',
-          author: '@nordic_eye',
-          photo: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=700&q=80',
-          percent: 51,
-        },
-        green: {
-          id: 'green-03',
-          name: 'Sunset Fjord',
-          author: '@elena_arctic',
-          photo: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=700&q=80',
-          percent: 49,
-        },
-      },
-      {
-        id: 'battle-04',
-        contestId: 'contest-glamour',
-        title: 'MISS GLAMOUR · Top 2 Duel',
-        category: 'Portrait & Style',
-        tags: ['Photography', 'Art', 'Creative'],
-        timeRemaining: '8h left',
-        isPopular: true,
-        red: {
-          id: 'red-04',
-          name: 'Flash in the Dark',
-          author: '@alisa_fashion',
-          photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=700&q=80',
-          percent: 53,
-        },
-        green: {
-          id: 'green-04',
-          name: 'Silk Glance',
-          author: '@milana_model',
-          photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=700&q=80',
-          percent: 47,
-        },
-      },
-      {
-        id: 'battle-05',
-        contestId: 'contest-design-ideas',
-        title: 'FUTURE DESIGN · 3D Concept',
-        category: 'Art & Design',
-        tags: ['Design', 'Art'],
-        timeRemaining: '24h left',
-        isPopular: true,
-        red: {
-          id: 'red-05',
-          name: 'Neon Polygon',
-          author: '@render_master',
-          photo: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=700&q=80',
-          percent: 61,
-        },
-        green: {
-          id: 'green-05',
-          name: 'Cyber Structure',
-          author: '@vector_art',
-          photo: 'https://images.unsplash.com/photo-1515260268569-9271009adfdb?w=700&q=80',
-          percent: 39,
-        },
-      },
-    ],
-    []
-  );
+  // ── Tab 3: Dynamic Battles data & vote handler ──
+  const effectiveBattles = useMemo(() => {
+    return dbBattles.length > 0 ? dbBattles : SEED_SAMPLE_BATTLES;
+  }, [dbBattles]);
+
+  const allBattles = useMemo(() => {
+    const combined = [...effectiveBattles, ...extraBattles];
+    return combined.map((b) => {
+      const override = battleOverrides[b.id];
+      if (!override) return b;
+      return {
+        ...b,
+        red: { ...b.red, percent: override.redPercent },
+        green: { ...b.green, percent: override.greenPercent },
+      };
+    });
+  }, [effectiveBattles, extraBattles, battleOverrides]);
 
   const handleBattleVote = (battleId: string, corner: 'red' | 'green') => {
     setBattleVotes((prev) => ({
       ...prev,
       [battleId]: corner,
     }));
+
+    const targetBattle = allBattles.find((b) => b.id === battleId);
+    if (targetBattle && targetBattle.contestId) {
+      const chosenParticipantId = corner === 'red' ? targetBattle.red.id : targetBattle.green.id;
+      castBattleVote(targetBattle.contestId, chosenParticipantId).catch((e) =>
+        console.warn('Battle vote persist error:', e)
+      );
+    }
+
+    setBattleOverrides((prev) => {
+      const base = allBattles.find((b) => b.id === battleId);
+      if (!base) return prev;
+      const curRed = prev[battleId]?.redPercent ?? base.red.percent;
+      let newRed = curRed;
+      if (corner === 'red') {
+        newRed = Math.min(99, curRed + 2);
+      } else {
+        newRed = Math.max(1, curRed - 2);
+      }
+      return {
+        ...prev,
+        [battleId]: {
+          redPercent: newRed,
+          greenPercent: 100 - newRed,
+        },
+      };
+    });
   };
+
+  const handleLoadMoreBattles = useCallback(() => {
+    setExtraBattles((prev) => {
+      const newBatch = getMoreRecommendedBattles(effectiveBattles.length + prev.length);
+      return [...prev, ...newBatch];
+    });
+  }, [effectiveBattles.length]);
+
+  const handleLoadMoreFeed = useCallback(() => {
+    setFeedGroups((prev) => {
+      if (prev.length === 0) return prev;
+      const batchIdx = Math.floor(prev.length / 4) + 1;
+      const moreGroups = prev.slice(0, 4).map((g, i) => ({
+        ...g,
+        id: `${g.id}-stream-${batchIdx}-${i}`,
+        contestTitle: `${g.contestTitle} · Round ${batchIdx + 1}`,
+      }));
+      return [...prev, ...moreGroups];
+    });
+  }, []);
 
   // ── FILTERED FEED GROUPS (by search query, tags, popularity) ──
   const displayedFeedGroups = useMemo(() => {
@@ -485,7 +519,7 @@ export default function HomePage() {
 
   // ── FILTERED BATTLES (by search query, tags, popularity) ──
   const displayedBattles = useMemo(() => {
-    return sampleBattles
+    return allBattles
       .filter((battle) => {
         const parentContest = battle.contestId ? contestsMap[battle.contestId] : null;
         const searchTarget = `${battle.title} ${battle.category} ${battle.red.name} ${battle.green.name} ${battle.red.author} ${battle.green.author} ${parentContest?.description || ''} ${battle.tags?.join(' ') || ''}`.toLowerCase();
@@ -518,17 +552,30 @@ export default function HomePage() {
         return true;
       })
       .sort((a, b) => {
-        if (sortBy === 'popular') {
-          return (b.isPopular ? 1 : 0) - (a.isPopular ? 1 : 0);
+        const aContest = a.contestId ? contestsMap[a.contestId] : null;
+        const bContest = b.contestId ? contestsMap[b.contestId] : null;
+        const dateA = aContest?.created_at ? new Date(aContest.created_at).getTime() : 0;
+        const dateB = bContest?.created_at ? new Date(bContest.created_at).getTime() : 0;
+
+        if (sortBy === 'newest') {
+          return dateB - dateA;
         }
-        return 0;
+
+        if (sortBy === 'popular') {
+          if (Boolean(b.isPopular) !== Boolean(a.isPopular)) {
+            return (b.isPopular ? 1 : 0) - (a.isPopular ? 1 : 0);
+          }
+          return dateB - dateA;
+        }
+
+        return dateB - dateA;
       });
-  }, [sampleBattles, contestsMap, appliedSearch, onlySubscribed, selectedTags, sortBy, subscriptions]);
+  }, [allBattles, contestsMap, appliedSearch, onlySubscribed, selectedTags, sortBy, subscriptions]);
 
   const dispatch = useDispatch();
   const [cycleToast, setCycleToast] = useState<string | null>(null);
 
-  const handleSwitchUser = (role: 'admin' | 'moderator' | 'user' | 'guest' | 'entrant') => {
+  const handleSwitchUser = (role: 'admin' | 'moderator' | 'user' | 'guest' | 'entrant' | 'creator') => {
     if (role === 'guest') {
       dispatch(clearAuth());
       return;
@@ -541,9 +588,22 @@ export default function HomePage() {
           profile: {
             id: 'usr-admin-01',
             username: 'admin',
-            displayName: 'Alexander',
+            displayName: 'Alexander (Admin)',
             role: 'admin',
             avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces',
+          } as any,
+        })
+      );
+    } else if (role === 'creator') {
+      dispatch(
+        setAuth({
+          user: { id: 'usr-creator-01', email: 'creator@opinion.net' },
+          profile: {
+            id: 'usr-creator-01',
+            username: 'marcus_creator',
+            displayName: 'Marcus Creator',
+            role: 'creator',
+            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces',
           } as any,
         })
       );
@@ -610,7 +670,11 @@ export default function HomePage() {
       )}
 
       {/* Mobile-first max-w-md App Container */}
-      <div className="w-full max-w-md min-h-screen flex flex-col bg-[#0b0b0d] pb-24 relative">
+      <div
+        className={`w-full max-w-md flex flex-col bg-[#0b0b0d] relative ${
+          mainTab === 'contests' ? 'min-h-screen pb-24' : 'h-[100dvh] pb-0 overflow-hidden'
+        }`}
+      >
         {/* ── Top Header with 3 Tabs: Contests | Feed | Battles ── */}
         <AppHeader
           activeTab={mainTab}
@@ -647,7 +711,7 @@ export default function HomePage() {
             )}
             {sortBy !== 'popular' && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#202026] text-neutral-300">
-                {sortBy === 'for_you' ? 'For You' : 'Ending Soon'}
+                {sortBy === 'newest' ? 'Newest' : sortBy === 'for_you' ? 'For You' : 'Ending Soon'}
               </span>
             )}
             {selectedTags.map((tag) => (
@@ -669,18 +733,15 @@ export default function HomePage() {
         {/* ── TAB 1: CONTESTS (Catalog of all contests) ───────────────────── */}
         {/* ══════════════════════════════════════════════════════════════════ */}
         {mainTab === 'contests' && (
-          <main className="flex-1 px-2 sm:px-3 pt-2">
+          <motion.main
+            key="tab-contests"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="flex-1 px-2 sm:px-3 pt-2"
+          >
             {loadingContests ? (
-              <div className="grid grid-cols-2 gap-2 sm:gap-2.5 animate-pulse pt-2">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div
-                    key={i}
-                    className={`rounded-2xl bg-[#161619] ${
-                      i % 2 === 0 ? 'h-52' : 'h-64'
-                    }`}
-                  />
-                ))}
-              </div>
+              <ContestGridSkeleton count={6} />
             ) : displayedContests.length === 0 ? (
               <div className="bg-[#141418] border border-neutral-800 rounded-3xl p-8 text-center my-6">
                 <span className="text-4xl block mb-3">🔍</span>
@@ -710,33 +771,36 @@ export default function HomePage() {
                         href={`/contest/${contest.id}`}
                         className={`group relative rounded-2xl overflow-hidden bg-[#161619] border border-neutral-800/80 transition-all hover:border-[#ff6a2b]/50 active:scale-[0.98] ${heightClass}`}
                       >
-                        {/* Cover Image */}
-                        {contest.cover_url ? (
-                          <Image
-                            src={contest.cover_url}
-                            alt={contest.title}
-                            fill
-                            className="object-cover transition-transform duration-500 group-hover:scale-105"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
-                        )}
+                        {/* Smooth Lazy Cover Image */}
+                        <LazyImage
+                          src={contest.cover_url}
+                          alt={contest.title}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          fallbackText={contest.title}
+                        />
 
                         {/* Top Gradient & Pill Badge */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/60 pointer-events-none" />
 
-                        {/* Top Bar with Type & Star */}
+                        {/* Top Bar with Type, New Badge & Star */}
                         <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/70 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30">
-                            {contest.type === 'battle'
-                              ? 'Battle'
-                              : contest.type === 'race'
-                              ? 'Race'
-                              : contest.type === 'eternal'
-                              ? 'Hall of Fame'
-                              : 'Contest'}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/70 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30">
+                              {contest.type === 'battle'
+                                ? 'Battle'
+                                : contest.type === 'race'
+                                ? 'Race'
+                                : contest.type === 'eternal'
+                                ? 'Hall of Fame'
+                                : 'Contest'}
+                            </span>
+                            {contest.created_at && (Date.now() - new Date(contest.created_at).getTime() < 1000 * 60 * 60 * 48) && (
+                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/90 text-white shadow-xs">
+                                NEW
+                              </span>
+                            )}
+                          </div>
                           {isSubscribed && (
                             <span className="w-5 h-5 rounded-full bg-black/70 text-amber-400 flex items-center justify-center text-xs">
                               ★
@@ -777,30 +841,34 @@ export default function HomePage() {
                         href={`/contest/${contest.id}`}
                         className={`group relative rounded-2xl overflow-hidden bg-[#161619] border border-neutral-800/80 transition-all hover:border-[#ff6a2b]/50 active:scale-[0.98] ${heightClass}`}
                       >
-                        {contest.cover_url ? (
-                          <Image
-                            src={contest.cover_url}
-                            alt={contest.title}
-                            fill
-                            className="object-cover transition-transform duration-500 group-hover:scale-105"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
-                        )}
+                        {/* Smooth Lazy Cover Image */}
+                        <LazyImage
+                          src={contest.cover_url}
+                          alt={contest.title}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          fallbackText={contest.title}
+                        />
 
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/60 pointer-events-none" />
 
                         <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/70 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30">
-                            {contest.type === 'battle'
-                              ? 'Battle'
-                              : contest.type === 'race'
-                              ? 'Race'
-                              : contest.type === 'eternal'
-                              ? 'Hall of Fame'
-                              : 'Contest'}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/70 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30">
+                              {contest.type === 'battle'
+                                ? 'Battle'
+                                : contest.type === 'race'
+                                ? 'Race'
+                                : contest.type === 'eternal'
+                                ? 'Hall of Fame'
+                                : 'Contest'}
+                            </span>
+                            {contest.created_at && (Date.now() - new Date(contest.created_at).getTime() < 1000 * 60 * 60 * 48) && (
+                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/90 text-white shadow-xs">
+                                NEW
+                              </span>
+                            )}
+                          </div>
                           {isSubscribed && (
                             <span className="w-5 h-5 rounded-full bg-black/70 text-amber-400 flex items-center justify-center text-xs">
                               ★
@@ -829,26 +897,30 @@ export default function HomePage() {
                     );
                   })}
                 </div>
+                {/* Progressive Infinite Scroll Trigger */}
+                <LazyScrollTrigger
+                  onLoadMore={handleLoadMoreContests}
+                  hasMore={hasMoreContests}
+                  isLoading={false}
+                />
               </div>
             )}
-          </main>
+          </motion.main>
         )}
 
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ── TAB 2: FEED (TikTok-style swipe stream of groups of 4) ──────── */}
         {/* ══════════════════════════════════════════════════════════════════ */}
         {mainTab === 'feed' && (
-          <main className="flex-1 flex flex-col min-h-[480px]">
+          <motion.main
+            key="tab-feed"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="flex-1 flex flex-col h-full min-h-0 overflow-hidden"
+          >
             {loadingFeed ? (
-              <div className="space-y-4 animate-pulse px-3 pt-4">
-                <div className="h-6 w-48 bg-neutral-900 rounded mx-auto" />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="h-52 bg-neutral-900 rounded-2xl" />
-                  <div className="h-52 bg-neutral-900 rounded-2xl" />
-                  <div className="h-52 bg-neutral-900 rounded-2xl" />
-                  <div className="h-52 bg-neutral-900 rounded-2xl" />
-                </div>
-              </div>
+              <FeedGroupSkeleton />
             ) : (
               <TikTokFeedView
                 groups={displayedFeedGroups}
@@ -856,24 +928,36 @@ export default function HomePage() {
                 groupVotes={groupVotes}
                 onVote={handleVoteInGroup}
                 onResetFilters={handleResetFilters}
+                onLoadMore={handleLoadMoreFeed}
               />
             )}
-          </main>
+          </motion.main>
         )}
 
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ── TAB 3: BATTLES (TikTok-style 1v1 duels & races) ──────────────── */}
         {/* ══════════════════════════════════════════════════════════════════ */}
         {mainTab === 'battles' && (
-          <main className="flex-1 flex flex-col min-h-[480px]">
-            <TikTokBattleView
-              battles={displayedBattles}
-              contestsMap={contestsMap}
-              battleVotes={battleVotes}
-              onVote={handleBattleVote}
-              onResetFilters={handleResetFilters}
-            />
-          </main>
+          <motion.main
+            key="tab-battles"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="flex-1 flex flex-col h-full min-h-0 overflow-hidden"
+          >
+            {loadingBattles ? (
+              <BattleArenaSkeleton />
+            ) : (
+              <TikTokBattleView
+                battles={displayedBattles}
+                contestsMap={contestsMap}
+                battleVotes={battleVotes}
+                onVote={handleBattleVote}
+                onResetFilters={handleResetFilters}
+                onLoadMore={handleLoadMoreBattles}
+              />
+            )}
+          </motion.main>
         )}
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ── SEARCH & FILTER BOTTOM SHEET (Modal) ────────────────────────── */}
@@ -936,11 +1020,11 @@ export default function HomePage() {
                 <label className="text-xs font-semibold text-neutral-400 block mb-2">
                   Sort By
                 </label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                   <button
                     type="button"
                     onClick={() => setSortBy('popular')}
-                    className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-colors ${
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-colors text-center ${
                       sortBy === 'popular'
                         ? 'bg-[#ff6a2b] text-white'
                         : 'bg-[#202026] text-neutral-300 hover:text-white'
@@ -950,8 +1034,19 @@ export default function HomePage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => setSortBy('newest')}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-colors text-center ${
+                      sortBy === 'newest'
+                        ? 'bg-[#ff6a2b] text-white'
+                        : 'bg-[#202026] text-neutral-300 hover:text-white'
+                    }`}
+                  >
+                    Newest
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setSortBy('for_you')}
-                    className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-colors ${
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-colors text-center ${
                       sortBy === 'for_you'
                         ? 'bg-[#ff6a2b] text-white'
                         : 'bg-[#202026] text-neutral-300 hover:text-white'
@@ -962,13 +1057,13 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setSortBy('ending_soon')}
-                    className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-colors ${
+                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-colors text-center ${
                       sortBy === 'ending_soon'
                         ? 'bg-[#ff6a2b] text-white'
                         : 'bg-[#202026] text-neutral-300 hover:text-white'
                     }`}
                   >
-                    Ending Soon
+                    Ending
                   </button>
                 </div>
               </div>

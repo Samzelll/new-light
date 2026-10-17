@@ -10,15 +10,20 @@ import { supabase } from '@/services/supabase';
 import { getContests, getContestById } from '@/services/contestService';
 import { getParticipants } from '@/services/participantService';
 import { castVote as castVoteService } from '@/services/voteService';
+import type { BattleItem } from '@/components/contest/TikTokBattleView';
 
 export interface BattleCompetitor {
   id: string;
   name: string;
   photoUrl: string;
+  photos?: string[];
   votes: number;
   percentage: number;
   corner: 'red' | 'blue';
   isUserPick?: boolean;
+  author?: string;
+  authorAvatar?: string;
+  authorBio?: string;
 }
 
 export interface BattleContest {
@@ -81,10 +86,10 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
     const { data: participantsData } = await getParticipants(targetId, 'all');
     const participants = participantsData || [];
 
-    // Fetch votes
+    // Fetch votes with trust_weight for accurate scoring/points
     const { data: votesData } = await supabase
       .from('votes')
-      .select('id, participant_id, voter_id')
+      .select('id, participant_id, voter_id, trust_weight')
       .eq('contest_id', targetId);
 
     const votes = votesData || [];
@@ -102,19 +107,29 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
     // Determine competitors
     const fallbackPair = FALLBACK_PAIRS[targetId] || FALLBACK_PAIRS.default;
 
-    // Participant 1 (Red corner)
+    // Participant 1
     const p1 = participants[0];
-    const p1Id = p1?.id || 'part-red-corner';
-    const p1Name = p1?.submission_data?.name || fallbackPair[0].name || 'Red Corner Item';
+    const p1Id = p1?.id || 'part-1';
+    const p1Name = p1?.submission_data?.name || fallbackPair[0].name || 'Competitor 1';
+    const rawP1Author = (p1?.submission_data as any)?.author?.trim();
+    const p1Author = rawP1Author && !rawP1Author.startsWith('@challenger') ? rawP1Author : undefined;
     const p1Photo = p1?.submission_data?.photos?.[0] || fallbackPair[0].photoUrl || '';
-    const p1Votes = votes.filter((v: any) => v.participant_id === p1Id).length;
+    const p1VotesRaw = votes
+      .filter((v: any) => v.participant_id === p1Id)
+      .reduce((sum: number, v: any) => sum + (Number(v.trust_weight) > 0 ? Number(v.trust_weight) : 1), 0);
+    const p1Votes = Math.round(p1VotesRaw * 10) / 10;
 
-    // Participant 2 (Blue corner)
+    // Participant 2
     const p2 = participants[1];
-    const p2Id = p2?.id || 'part-blue-corner';
-    const p2Name = p2?.submission_data?.name || fallbackPair[1].name || 'Blue Corner Item';
+    const p2Id = p2?.id || 'part-2';
+    const p2Name = p2?.submission_data?.name || fallbackPair[1].name || 'Competitor 2';
+    const rawP2Author = (p2?.submission_data as any)?.author?.trim();
+    const p2Author = rawP2Author && !rawP2Author.startsWith('@challenger') ? rawP2Author : undefined;
     const p2Photo = p2?.submission_data?.photos?.[0] || fallbackPair[1].photoUrl || '';
-    const p2Votes = votes.filter((v: any) => v.participant_id === p2Id).length;
+    const p2VotesRaw = votes
+      .filter((v: any) => v.participant_id === p2Id)
+      .reduce((sum: number, v: any) => sum + (Number(v.trust_weight) > 0 ? Number(v.trust_weight) : 1), 0);
+    const p2Votes = Math.round(p2VotesRaw * 10) / 10;
 
     // Calculate percentages
     let p1Percent = 50;
@@ -128,7 +143,11 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
     const competitor1: BattleCompetitor = {
       id: p1Id,
       name: p1Name,
+      author: p1Author,
+      authorAvatar: p1Author ? p1?.profiles?.avatar_url || undefined : undefined,
+      authorBio: p1?.submission_data?.description || `Challenger representing ${p1Name}.`,
       photoUrl: p1Photo,
+      photos: (p1?.submission_data?.photos && p1.submission_data.photos.length > 0) ? p1.submission_data.photos : [p1Photo],
       votes: p1Votes,
       percentage: p1Percent,
       corner: 'red',
@@ -138,7 +157,11 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
     const competitor2: BattleCompetitor = {
       id: p2Id,
       name: p2Name,
+      author: p2Author,
+      authorAvatar: p2Author ? p2?.profiles?.avatar_url || undefined : undefined,
+      authorBio: p2?.submission_data?.description || `Challenger representing ${p2Name}.`,
       photoUrl: p2Photo,
+      photos: (p2?.submission_data?.photos && p2.submission_data.photos.length > 0) ? p2.submission_data.photos : [p2Photo],
       votes: p2Votes,
       percentage: p2Percent,
       corner: 'blue',
@@ -171,12 +194,23 @@ export async function castVote(
   participantId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    let trustWeight = 1.0;
+    try {
+      const { getMyTrust } = await import('@/services/trustService');
+      const { data: trustData } = await getMyTrust();
+      if (trustData?.score && trustData.score > 0) {
+        trustWeight = Number(trustData.score);
+      }
+    } catch {
+      // Fallback 1.0 weight
+    }
+
     const { error } = await castVoteService({
       contestId,
       stageId: contestId,
       groupId: contestId,
       participantId,
-      trustWeight: 1.0,
+      trustWeight,
     });
 
     if (error) {
@@ -210,3 +244,362 @@ export async function getNextBattle(currentContestId: string): Promise<BattleCon
     return null;
   }
 }
+
+export const SEED_SAMPLE_BATTLES: BattleItem[] = [
+  {
+    id: 'battle-01',
+    contestId: 'contest-neon-shinjuku',
+    title: 'NEON TOKYO · 1v1 Duel',
+    category: 'Cyberpunk & Neon',
+    tags: ['Art', 'Design', 'Photography'],
+    timeRemaining: '12h left',
+    isPopular: true,
+    sponsorName: 'Sony Alpha Visuals & Tokyo Neo Art',
+    red: {
+      id: 'red-01',
+      name: 'Shinjuku in Rain',
+      author: '@kenji_lens',
+      authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+      authorBio: 'Street documentary creator based in Tokyo. Capturing wet neon pavement reflections, umbrellas, and cyber alleyways.',
+      photo: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=1200&q=85',
+        'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=1200&q=85',
+        'https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=1200&q=85',
+      ],
+      percent: 58,
+      sponsorName: 'Sony Alpha Visuals & Tokyo Neo Art',
+      sponsorTier: 'Headline Partner',
+      prizePool: '$4,000 Global Gear Fund',
+      socialLinks: {
+        instagram: 'https://instagram.com/kenji_lens',
+        telegram: 'https://t.me/kenji_lens',
+        twitter: 'https://x.com/kenji_lens',
+        portfolio: 'https://kenjilens.tokyo',
+      },
+    },
+    green: {
+      id: 'green-01',
+      name: 'Neon Crossing',
+      author: '@yuki_street',
+      authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+      authorBio: 'Urban colorist and night-crawler capturing Shibuya scramble and Akihabara signs through customized vintage prism filters.',
+      photo: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1200&q=85',
+        'https://images.unsplash.com/photo-1534430480872-3498386e7856?w=1200&q=85',
+        'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=1200&q=85',
+      ],
+      percent: 42,
+      sponsorName: 'Sony Alpha Visuals & Tokyo Neo Art',
+      sponsorTier: 'Headline Partner',
+      prizePool: '$4,000 Global Gear Fund',
+      socialLinks: {
+        instagram: 'https://instagram.com/yuki_street',
+        telegram: 'https://t.me/yuki_street',
+        twitter: 'https://x.com/yuki_street',
+        portfolio: 'https://yukistreet.photo',
+      },
+    },
+  },
+  {
+    id: 'battle-02',
+    contestId: 'contest-tennis-apply',
+    title: 'TENNIS CHAMPIONSHIP · Final Set',
+    category: 'Sports & Motion',
+    tags: ['Sports'],
+    timeRemaining: '4h left',
+    isPopular: true,
+    sponsorName: 'Nike Action Sports & Pro Tour',
+    red: {
+      id: 'red-02',
+      name: 'Ace Serve',
+      author: '@alex_shot',
+      authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
+      authorBio: 'ATP Tour action photographer catching 120mph flat serves frozen in air at maximum racket contact.',
+      photo: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1200&q=85',
+        'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=1200&q=85',
+        'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=1200&q=85',
+      ],
+      percent: 54,
+      sponsorName: 'Nike Action Sports & Pro Tour',
+      sponsorTier: 'Global Athletics Sponsor',
+      prizePool: '$6,000 Cash Grant',
+      socialLinks: {
+        instagram: 'https://instagram.com/alex_shot',
+        telegram: 'https://t.me/alex_shot',
+        twitter: 'https://x.com/alex_shot',
+        portfolio: 'https://alexshot.tennis',
+      },
+    },
+    green: {
+      id: 'green-02',
+      name: 'Clay Slide',
+      author: '@mateo_clay',
+      authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
+      authorBio: 'Roland Garros red clay specialist tracking dust clouds and aggressive baseline sliding.',
+      photo: 'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?w=1200&q=85',
+        'https://images.unsplash.com/photo-1530915536417-6d601666ff7c?w=1200&q=85',
+        'https://images.unsplash.com/photo-1560012057-4372e14c5085?w=1200&q=85',
+      ],
+      percent: 46,
+      sponsorName: 'Nike Action Sports & Pro Tour',
+      sponsorTier: 'Global Athletics Sponsor',
+      prizePool: '$6,000 Cash Grant',
+      socialLinks: {
+        instagram: 'https://instagram.com/mateo_clay',
+        telegram: 'https://t.me/mateo_clay',
+        twitter: 'https://x.com/mateo_clay',
+        portfolio: 'https://mateoclay.com',
+      },
+    },
+  },
+  {
+    id: 'battle-03',
+    contestId: 'contest-photo-month',
+    title: 'MOUNTAIN VIEW · Golden Hour',
+    category: 'Nature & Landscape',
+    tags: ['Photography'],
+    timeRemaining: '18h left',
+    isPopular: false,
+    sponsorName: 'Earth Explorer & Hasselblad Master',
+    red: {
+      id: 'red-03',
+      name: 'Alps Peak Mist',
+      author: '@nordic_eye',
+      authorAvatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200',
+      authorBio: 'Alpine landscape explorer documenting morning mist layers across Dolomites and Swiss peaks.',
+      photo: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&q=85',
+        'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=1200&q=85',
+        'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1200&q=85',
+      ],
+      percent: 51,
+      sponsorName: 'Earth Explorer & Hasselblad Master',
+      sponsorTier: 'Expedition Partner',
+      prizePool: '$8,000 Mountain Gear Fund',
+      socialLinks: {
+        instagram: 'https://instagram.com/nordic_eye',
+        telegram: 'https://t.me/nordic_eye',
+        twitter: 'https://x.com/nordic_eye',
+        portfolio: 'https://nordiceye.earth',
+      },
+    },
+    green: {
+      id: 'green-03',
+      name: 'Sunset Fjord',
+      author: '@elena_arctic',
+      authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200',
+      authorBio: 'Wilderness photographer focusing on coastal waterways, northern mirrors, and glacial reflections.',
+      photo: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&q=85',
+        'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200&q=85',
+        'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1200&q=85',
+      ],
+      percent: 49,
+      sponsorName: 'Earth Explorer & Hasselblad Master',
+      sponsorTier: 'Expedition Partner',
+      prizePool: '$8,000 Mountain Gear Fund',
+      socialLinks: {
+        instagram: 'https://instagram.com/elena_arctic',
+        telegram: 'https://t.me/elena_arctic',
+        twitter: 'https://x.com/elena_arctic',
+        portfolio: 'https://elenaarctic.com',
+      },
+    },
+  },
+  {
+    id: 'battle-04',
+    contestId: 'contest-glamour',
+    title: 'MISS GLAMOUR · Top 2 Duel',
+    category: 'Portrait & Style',
+    tags: ['Photography', 'Art', 'Creative'],
+    timeRemaining: '8h left',
+    isPopular: true,
+    sponsorName: 'Vogue Creator Initiative & Elite Studio',
+    red: {
+      id: 'red-04',
+      name: 'Flash in the Dark',
+      author: '@alisa_fashion',
+      authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+      authorBio: 'Studio portrait artist specializing in hard specular flash, avant-garde makeup, and monochrome styling.',
+      photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&q=85',
+        'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1200&q=85',
+        'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=1200&q=85',
+      ],
+      percent: 53,
+      sponsorName: 'Vogue Creator Initiative & Elite Studio',
+      sponsorTier: 'Fashion Platinum Sponsor',
+      prizePool: '$5,000 Editorial Spread + Feature Cover',
+      socialLinks: {
+        instagram: 'https://instagram.com/alisa_fashion',
+        telegram: 'https://t.me/alisa_fashion',
+        twitter: 'https://x.com/alisa_fashion',
+        portfolio: 'https://alisafashion.design',
+      },
+    },
+    green: {
+      id: 'green-04',
+      name: 'Silk Glance',
+      author: '@milana_model',
+      authorAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200',
+      authorBio: 'High fashion editorial creator. Natural beauty lighting with silk fabrics and golden skin tones.',
+      photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=1200&q=85',
+        'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=1200&q=85',
+        'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=1200&q=85',
+      ],
+      percent: 47,
+      sponsorName: 'Vogue Creator Initiative & Elite Studio',
+      sponsorTier: 'Fashion Platinum Sponsor',
+      prizePool: '$5,000 Editorial Spread + Feature Cover',
+      socialLinks: {
+        instagram: 'https://instagram.com/milana_model',
+        telegram: 'https://t.me/milana_model',
+        twitter: 'https://x.com/milana_model',
+        portfolio: 'https://milanamodel.art',
+      },
+    },
+  },
+  {
+    id: 'battle-05',
+    contestId: 'contest-design-ideas',
+    title: 'FUTURE DESIGN · 3D Concept',
+    category: 'Art & Design',
+    tags: ['Design', 'Art'],
+    timeRemaining: '24h left',
+    isPopular: true,
+    sponsorName: 'Maxon Cinema 4D & Unreal Engine',
+    red: {
+      id: 'red-05',
+      name: 'Neon Polygon',
+      author: '@render_master',
+      authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
+      authorBio: 'Procedural 3D animator and look-dev artist focusing on luminous geometry and physical glass shaders.',
+      photo: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&q=85',
+        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&q=85',
+        'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=1200&q=85',
+      ],
+      percent: 61,
+      sponsorName: 'Maxon Cinema 4D & Unreal Engine',
+      sponsorTier: 'Creative Technology Sponsor',
+      prizePool: '$3,500 Hardware Grant',
+      socialLinks: {
+        instagram: 'https://instagram.com/render_master',
+        telegram: 'https://t.me/render_master',
+        twitter: 'https://x.com/render_master',
+        portfolio: 'https://rendermaster.cg',
+      },
+    },
+    green: {
+      id: 'green-05',
+      name: 'Cyber Structure',
+      author: '@vector_art',
+      authorAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200',
+      authorBio: 'Generative architect exploring parametric facades and algorithmic volumetric lighting.',
+      photo: 'https://images.unsplash.com/photo-1515260268569-9271009adfdb?w=700&q=80',
+      photos: [
+        'https://images.unsplash.com/photo-1515260268569-9271009adfdb?w=1200&q=85',
+        'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&q=85',
+        'https://images.unsplash.com/photo-1479839672679-a46483c0e7c8?w=1200&q=85',
+        'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=1200&q=85',
+      ],
+      percent: 39,
+      sponsorName: 'Maxon Cinema 4D & Unreal Engine',
+      sponsorTier: 'Creative Technology Sponsor',
+      prizePool: '$3,500 Hardware Grant',
+      socialLinks: {
+        instagram: 'https://instagram.com/vector_art',
+        telegram: 'https://t.me/vector_art',
+        twitter: 'https://x.com/vector_art',
+        portfolio: 'https://vectorart.io',
+      },
+    },
+  },
+];
+
+/**
+ * Fetch all battle items for TikTokBattleView, merging newly created
+ * and database-persisted battles right at the top.
+ */
+export async function getAllBattleItems(): Promise<BattleItem[]> {
+  try {
+    const { data: allContests } = await getContests({ includePausedOrBlocked: false });
+    const battleContests = (allContests || []).filter(
+      (c) => c.type === 'battle' || c.group_size === 2
+    );
+
+    const sampleContestIds = new Set(SEED_SAMPLE_BATTLES.map((s) => s.contestId).filter(Boolean));
+    const dynamicItems: BattleItem[] = [];
+
+    for (const contest of battleContests) {
+      const battle = await getBattle(contest.id);
+      if (!battle || !battle.competitors || battle.competitors.length < 2) continue;
+
+      const p1 = battle.competitors[0];
+      const p2 = battle.competitors[1];
+
+      dynamicItems.push({
+        id: `battle-${contest.id}`,
+        contestId: contest.id,
+        title: contest.title?.toUpperCase() || '1V1 BATTLE',
+        category: contest.categories?.name || 'Showdown Duel',
+        timeRemaining: contest.status === 'active' ? 'Voting active' : 'Finished',
+        tags: ['Battle', contest.categories?.name || 'Showdown'].filter(Boolean),
+        isPopular: Boolean(contest.is_featured),
+        sponsorName: 'Community Arena Duel',
+        red: {
+          id: p1.id,
+          name: p1.name || 'Challenger 1',
+          author: p1.author || '@challenger1',
+          authorAvatar: p1.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+          authorBio: 'Challenger 1 in this 1v1 battle showdown.',
+          photo: p1.photoUrl || 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=700&q=80',
+          percent: p1.percentage,
+        },
+        green: {
+          id: p2.id,
+          name: p2.name || 'Challenger 2',
+          author: p2.author || '@challenger2',
+          authorAvatar: p2.authorAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+          authorBio: 'Challenger 2 in this 1v1 battle showdown.',
+          photo: p2.photoUrl || 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=700&q=80',
+          percent: p2.percentage,
+        },
+      });
+    }
+
+    // User-created and non-sample battles appear FIRST!
+    const userCreated = dynamicItems.filter((b) => !sampleContestIds.has(b.contestId));
+
+    // Also update any sample battles with live percentage data from database
+    const updatedSamples = SEED_SAMPLE_BATTLES.map((sample) => {
+      const live = dynamicItems.find((d) => d.contestId === sample.contestId);
+      if (live) {
+        return {
+          ...sample,
+          red: { ...sample.red, percent: live.red.percent, id: live.red.id },
+          green: { ...sample.green, percent: live.green.percent, id: live.green.id },
+        };
+      }
+      return sample;
+    });
+
+    return [...userCreated, ...updatedSamples];
+  } catch (err) {
+    console.error('Error fetching all battle items:', err);
+    return SEED_SAMPLE_BATTLES;
+  }
+}
+

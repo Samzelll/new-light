@@ -2,28 +2,52 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { getParticipantById } from '@/services/participantService';
-import { getPublicUrl } from '@/services/storageService';
 import { supabase } from '@/services/supabase';
 import { formatPercentage } from '@/utils/formatters';
+import { PhotoLightbox } from '@/components/common/PhotoLightbox';
+import {
+  ArrowLeft,
+  ShieldCheck,
+  Award,
+  Maximize2,
+  ExternalLink,
+  Camera,
+  Send,
+  Share2,
+  Globe,
+} from 'lucide-react';
 
 export default function ParticipantPageClient({ params }: { params?: { id?: string } }) {
   const routeParams = useParams();
-  const participantId = (typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : params?.id) || '';
+  const participantId =
+    (typeof routeParams?.id === 'string'
+      ? routeParams.id
+      : Array.isArray(routeParams?.id)
+      ? routeParams.id[0]
+      : params?.id) || '';
 
   const [participant, setParticipant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<any[]>([]);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const { data, error: fetchErr } = await getParticipantById(participantId);
-      if (fetchErr) { setError(fetchErr); return; }
-      if (!data) { setError('Participant profile not found.'); return; }
+      if (fetchErr) {
+        setError(fetchErr);
+        return;
+      }
+      if (!data) {
+        setError('Профиль участника не найден.');
+        return;
+      }
       setParticipant(data);
 
       const { data: resultsData } = await supabase
@@ -32,173 +56,280 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
         .eq('participant_id', participantId);
       if (resultsData) setResults(resultsData);
     } catch (err: any) {
-      setError(err.message || 'An error occurred loading participant details.');
+      setError(err.message || 'Ошибка загрузки данных участника.');
     } finally {
       setLoading(false);
     }
   }, [participantId]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   if (loading) {
     return (
-      <main className="page-container" style={{ display: 'grid', gap: '16px' }}>
-        <div className="skeleton-shimmer" style={{ height: '200px' }} />
-        <div className="skeleton-shimmer" style={{ height: '300px' }} />
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-4">
+        <div className="h-64 sm:h-96 rounded-3xl bg-neutral-900 animate-pulse" />
+        <div className="h-40 rounded-3xl bg-neutral-900 animate-pulse" />
       </main>
     );
   }
 
   if (error || !participant) {
     return (
-      <main className="page-container" style={{ textAlign: 'center', paddingTop: '80px' }}>
-        <div style={{
-          padding: '20px', borderRadius: '16px',
-          background: 'rgba(255,87,87,0.05)', border: '1px solid rgba(255,87,87,0.2)',
-          color: 'var(--color-accent-red)', marginBottom: '20px',
-        }}>
-          {error || 'Participant not found.'}
+      <main className="max-w-lg mx-auto px-4 py-20 text-center space-y-4">
+        <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          {error || 'Участник не найден.'}
         </div>
-        <Link href="/" className="btn btn-secondary">Back to Feed</Link>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-colors"
+        >
+          <ArrowLeft size={14} />
+          <span>Вернуться в ленту</span>
+        </Link>
       </main>
     );
   }
 
-  const name = participant.profiles?.display_name || participant.profiles?.username || 'Anonymous';
+  const name =
+    participant.profiles?.display_name ||
+    participant.profiles?.username ||
+    participant.submission_data?.name ||
+    'Участник';
   const description = participant.submission_data?.description;
-  const photos = participant.submission_data?.photos || [];
+  const photos: string[] = participant.submission_data?.photos || [];
+  const mainPhoto = photos[0] || participant.submission_data?.photo || '';
   const socialLinks = participant.submission_data?.social_links || {};
   const sponsor = participant.submission_data?.sponsor || null;
 
   return (
-    <main className="page-container animate-fade-in" style={{ display: 'grid', gap: '20px' }}>
-      {/* Back */}
-      <Link href={`/contest/${participant.contest_id}`} style={{
-        display: 'inline-flex', alignItems: 'center', gap: '6px',
-        fontSize: '13px', fontWeight: '600', color: 'rgb(107,114,128)',
-        textDecoration: 'none', transition: 'color 0.15s',
-      }}
-        onMouseEnter={e => (e.currentTarget.style.color = 'white')}
-        onMouseLeave={e => (e.currentTarget.style.color = 'rgb(107,114,128)')}
-      >
-        ← Back to Contest
-      </Link>
+    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-6 animate-fade-in text-white select-none">
+      {/* Sleek Minimal Navigation */}
+      <div className="flex items-center justify-between">
+        <Link
+          href={participant.contest_id ? `/contest/${participant.contest_id}` : '/'}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-white transition-colors py-1"
+        >
+          <ArrowLeft size={15} />
+          <span>Назад к конкурсу</span>
+        </Link>
 
-      {/* Main card */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '24px', background: 'var(--color-surface-800)',
-        border: '1px solid var(--color-surface-600)', borderRadius: '24px', padding: '28px',
-      }}>
-        {/* Photo */}
-        <div style={{
-          aspectRatio: '1', borderRadius: '16px', overflow: 'hidden',
-          background: 'var(--color-surface-700)', border: '1px solid var(--color-surface-600)',
-        }}>
-          {photos.length > 0 ? (
-            <img src={photos[0]} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgb(75,85,99)', fontSize: '13px' }}>
-              No photo uploaded
+        {mainPhoto && (
+          <button
+            type="button"
+            onClick={() => setIsLightboxOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-medium border border-white/10 transition-colors"
+          >
+            <Maximize2 size={13} />
+            <span>На весь экран</span>
+          </button>
+        )}
+      </div>
+
+      {/* Main Showcase Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Photo Stage: Ambient Glow + Natural Crisp Photo Fit */}
+        <div className="lg:col-span-7">
+          <div
+            onClick={() => setIsLightboxOpen(true)}
+            className="relative w-full h-[52vh] sm:h-[62vh] rounded-3xl overflow-hidden bg-[#121216] border border-white/10 shadow-2xl flex items-center justify-center group cursor-zoom-in"
+          >
+            {mainPhoto ? (
+              <>
+                {/* Soft ambient glow to eliminate harsh dead black space */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  <Image
+                    src={mainPhoto}
+                    alt=""
+                    fill
+                    sizes="100vw"
+                    className="object-cover filter blur-3xl opacity-35 scale-110"
+                    referrerPolicy="no-referrer"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-[#0d0d12]/40" />
+                </div>
+
+                {/* Natural fit photo */}
+                <div className="relative w-full h-full p-2 sm:p-4 flex items-center justify-center z-10">
+                  <Image
+                    src={mainPhoto}
+                    alt={name}
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 700px"
+                    className="object-contain group-hover:scale-[1.01] transition-transform duration-300"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="text-neutral-500 text-xs">Нет загруженного фото</div>
+            )}
+          </div>
+
+          {/* Photos carousel thumbnails if multiple */}
+          {photos.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto mt-3 py-1 no-scrollbar">
+              {photos.map((ph, idx) => (
+                <button
+                  key={ph + idx}
+                  type="button"
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="relative shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-white/15 opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <Image src={ph} alt="" fill sizes="56px" className="object-cover" referrerPolicy="no-referrer" />
+                </button>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Details */}
-        <div style={{ display: 'grid', gap: '20px', alignContent: 'start' }}>
-          <div>
-            <span className="badge-blue" style={{ fontSize: '10px', letterSpacing: '0.07em', marginBottom: '10px', display: 'inline-block' }}>
-              Participant
-            </span>
-            <h1 style={{ fontSize: '28px', fontWeight: '800', color: 'white', margin: '0 0 6px' }}>{name}</h1>
-            {participant.profiles?.username && (
-              <span style={{ fontSize: '13px', color: 'rgb(107,114,128)' }}>@{participant.profiles.username}</span>
+        {/* Details Column */}
+        <div className="lg:col-span-5 space-y-4">
+          {/* Creator Profile */}
+          <div className="p-5 rounded-3xl bg-[#141418] border border-white/5 space-y-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-800 border border-white/10 shrink-0">
+                {participant.profiles?.avatar_url ? (
+                  <Image
+                    src={participant.profiles.avatar_url}
+                    alt={name}
+                    fill
+                    className="object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center font-bold text-base text-white bg-neutral-700">
+                    {name[0]?.toUpperCase() || 'U'}
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-base sm:text-lg font-bold text-white truncate">{name}</h1>
+                  <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
+                </div>
+                {participant.profiles?.username && (
+                  <p className="text-xs text-neutral-400 truncate">@{participant.profiles.username}</p>
+                )}
+              </div>
+            </div>
+
+            {description && (
+              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed pt-2 border-t border-white/5">
+                {description}
+              </p>
+            )}
+
+            {/* Social Links */}
+            {Object.keys(socialLinks).length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/5">
+                {socialLinks.instagram && (
+                  <a
+                    href={`https://instagram.com/${socialLinks.instagram.replace('@', '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                  >
+                    <Camera size={12} className="text-pink-400" />
+                    <span>Instagram</span>
+                  </a>
+                )}
+                {socialLinks.telegram && (
+                  <a
+                    href={`https://t.me/${socialLinks.telegram.replace('@', '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                  >
+                    <Send size={12} className="text-sky-400" />
+                    <span>Telegram</span>
+                  </a>
+                )}
+                {socialLinks.website && (
+                  <a
+                    href={socialLinks.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                  >
+                    <Globe size={12} className="text-emerald-400" />
+                    <span>Сайт</span>
+                  </a>
+                )}
+              </div>
             )}
           </div>
 
-          {description && (
-            <div>
-              <h4 style={{ fontSize: '11px', fontWeight: '700', color: 'rgb(107,114,128)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                Submission
-              </h4>
-              <p style={{ fontSize: '14px', color: 'rgb(209,213,219)', lineHeight: '1.6', margin: 0 }}>{description}</p>
-            </div>
-          )}
-
-          {Object.keys(socialLinks).length > 0 && (
-            <div>
-              <h4 style={{ fontSize: '11px', fontWeight: '700', color: 'rgb(107,114,128)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                Social Links
-              </h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {socialLinks.instagram && <span className="badge-muted">Instagram: {socialLinks.instagram}</span>}
-                {socialLinks.tiktok && <span className="badge-muted">TikTok: {socialLinks.tiktok}</span>}
-                {socialLinks.website && (
-                  <a href={socialLinks.website} target="_blank" rel="noreferrer" className="badge-blue" style={{ textDecoration: 'underline' }}>
-                    Website ↗
-                  </a>
+          {/* Sponsor card if available */}
+          {sponsor && (
+            <div className="p-4 rounded-3xl bg-[#141418] border border-white/5 flex items-center gap-3 shadow-lg">
+              <Award size={18} className="text-amber-400 shrink-0" />
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/90 block">
+                  Спонсор работы
+                </span>
+                <h4 className="text-xs font-bold text-white truncate">{sponsor.name}</h4>
+                {sponsor.product_name && (
+                  <p className="text-[11px] text-neutral-400 truncate">{sponsor.product_name}</p>
                 )}
               </div>
             </div>
           )}
 
-          {sponsor && (
-            <div style={{
-              padding: '16px', borderRadius: '14px',
-              background: 'rgba(255,200,87,0.06)', border: '1px solid rgba(255,200,87,0.2)',
-            }}>
-              <span style={{ fontSize: '10px', fontWeight: '800', color: 'var(--color-accent-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                Sponsored Entry
-              </span>
-              <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'white', margin: '6px 0 4px' }}>{sponsor.name}</h4>
-              {sponsor.product_name && <p style={{ fontSize: '12px', color: 'rgb(107,114,128)', margin: '0 0 10px' }}>{sponsor.product_name}</p>}
-              {sponsor.buy_link && (
-                <a href={sponsor.buy_link} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">
-                  View Product ↗
-                </a>
-              )}
+          {/* Results history */}
+          {results.length > 0 && (
+            <div className="p-4 rounded-3xl bg-[#141418] border border-white/5 space-y-2 shadow-lg">
+              <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                История раундов
+              </h3>
+              <div className="space-y-1.5">
+                {results.map((res) => (
+                  <div
+                    key={res.id}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 text-xs"
+                  >
+                    <div>
+                      <span className="font-semibold text-white block">
+                        {res.contest_stages?.title || `Этап ${res.contest_stages?.stage_number}`}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold uppercase ${
+                          res.passed ? 'text-emerald-400' : 'text-neutral-500'
+                        }`}
+                      >
+                        {res.passed ? '✓ Прошел' : '✗ Выбыл'}
+                      </span>
+                    </div>
+                    <div className="text-right tabular-nums">
+                      <span className="font-bold text-white block">
+                        {formatPercentage(res.vote_percentage)}
+                      </span>
+                      <span className="text-[10px] text-neutral-400">Ранг #{res.rank_in_group}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Results History */}
-      {results.length > 0 && (
-        <div style={{
-          background: 'var(--color-surface-800)', border: '1px solid var(--color-surface-600)',
-          borderRadius: '24px', padding: '28px',
-        }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'white', margin: '0 0 16px' }}>Results History</h3>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            {results.map((result) => (
-              <div key={result.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '14px 16px', borderRadius: '12px',
-                background: 'var(--color-surface-700)', border: '1px solid var(--color-surface-600)',
-              }}>
-                <div>
-                  <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'white', margin: '0 0 4px' }}>
-                    {result.contest_stages?.title || `Stage ${result.contest_stages?.stage_number}`}
-                  </h4>
-                  <span style={{
-                    fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em',
-                    color: result.passed ? 'var(--color-accent-green)' : 'rgb(107,114,128)',
-                  }}>
-                    {result.passed ? '✓ Passed' : '✗ Eliminated'}
-                  </span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '20px', fontWeight: '800', color: 'white' }}>
-                    {formatPercentage(result.vote_percentage)}
-                  </span>
-                  <span style={{ display: 'block', fontSize: '10px', color: 'rgb(107,114,128)', textTransform: 'uppercase' }}>
-                    Rank #{result.rank_in_group}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Lightbox Modal */}
+      {isLightboxOpen && (
+        <PhotoLightbox
+          isOpen={isLightboxOpen}
+          onClose={() => setIsLightboxOpen(false)}
+          photoUrl={mainPhoto}
+          photos={photos.length > 0 ? photos : [mainPhoto]}
+          title={name}
+          author={participant.profiles?.username ? `@${participant.profiles.username}` : name}
+          authorAvatar={participant.profiles?.avatar_url}
+          authorBio={description}
+        />
       )}
     </main>
   );

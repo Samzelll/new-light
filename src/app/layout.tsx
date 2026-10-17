@@ -26,7 +26,7 @@ export const viewport = {
 
 export const metadata: Metadata = {
   title: 'Opinion Net',
-  description: 'Contests & 1v1 battle platform',
+  description: 'Curated spotlight feed for opinion voting contests, battles, and platform rankings.',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: '/favicon.svg',

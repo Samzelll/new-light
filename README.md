@@ -102,8 +102,8 @@ RLS examples (conceptual):
 - RTK Query for Supabase operations (get feed, search, create, moderate, entries, votes).
 
 ## Auth
-- Supabase Auth обязателен для создания конкурсов, заявок и голосов.
-- Ключи: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` в `.env.local`.
+- Supabase Auth is required for creating contests, submitting entries, and casting votes.
+- Keys: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`.
 
 ## Styling
 - Minimal dark theme in `globals.css` (compact spacing).

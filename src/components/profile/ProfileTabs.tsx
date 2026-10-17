@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { LazyImage } from '@/components/common/LazyImage';
 
 export interface ApplicationItem {
   id: string;
@@ -176,21 +176,13 @@ export function ProfileTabs({
               >
                 {/* 40px Thumbnail */}
                 <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-neutral-800/80 bg-neutral-900 flex items-center justify-center">
-                  {item.photoUrl ? (
-                    <Image
-                      src={item.photoUrl}
-                      alt={item.contestTitle}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div
-                      className={`w-full h-full ${
-                        item.placeholderColor || 'bg-gradient-to-br from-pink-500 to-rose-600'
-                      }`}
-                    />
-                  )}
+                  <LazyImage
+                    src={item.photoUrl}
+                    alt={item.contestTitle}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform"
+                    fallbackText={item.contestTitle}
+                  />
                 </div>
 
                 {/* Uppercase Title + One-line Meta */}
@@ -236,17 +228,13 @@ export function ProfileTabs({
               >
                 {/* 40px Thumbnail */}
                 <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-neutral-800/80 bg-neutral-900 flex items-center justify-center">
-                  {vote.photoUrl ? (
-                    <Image
-                      src={vote.photoUrl}
-                      alt={vote.contestTitle}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-purple-700" />
-                  )}
+                  <LazyImage
+                    src={vote.photoUrl}
+                    alt={vote.contestTitle}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform"
+                    fallbackText={vote.contestTitle}
+                  />
                 </div>
 
                 {/* Uppercase Title + One-line Meta */}
@@ -293,17 +281,13 @@ export function ProfileTabs({
               >
                 {/* 40px Thumbnail */}
                 <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-neutral-800/80 bg-neutral-900 flex items-center justify-center">
-                  {sub.photoUrl ? (
-                    <Image
-                      src={sub.photoUrl}
-                      alt={sub.contestTitle}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-amber-600 to-orange-700" />
-                  )}
+                  <LazyImage
+                    src={sub.photoUrl}
+                    alt={sub.contestTitle}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform"
+                    fallbackText={sub.contestTitle}
+                  />
                 </div>
 
                 {/* Uppercase Title + One-line Meta */}

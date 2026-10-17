@@ -13,15 +13,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isAuthenticated, isInitialized } = useSelector((state: RootState) => state.auth);
 
-  // Handle onboarding redirect
-  useEffect(() => {
-    if (isInitialized && isAuthenticated && pathname !== '/onboarding') {
-      const onboarded = localStorage.getItem('onboarded');
-      if (onboarded !== 'true') {
-        router.push('/onboarding');
-      }
-    }
-  }, [isInitialized, isAuthenticated, pathname, router]);
 
   useEffect(() => {
     let isMounted = true;

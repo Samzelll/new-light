@@ -1,0 +1,6 @@
+{
+  "summary": "План рефакторинга интерфейса: разделение Mobile/Desktop опыта, скрытие подсказок (Clean Mode) и внедрение нативных мобильных жестов (Pinch-to-zoom, Tap-to-clean) по стандартам TikTok и Instagram.",
+  "updatedAt": "2026-10-17T07:13:45.480523476Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

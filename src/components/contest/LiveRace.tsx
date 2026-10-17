@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getPublicUrl } from '@/services/storageService';
 import { formatPercentage } from '@/utils/formatters';
 import { supabase } from '@/services/supabase';
+import { LazyImage } from '@/components/common/LazyImage';
 
 interface LiveRaceProps {
   contestId: string;
@@ -20,6 +21,12 @@ export function LiveRace({ contestId, participants, userTrustScore }: LiveRacePr
   const [votes, setVotes] = useState<any[]>([]);
   const [votedId, setVotedId] = useState<string | null>(null);
   const [voting, setVoting] = useState(false);
+  const [voteToast, setVoteToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setVoteToast(msg);
+    setTimeout(() => setVoteToast(null), 3000);
+  };
 
   // Load existing votes for this contest
   useEffect(() => {
@@ -57,8 +64,9 @@ export function LiveRace({ contestId, participants, userTrustScore }: LiveRacePr
     const { error } = await voteInGroup(contestId, contestId, contestId, participantId, userTrustScore);
     if (!error) {
       setVotedId(participantId);
+      showToast('Vote counted!');
     } else {
-      alert(error);
+      showToast(error);
     }
     setVoting(false);
   };
@@ -77,7 +85,12 @@ export function LiveRace({ contestId, participants, userTrustScore }: LiveRacePr
     .sort((a, b) => b.percentage - a.percentage);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {voteToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#ff6a2b] text-white text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
+          {voteToast}
+        </div>
+      )}
       <h3 className="text-xl font-bold text-white mb-2">Live Race Standings</h3>
       <p className="text-gray-400 text-sm">
         Click on any participant row to cast your vote. Leaderboard updates instantly in real time.
@@ -105,11 +118,15 @@ export function LiveRace({ contestId, participants, userTrustScore }: LiveRacePr
                   </span>
 
                   {avatarUrl ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt={name} 
-                      className="w-10 h-10 rounded-full object-cover border border-surface-600" 
-                    />
+                    <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border border-surface-600">
+                      <LazyImage 
+                        src={avatarUrl} 
+                        alt={name} 
+                        fill
+                        className="object-cover" 
+                        fallbackText={name}
+                      />
+                    </div>
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-surface-600 flex items-center justify-center font-bold text-white text-sm">
                       {name.charAt(0).toUpperCase()}

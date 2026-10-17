@@ -4,50 +4,55 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flame, ShieldCheck, Zap, ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { Flame, ShieldCheck, Zap, ArrowRight, ArrowLeft, X as XIcon } from 'lucide-react';
+
+const STEPS = [
+  {
+    badge: "Step 1 of 3",
+    title: "What is Opinion Net?",
+    subtitle: "Fair competitive arena and rankings",
+    description:
+      "Opinion Net is a mobile-first platform where creators enter their best photos, designs, and work into structured tournaments. No bots or fraudulent spikes: all votes are cryptographically verified.",
+    icon: <Flame size={36} className="text-[#ff6a2b]" />,
+    accentColor: "from-[#ff6a2b]/20 to-transparent",
+  },
+  {
+    badge: "Step 2 of 3",
+    title: "How does voting work?",
+    subtitle: "Groups of 4 & live 1v1 battles",
+    description:
+      "Contestants face off daily in groups of 4 or 1v1 duels. Vote with a single tap. In group stages, percentages stay concealed until round close at 06:00 UTC, while live battles reveal splits instantly.",
+    icon: <Zap size={36} className="text-amber-400" />,
+    accentColor: "from-amber-500/20 to-transparent",
+  },
+  {
+    badge: "Step 3 of 3",
+    title: "Your vote grows stronger",
+    subtitle: "Trust Score reputation levels",
+    description:
+      "Consistent and fair activity elevates your trust level from New to Senior. The higher your reputation, the greater weight your vote carries in crowning champions!",
+    icon: <ShieldCheck size={36} className="text-emerald-400" />,
+    accentColor: "from-emerald-500/20 to-transparent",
+  },
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
 
-  const steps = [
-    {
-      badge: "Step 1 of 3",
-      title: "What is Opinion Net?",
-      subtitle: "Fair competitive arena and rankings",
-      description:
-        "Opinion Net is a mobile-first platform where creators enter their best photos, designs, and work into structured tournaments. No bots or fraudulent spikes: all votes are cryptographically verified.",
-      icon: <Flame size={36} className="text-[#ff6a2b]" />,
-      accentColor: "from-[#ff6a2b]/20 to-transparent",
-    },
-    {
-      badge: "Step 2 of 3",
-      title: "How does voting work?",
-      subtitle: "Groups of 4 & live 1v1 battles",
-      description:
-        "Contestants face off daily in groups of 4 or 1v1 duels. Vote with a single tap. In group stages, percentages stay concealed until round close at 06:00 UTC, while live battles reveal splits instantly.",
-      icon: <Zap size={36} className="text-amber-400" />,
-      accentColor: "from-amber-500/20 to-transparent",
-    },
-    {
-      badge: "Step 3 of 3",
-      title: "Your vote grows stronger",
-      subtitle: "Trust Score reputation levels",
-      description:
-        "Consistent and fair activity elevates your trust level from New to Senior. The higher your reputation, the greater weight your vote carries in crowning champions!",
-      icon: <ShieldCheck size={36} className="text-emerald-400" />,
-      accentColor: "from-emerald-500/20 to-transparent",
-    },
-  ];
+  const handleExit = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('onboarded', 'true');
+      localStorage.setItem('opinion_net_onboarded', 'true');
+    }
+    router.push('/');
+  };
 
   const handleNext = () => {
-    if (currentStep < steps.length - 1) {
+    if (currentStep < STEPS.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('opinion_net_onboarded', 'true');
-      }
-      router.push('/');
+      handleExit();
     }
   };
 
@@ -57,22 +62,27 @@ export default function OnboardingPage() {
     }
   };
 
-  const step = steps[currentStep];
+  const step = STEPS[currentStep] || STEPS[0];
 
   return (
     <div className="min-h-screen bg-[#0b0b0d] text-white flex flex-col items-center justify-between p-4 selection:bg-[#ff6a2b]/30">
-      {/* Top Bar with Skip */}
+      {/* Top Bar with Exit */}
       <header className="w-full max-w-sm flex items-center justify-between pt-4 pb-2">
-        <Link href="/" className="text-xs font-black uppercase tracking-tight text-white flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#ff6a2b]" />
-          <span>Opinion Net</span>
-        </Link>
         <button
           type="button"
-          onClick={() => router.push('/')}
-          className="text-xs text-neutral-400 hover:text-white transition-colors"
+          onClick={handleExit}
+          className="text-xs font-black uppercase tracking-tight text-white flex items-center gap-1.5 hover:text-[#ff6a2b] transition-colors"
         >
-          Skip
+          <span className="w-2 h-2 rounded-full bg-[#ff6a2b]" />
+          <span>Opinion Net</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleExit}
+          className="text-xs font-bold text-neutral-400 hover:text-white px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-1"
+        >
+          <span>Пропустить</span>
+          <XIcon size={14} />
         </button>
       </header>
 
@@ -117,7 +127,7 @@ export default function OnboardingPage() {
 
         {/* Dots Step Indicator */}
         <div className="flex items-center justify-center gap-1.5 my-6">
-          {steps.map((_, idx) => (
+          {STEPS.map((_, idx) => (
             <div
               key={idx}
               className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -144,7 +154,7 @@ export default function OnboardingPage() {
           onClick={handleNext}
           className="flex-1 py-3.5 px-6 rounded-2xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-[#ff6a2b]/25 transition-all active:scale-[0.99]"
         >
-          <span>{currentStep === steps.length - 1 ? 'Start Voting' : 'Next'}</span>
+          <span>{currentStep === STEPS.length - 1 ? 'Start Voting' : 'Next'}</span>
           <ArrowRight size={16} />
         </button>
       </footer>

@@ -902,10 +902,14 @@ class MockDatabaseManager {
   private currentSession: { access_token: string; user: { id: string; email: string; created_at: string } } | null = null;
   private authListeners: Set<(event: string, session: any) => void> = new Set();
   private realtimeListeners: Map<string, Set<(payload: any) => void>> = new Map();
+  private initializedOnClient = false;
 
   constructor() {
     this.state = this.loadState();
     this.currentSession = this.loadSession();
+    if (typeof window !== 'undefined') {
+      this.initializedOnClient = true;
+    }
 
     // Default to admin user session if none exists, making testing seamless!
     if (!this.currentSession && typeof window !== 'undefined') {
@@ -922,6 +926,20 @@ class MockDatabaseManager {
     // Expose manager globally in browser for debugging / resetting
     if (typeof window !== 'undefined') {
       (window as any).__MOCK_DB__ = this;
+      window.addEventListener('storage', (e) => {
+        if (e.key === STORAGE_KEY) {
+          this.syncFromStorage();
+        }
+      });
+    }
+  }
+
+  public syncFromStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      this.state = this.loadState();
+    } catch (e) {
+      console.warn('Failed to sync mock DB state from storage:', e);
     }
   }
 
@@ -931,14 +949,32 @@ class MockDatabaseManager {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        // Ensure all required keys exist
         const initial = getInitialState();
+
+        // Merge contests: preserve seed items and all user-created contests
+        const initialContestIds = new Set(initial.contests.map((c) => c.id));
+        const parsedContests = Array.isArray(parsed.contests) ? parsed.contests : [];
+        const userContests = parsedContests.filter((c: any) => !initialContestIds.has(c.id));
+        const mergedContests = [
+          ...userContests,
+          ...initial.contests.map((ic) => parsedContests.find((c: any) => c.id === ic.id) || ic),
+        ];
+
+        // Merge participants: preserve seed items and user-created participants
+        const initialPartIds = new Set(initial.participants.map((p) => p.id));
+        const parsedParticipants = Array.isArray(parsed.participants) ? parsed.participants : [];
+        const userParticipants = parsedParticipants.filter((p: any) => !initialPartIds.has(p.id));
+        const mergedParticipants = [
+          ...userParticipants,
+          ...initial.participants.map((ip) => parsedParticipants.find((p: any) => p.id === ip.id) || ip),
+        ];
+
         return {
           ...initial,
           ...parsed,
           categories: parsed.categories?.length ? parsed.categories : initial.categories,
-          contests: parsed.contests?.length ? parsed.contests : initial.contests,
-          participants: parsed.participants?.length ? parsed.participants : initial.participants,
+          contests: mergedContests,
+          participants: mergedParticipants,
           profiles: parsed.profiles?.length ? parsed.profiles : initial.profiles,
         };
       }
@@ -952,6 +988,7 @@ class MockDatabaseManager {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      window.dispatchEvent(new CustomEvent('mockdb:updated', { detail: { timestamp: Date.now() } }));
     } catch (e) {
       console.warn('Failed to save mock DB state:', e);
     }
@@ -993,6 +1030,10 @@ class MockDatabaseManager {
   }
 
   public getTable<T = any>(tableName: keyof MockDatabaseState): T[] {
+    if (typeof window !== 'undefined' && !this.initializedOnClient) {
+      this.initializedOnClient = true;
+      this.syncFromStorage();
+    }
     if (!this.state[tableName]) {
       (this.state as any)[tableName] = [];
     }
@@ -1193,10 +1234,10 @@ export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T; error: 
 
       for (const item of items) {
         const row = {
+          ...item,
           id: item.id || `row_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           created_at: item.created_at || new Date().toISOString(),
           submitted_at: item.submitted_at || new Date().toISOString(),
-          ...item,
         };
         table.push(row);
         inserted.push(row);
@@ -1234,12 +1275,24 @@ export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T; error: 
           }
         } else {
           const row = {
+            ...item,
             id: item.id || `row_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
             created_at: item.created_at || new Date().toISOString(),
-            ...item,
           };
           table.push(row);
           upserted.push(row);
+          if (this.tableName === 'votes') {
+            const trustTable = mockDbManager.getTable<MockUserTrust>('user_trust');
+            const voterId = (row as any).voter_id;
+            if (voterId) {
+              const userTrust = trustTable.find((t) => t.user_id === voterId);
+              if (userTrust) {
+                userTrust.contests_voted = (userTrust.contests_voted || 0) + 1;
+                userTrust.score = Math.min(20, Number(((userTrust.score || 1) + 0.1).toFixed(1)));
+                userTrust.last_updated = new Date().toISOString();
+              }
+            }
+          }
           mockDbManager.notifyRealtime(this.tableName, 'INSERT', row);
         }
       }
@@ -1676,6 +1729,13 @@ export const mockSupabase = {
         };
 
         votes.push(newVote);
+        const trustTable = mockDbManager.getTable<MockUserTrust>('user_trust');
+        const userTrust = trustTable.find((t) => t.user_id === voterId);
+        if (userTrust) {
+          userTrust.contests_voted = (userTrust.contests_voted || 0) + 1;
+          userTrust.score = Math.min(20, Number(((userTrust.score || 1) + 0.1).toFixed(1)));
+          userTrust.last_updated = new Date().toISOString();
+        }
         mockDbManager.saveState();
         mockDbManager.notifyRealtime('votes', 'INSERT', newVote);
 

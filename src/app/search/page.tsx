@@ -2,10 +2,12 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, X, Star, ArrowLeft, User, PlusCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { SearchResultsSkeleton } from '@/components/common/Skeletons';
+import { LazyImage } from '@/components/common/LazyImage';
 
 const TYPE_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
   battle:   { color: '#E85102', bg: 'rgba(232, 81, 2, 0.12)',  border: 'rgba(232, 81, 2, 0.35)' },
@@ -21,6 +23,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -29,14 +32,14 @@ export default function SearchPage() {
   const allowedRoles = ['admin', 'developer', 'creator'];
   const canCreate = profile && allowedRoles.includes(profile.role);
 
-  const handleSearch = useCallback(async (q: string) => {
-    if (!q.trim()) { setResults([]); setSearched(false); return; }
+  const executeSearch = useCallback(async (q: string) => {
+    if (!q.trim()) { setResults([]); setSearched(false); setLoading(false); return; }
     setLoading(true);
     setSearched(true);
     try {
       const { getContests } = await import('@/services/contestService');
       const { data } = await getContests({ includePausedOrBlocked: true });
-      // Client-side filter by title
+      // Client-side filter by title and description
       const filtered = (data || []).filter((c: any) =>
         c.title?.toLowerCase().includes(q.toLowerCase()) ||
         c.description?.toLowerCase().includes(q.toLowerCase())
@@ -52,7 +55,17 @@ export default function SearchPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
-    handleSearch(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!val.trim()) {
+      setResults([]);
+      setSearched(false);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    debounceRef.current = setTimeout(() => {
+      executeSearch(val);
+    }, 250);
   };
 
   return (
@@ -144,11 +157,7 @@ export default function SearchPage() {
 
       {/* Results */}
       {loading ? (
-        <div style={{ display: 'grid', gap: '12px' }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} style={{ height: '96px', backgroundColor: '#141414', border: '1px solid #333333', borderRadius: '16px' }} />
-          ))}
-        </div>
+        <SearchResultsSkeleton count={4} />
       ) : searched && results.length === 0 ? (
         <div style={{
           padding: '56px 40px', textAlign: 'center', borderRadius: '24px',
@@ -192,13 +201,24 @@ export default function SearchPage() {
                       (e.currentTarget as HTMLDivElement).style.background = '#141414';
                     }}
                   >
-                    {/* Type icon */}
+                    {/* Cover thumbnail or Type icon */}
                     <div style={{
-                      width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                      width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
+                      overflow: 'hidden', position: 'relative',
                       background: typeConf.bg, border: `1px solid ${typeConf.border}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <Star size={18} strokeWidth={2} color={typeConf.color} />
+                      {contest.cover_url ? (
+                        <LazyImage
+                          src={contest.cover_url}
+                          alt={contest.title}
+                          fill
+                          className="object-cover"
+                          fallbackText={contest.title}
+                        />
+                      ) : (
+                        <Star size={18} strokeWidth={2} color={typeConf.color} />
+                      )}
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>

@@ -129,7 +129,7 @@ export async function addBattleParticipant(
 
 export async function addBattleParticipants(
   contestId: string,
-  competitors: Array<{ name: string; photoUrl: string; description?: string }>
+  competitors: Array<{ name: string; photoUrl: string; description?: string; author?: string }>
 ): Promise<{ data: Participant[] | null; error: string | null }> {
   const {
     data: { user },
@@ -144,6 +144,7 @@ export async function addBattleParticipants(
     user_id: idx === 0 ? user.id : safeId(),
     submission_data: {
       name: comp.name.trim() || `Competitor ${idx + 1}`,
+      author: comp.author?.trim() || '',
       photos: [comp.photoUrl.trim() || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500'],
       description: comp.description?.trim() || '',
     },
@@ -156,11 +157,12 @@ export async function addBattleParticipants(
     .select('*, profiles(username, display_name, avatar_url)');
 
   if (error && error.message.includes('foreign key')) {
-    const fallbackRows = validCompetitors.map((comp) => ({
+    const fallbackRows = validCompetitors.map((comp, idx) => ({
       contest_id: contestId,
       user_id: user.id,
       submission_data: {
-        name: comp.name.trim() || 'Competitor',
+        name: comp.name.trim() || `Competitor ${idx + 1}`,
+        author: comp.author?.trim() || '',
         photos: [comp.photoUrl.trim() || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500'],
         description: comp.description?.trim() || '',
       },
@@ -240,6 +242,52 @@ export async function updateParticipantStatus(
     .from('participants')
     .update({ status, admin_note: adminNote ?? null })
     .eq('id', participantId);
+
+  return { error: error?.message ?? null };
+}
+
+// ── updateParticipantDetails (Post-Production Editing) ─────────────
+export async function updateParticipantDetails(
+  participantId: string,
+  updates: {
+    name?: string;
+    photoUrl?: string;
+    description?: string;
+    status?: Participant['status'];
+    adminNote?: string;
+  }
+): Promise<{ error: string | null }> {
+  const { data: existing } = await getParticipantById(participantId);
+  if (!existing) return { error: 'Participant not found' };
+
+  const currentSubmission = existing.submission_data || {};
+  const updatedSubmission = {
+    ...currentSubmission,
+    ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
+    ...(updates.photoUrl !== undefined ? { photos: [updates.photoUrl.trim()] } : {}),
+    ...(updates.description !== undefined ? { description: updates.description.trim() } : {}),
+  };
+
+  const payload: any = { submission_data: updatedSubmission };
+  if (updates.status) payload.status = updates.status;
+  if (updates.adminNote !== undefined) payload.admin_note = updates.adminNote;
+
+  const { error } = await supabase
+    .from('participants')
+    .update(payload)
+    .eq('id', participantId);
+
+  return { error: error?.message ?? null };
+}
+
+// ── resetParticipantVotes (Clear suspect/fraudulent votes) ────────
+export async function resetParticipantVotes(
+  participantId: string
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('votes')
+    .delete()
+    .eq('participant_id', participantId);
 
   return { error: error?.message ?? null };
 }
