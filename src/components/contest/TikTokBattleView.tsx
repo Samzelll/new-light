@@ -153,6 +153,18 @@ export function TikTokBattleView({
     }, 280);
   }, [battles.length]);
 
+  const handleVoteWithHaptic = useCallback(
+    (battleId: string, corner: 'red' | 'green') => {
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate([25, 35, 20]);
+        } catch (_) {}
+      }
+      onVote(battleId, corner);
+    },
+    [onVote]
+  );
+
   // Native mobile touch swipe listeners
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
@@ -354,10 +366,10 @@ export function TikTokBattleView({
             {/* 1. TOP CARD (Takes Exactly 50% Height)                     */}
             {/* ══════════════════════════════════════════════════════════ */}
             <div
-              onClick={() => onVote(currentBattle.id, 'red')}
+              onClick={() => handleVoteWithHaptic(currentBattle.id, 'red')}
               className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden cursor-pointer transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
                 userVote === 'red'
-                  ? 'scale-[0.98] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  ? 'scale-[0.98] ring-2 ring-emerald-500 shadow-[0_0_35px_rgba(16,185,129,0.4)] z-10'
                   : userVote
                   ? 'opacity-85 brightness-[0.8]'
                   : 'hover:brightness-105 active:scale-[0.99]'
@@ -489,25 +501,73 @@ export function TikTokBattleView({
             </div>
 
             {/* ══════════════════════════════════════════════════════════ */}
-            {/* CENTER "VS" BADGE (Disappears in Clean Mode)               */}
+            {/* CENTER DYNAMIC VOLTAGE TUG-OF-WAR BAR                      */}
             {/* ══════════════════════════════════════════════════════════ */}
             <div
               aria-hidden="true"
-              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] border-2 border-[#0b0b0d] flex items-center justify-center font-black text-xs text-white shadow-2xl pointer-events-none ring-2 ring-white/20 transition-all duration-300 ${
-                cleanMode ? 'opacity-0 scale-75' : 'opacity-100 scale-100 animate-pulse'
+              className={`absolute top-1/2 left-0 right-0 -translate-y-1/2 z-20 px-4 sm:px-8 pointer-events-none transition-all duration-300 ${
+                cleanMode ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
               }`}
             >
-              VS
+              {!userVote ? (
+                /* Unvoted: High-energy VS badge with call to action */
+                <div className="flex items-center justify-center">
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-black/85 backdrop-blur-md border border-white/[0.15] shadow-2xl animate-pulse">
+                    <span className="w-6 h-6 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] flex items-center justify-center font-black text-[11px] text-white shadow-md">
+                      VS
+                    </span>
+                    <span className="text-[11px] font-bold text-neutral-200 tracking-wide">
+                      Tap photo to vote
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* Voted: Dynamic Voltage Tug-of-War Split Bar */
+                <div className="flex flex-col items-center gap-1.5 max-w-sm mx-auto animate-fade-in">
+                  <div className="w-full flex items-center justify-between px-1 text-[11px] font-black tabular-nums">
+                    <span className={`flex items-center gap-1 ${userVote === 'red' ? 'text-emerald-400 font-extrabold' : 'text-neutral-400'}`}>
+                      {userVote === 'red' && '✓ '}{currentBattle.red.name} • {currentBattle.red.percent}%
+                    </span>
+                    <span className={`flex items-center gap-1 ${userVote === 'green' ? 'text-emerald-400 font-extrabold' : 'text-neutral-400'}`}>
+                      {currentBattle.green.percent}% • {currentBattle.green.name}{userVote === 'green' && ' ✓'}
+                    </span>
+                  </div>
+
+                  {/* Dual Energy Track */}
+                  <div className="w-full h-3 rounded-full bg-black/90 p-0.5 border border-white/20 shadow-2xl flex overflow-hidden backdrop-blur-md">
+                    <div
+                      className={`h-full transition-all duration-700 ease-out rounded-l-full ${
+                        userVote === 'red'
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_14px_rgba(16,185,129,0.9)]'
+                          : 'bg-gradient-to-r from-neutral-600 to-neutral-500 opacity-60'
+                      }`}
+                      style={{ width: `${currentBattle.red.percent}%` }}
+                    />
+                    <div
+                      className={`h-full transition-all duration-700 ease-out rounded-r-full ${
+                        userVote === 'green'
+                          ? 'bg-gradient-to-r from-teal-400 to-emerald-500 shadow-[0_0_14px_rgba(16,185,129,0.9)]'
+                          : 'bg-gradient-to-r from-neutral-500 to-neutral-600 opacity-60'
+                      }`}
+                      style={{ width: `${currentBattle.green.percent}%` }}
+                    />
+                  </div>
+
+                  <div className="text-[10px] font-bold text-emerald-400 tracking-wider uppercase px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-xs border border-emerald-500/40 shadow-sm">
+                    ✓ Vote Registered • Live Split
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ══════════════════════════════════════════════════════════ */}
             {/* 2. BOTTOM CARD (Takes Exactly 50% Height)                  */}
             {/* ══════════════════════════════════════════════════════════ */}
             <div
-              onClick={() => onVote(currentBattle.id, 'green')}
+              onClick={() => handleVoteWithHaptic(currentBattle.id, 'green')}
               className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden cursor-pointer transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
                 userVote === 'green'
-                  ? 'scale-[0.98] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  ? 'scale-[0.98] ring-2 ring-emerald-500 shadow-[0_0_35px_rgba(16,185,129,0.4)] z-10'
                   : userVote
                   ? 'opacity-85 brightness-[0.8]'
                   : 'hover:brightness-105 active:scale-[0.99]'

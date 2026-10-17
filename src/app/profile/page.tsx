@@ -15,6 +15,7 @@ import { formatDate } from '@/utils/formatters';
 
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { StatsRow } from '@/components/profile/StatsRow';
+import { TrustTierCard } from '@/components/profile/TrustTierCard';
 import { AdminTools } from '@/components/profile/AdminTools';
 import {
   ProfileTabs,
@@ -332,6 +333,12 @@ export default function ProfilePage() {
           votesCount={votesCount}
           applicationsCount={applicationsCount}
           winsCount={winsCount}
+        />
+
+        {/* ── Component 2b: Gamified Trust Tier Progress Card ── */}
+        <TrustTierCard
+          score={trustScore}
+          contestsVoted={votesCount}
         />
 
         {/* ── Component 3: AdminTools (only if permission allows) ── */}

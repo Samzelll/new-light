@@ -767,11 +767,12 @@ export default function HomePage() {
                 <div className="flex flex-col gap-2 sm:gap-2.5">
                   {column1.map(({ contest, heightClass, isRegistration }) => {
                     const isSubscribed = subscriptions.includes(contest.id);
+                    const isVoting = (contest.status as string) === 'voting' || contest.status === 'active';
                     return (
                       <Link
                         key={contest.id}
                         href={`/contest/${contest.id}`}
-                        className={`group relative rounded-2xl overflow-hidden bg-[#161619] border border-neutral-800/80 transition-all hover:border-[#ff6a2b]/50 active:scale-[0.98] ${heightClass}`}
+                        className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-b from-[#18181d] to-[#111114] border border-white/[0.08] hover:border-[#ff6a2b]/60 transition-all duration-300 hover:shadow-[0_12px_36px_-6px_rgba(255,106,43,0.3)] active:scale-[0.98] ${heightClass}`}
                       >
                         {/* Smooth Lazy Cover Image */}
                         <LazyImage
@@ -783,48 +784,51 @@ export default function HomePage() {
                         />
 
                         {/* Top Gradient & Pill Badge */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/60 pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0d] via-black/30 to-black/60 pointer-events-none" />
 
                         {/* Top Bar with Type, New Badge & Star */}
-                        <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10">
+                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10">
                           <div className="flex items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/70 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30">
-                              {contest.type === 'battle'
-                                ? 'Battle'
-                                : contest.type === 'race'
-                                ? 'Race'
-                                : contest.type === 'eternal'
-                                ? 'Hall of Fame'
-                                : 'Contest'}
-                            </span>
+                            {isVoting ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-950/80 backdrop-blur-xs text-emerald-400 border border-emerald-500/30 shadow-sm">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Live
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/75 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30 shadow-sm">
+                                {contest.type === 'battle'
+                                  ? 'Battle'
+                                  : contest.type === 'race'
+                                  ? 'Race'
+                                  : contest.type === 'eternal'
+                                  ? 'Hall of Fame'
+                                  : 'Contest'}
+                              </span>
+                            )}
                             {contest.created_at && (Date.now() - new Date(contest.created_at).getTime() < 1000 * 60 * 60 * 48) && (
-                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/90 text-white shadow-xs">
+                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-xs">
                                 NEW
                               </span>
                             )}
                           </div>
                           {isSubscribed && (
-                            <span className="w-5 h-5 rounded-full bg-black/70 text-amber-400 flex items-center justify-center text-xs">
+                            <span className="w-5 h-5 rounded-full bg-black/80 backdrop-blur-xs border border-amber-400/35 text-amber-400 flex items-center justify-center text-xs shadow-md">
                               ★
                             </span>
                           )}
                         </div>
 
                         {/* Bottom Info */}
-                        <div className="absolute bottom-2 left-2 right-2 z-10">
-                          <h2 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white line-clamp-2 leading-tight drop-shadow">
+                        <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10">
+                          <h2 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white line-clamp-2 leading-tight drop-shadow-md">
                             {contest.title}
                           </h2>
-                          <div className="flex items-center justify-between text-[10px] text-neutral-300 mt-1">
-                            <span className="truncate">
+                          <div className="flex items-center justify-between text-[11px] text-neutral-300 mt-1.5">
+                            <span className="truncate text-neutral-400 font-medium">
                               {contest.categories?.name || 'Photography'}
                             </span>
-                            <span className="shrink-0 font-semibold text-[#ff6a2b]">
-                              {(contest.status as string) === 'voting' || contest.status === 'active'
-                                ? 'Voting'
-                                : contest.status === 'registration'
-                                ? 'Apply'
-                                : 'Final'}
+                            <span className="shrink-0 font-bold px-2 py-0.5 rounded-md text-[10px] uppercase tracking-wider bg-white/[0.08] backdrop-blur-xs border border-white/[0.1] text-[#ff6a2b]">
+                              {isVoting ? 'Voting' : contest.status === 'registration' ? 'Apply' : 'Final'}
                             </span>
                           </div>
                         </div>
@@ -837,11 +841,12 @@ export default function HomePage() {
                 <div className="flex flex-col gap-2 sm:gap-2.5">
                   {column2.map(({ contest, heightClass, isRegistration }) => {
                     const isSubscribed = subscriptions.includes(contest.id);
+                    const isVoting = (contest.status as string) === 'voting' || contest.status === 'active';
                     return (
                       <Link
                         key={contest.id}
                         href={`/contest/${contest.id}`}
-                        className={`group relative rounded-2xl overflow-hidden bg-[#161619] border border-neutral-800/80 transition-all hover:border-[#ff6a2b]/50 active:scale-[0.98] ${heightClass}`}
+                        className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-b from-[#18181d] to-[#111114] border border-white/[0.08] hover:border-[#ff6a2b]/60 transition-all duration-300 hover:shadow-[0_12px_36px_-6px_rgba(255,106,43,0.3)] active:scale-[0.98] ${heightClass}`}
                       >
                         {/* Smooth Lazy Cover Image */}
                         <LazyImage
@@ -852,46 +857,49 @@ export default function HomePage() {
                           fallbackText={contest.title}
                         />
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/60 pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0d] via-black/30 to-black/60 pointer-events-none" />
 
-                        <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10">
+                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10">
                           <div className="flex items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/70 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30">
-                              {contest.type === 'battle'
-                                ? 'Battle'
-                                : contest.type === 'race'
-                                ? 'Race'
-                                : contest.type === 'eternal'
-                                ? 'Hall of Fame'
-                                : 'Contest'}
-                            </span>
+                            {isVoting ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-950/80 backdrop-blur-xs text-emerald-400 border border-emerald-500/30 shadow-sm">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Live
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/75 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30 shadow-sm">
+                                {contest.type === 'battle'
+                                  ? 'Battle'
+                                  : contest.type === 'race'
+                                  ? 'Race'
+                                  : contest.type === 'eternal'
+                                  ? 'Hall of Fame'
+                                  : 'Contest'}
+                              </span>
+                            )}
                             {contest.created_at && (Date.now() - new Date(contest.created_at).getTime() < 1000 * 60 * 60 * 48) && (
-                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/90 text-white shadow-xs">
+                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-xs">
                                 NEW
                               </span>
                             )}
                           </div>
                           {isSubscribed && (
-                            <span className="w-5 h-5 rounded-full bg-black/70 text-amber-400 flex items-center justify-center text-xs">
+                            <span className="w-5 h-5 rounded-full bg-black/80 backdrop-blur-xs border border-amber-400/35 text-amber-400 flex items-center justify-center text-xs shadow-md">
                               ★
                             </span>
                           )}
                         </div>
 
-                        <div className="absolute bottom-2 left-2 right-2 z-10">
-                          <h2 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white line-clamp-2 leading-tight drop-shadow">
+                        <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10">
+                          <h2 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white line-clamp-2 leading-tight drop-shadow-md">
                             {contest.title}
                           </h2>
-                          <div className="flex items-center justify-between text-[10px] text-neutral-300 mt-1">
-                            <span className="truncate">
+                          <div className="flex items-center justify-between text-[11px] text-neutral-300 mt-1.5">
+                            <span className="truncate text-neutral-400 font-medium">
                               {contest.categories?.name || 'Photography'}
                             </span>
-                            <span className="shrink-0 font-semibold text-[#ff6a2b]">
-                              {(contest.status as string) === 'voting' || contest.status === 'active'
-                                ? 'Voting'
-                                : contest.status === 'registration'
-                                ? 'Apply'
-                                : 'Final'}
+                            <span className="shrink-0 font-bold px-2 py-0.5 rounded-md text-[10px] uppercase tracking-wider bg-white/[0.08] backdrop-blur-xs border border-white/[0.1] text-[#ff6a2b]">
+                              {isVoting ? 'Voting' : contest.status === 'registration' ? 'Apply' : 'Final'}
                             </span>
                           </div>
                         </div>
