@@ -309,7 +309,7 @@ export function TikTokBattleView({
       {showPinchNotice && (
         <div className="absolute top-12 left-1/2 -translate-x-1/2 z-40 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-[#ff6a2b]/40 text-white text-[11px] font-bold flex items-center gap-2 shadow-2xl pointer-events-none animate-slide-down">
           <Sparkles size={13} className="text-[#ff6a2b] shrink-0" />
-          <span>Сведите пальцы для зума</span>
+          <span>Pinch to zoom</span>
         </div>
       )}
 
@@ -644,9 +644,9 @@ export function TikTokBattleView({
       {/* ── Desktop-Only Status Bar: Keyboard Shortcuts + Arrow Nav Buttons (Strictly hidden on Mobile) ── */}
       <footer className="mt-1 pt-1 hidden lg:flex items-center justify-between text-neutral-400 text-xs shrink-0 z-20 px-2 border-t border-neutral-900">
         <div className="flex items-center gap-3 text-[11px] text-neutral-500">
-          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">1</kbd> Голос за верхний</span>
-          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">2</kbd> Голос за нижний</span>
-          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">↑/↓</kbd> Навигация</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">1</kbd> Vote for top</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">2</kbd> Vote for bottom</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">↑/↓</kbd> Navigate</span>
         </div>
 
         <div className="flex items-center gap-1.5">

@@ -43,6 +43,7 @@ export function SideDrawer({
 
   const activeProfile = mounted ? profile : null;
   const isAdminOrMod = activeProfile && (activeProfile.role === 'admin' || activeProfile.role === 'moderator');
+  const showDevTools = process.env.NODE_ENV === 'development';
   useEffect(() => {
     if (!isOpen) return;
 
@@ -104,7 +105,7 @@ export function SideDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="Side menu"
-        className="drawer overflow-y-auto flex flex-col justify-between"
+        className="drawer overflow-y-auto flex flex-col justify-between border-l border-white/10 shadow-[-24px_0_80px_rgba(0,0,0,0.45)]"
         data-open={isOpen ? 'true' : 'false'}
       >
         <div className="space-y-6">
@@ -128,7 +129,7 @@ export function SideDrawer({
             <Link
               href="/profile"
               onClick={onClose}
-              className="flex items-center gap-3 p-2 rounded-lg bg-surface hover:bg-surface/80 border border-ink/5 transition-colors group"
+              className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-br from-white/[0.09] to-white/[0.03] hover:from-white/[0.13] hover:to-white/[0.05] border border-white/10 transition-colors group shadow-lg"
             >
               <div className="avatar h-12 w-12 flex-none">
                 {((activeProfile as any).avatar_url || activeProfile.avatarUrl) ? (
@@ -175,7 +176,10 @@ export function SideDrawer({
           )}
 
           {/* Main Navigation Links (Clean, non-redundant - profile sub-tabs live on /profile) */}
-          <nav className="space-y-1">
+          <nav className="space-y-1" aria-label="Primary navigation">
+            <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-faint">
+              Navigate
+            </p>
             <Link
               href="/"
               onClick={onClose}
@@ -233,7 +237,7 @@ export function SideDrawer({
         </div>
 
         {/* Dev Tools Footer (Quick Role Switcher) */}
-        <div className="pt-6 border-t border-ink/10 mt-6 space-y-3">
+        {showDevTools && <div className="pt-6 border-t border-ink/10 mt-6 space-y-3">
           <div className="flex items-center justify-between text-[11px] text-faint">
             <span className="flex items-center gap-1 font-bold">
               <Users size={12} />
@@ -299,7 +303,7 @@ export function SideDrawer({
             <FastForward size={14} />
             <span>Advance to 06:00 UTC</span>
           </button>
-        </div>
+        </div>}
       </aside>
     </>
   );

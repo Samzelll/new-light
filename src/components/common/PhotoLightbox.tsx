@@ -188,7 +188,7 @@ export function PhotoLightbox({
                 setIsFullscreenModal(true);
                 setZoomLevel(1);
               }}
-              title="Полноэкранный просмотр"
+              title="View fullscreen"
               className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-neutral-300 hover:text-white flex items-center justify-center transition-colors"
             >
               <Maximize2 size={15} />
@@ -198,7 +198,7 @@ export function PhotoLightbox({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Закрыть"
+              aria-label="Close"
               className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-neutral-300 hover:text-white flex items-center justify-center transition-colors"
             >
               <X size={17} />
@@ -211,7 +211,7 @@ export function PhotoLightbox({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center">
             
             {/* ══════════════════════════════════════════════════════════ */}
-            {/* PHOTO STAGE: Natural Fit with Ambient Blurred Glow         */}
+            {/* PHOTO STAGE: immersive crop with no wasted frame space     */}
             {/* ══════════════════════════════════════════════════════════ */}
             <div className="lg:col-span-8 flex flex-col items-center justify-center">
               
@@ -222,37 +222,20 @@ export function PhotoLightbox({
                   setIsFullscreenModal(true);
                   setZoomLevel(1);
                 }}
-                className="relative w-full h-[58vh] sm:h-[68vh] lg:h-[76vh] rounded-2xl sm:rounded-3xl overflow-hidden bg-[#121216] border border-white/5 shadow-2xl flex items-center justify-center group cursor-zoom-in"
+                className="relative w-full h-[58vh] sm:h-[68vh] lg:h-[76vh] rounded-2xl sm:rounded-3xl overflow-hidden bg-[#121216] border border-white/5 shadow-2xl group cursor-zoom-in"
               >
-                {/* 1. Ambient Blurred Backdrop: Eliminates cold pitch-black deadzones */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  <Image
-                    src={currentPhoto}
-                    alt=""
-                    fill
-                    sizes="100vw"
-                    className="object-cover filter blur-3xl opacity-35 scale-110 transition-all duration-700 ease-out"
-                    referrerPolicy="no-referrer"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-[#0c0c10]/40 backdrop-blur-xs" />
-                </div>
-
-                {/* 2. Main High-Resolution Photo: Crisp natural fit without ugly cropping */}
-                <div className="relative w-full h-full p-2 sm:p-4 flex items-center justify-center z-10">
-                  <Image
-                    key={currentPhoto}
-                    src={currentPhoto}
-                    alt={title}
-                    fill
-                    priority
-                    referrerPolicy="no-referrer"
-                    sizes="(max-width: 1024px) 100vw, 850px"
-                    className={`object-contain transition-transform duration-300 ${
-                      isSelected ? 'scale-[0.92] origin-center' : 'group-hover:scale-[1.01]'
-                    }`}
-                  />
-                </div>
+                <Image
+                  key={currentPhoto}
+                  src={currentPhoto}
+                  alt={title}
+                  fill
+                  priority
+                  referrerPolicy="no-referrer"
+                  sizes="(max-width: 1024px) 100vw, 850px"
+                  className={`object-cover object-center transition-transform duration-500 ${
+                    isSelected ? 'scale-[1.02] origin-center' : 'group-hover:scale-[1.02]'
+                  }`}
+                />
 
                 {/* 3. Subtle Voted Badge (only shown if selected) */}
                 {isSelected && (

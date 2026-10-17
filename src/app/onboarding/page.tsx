@@ -81,7 +81,7 @@ export default function OnboardingPage() {
           onClick={handleExit}
           className="text-xs font-bold text-neutral-400 hover:text-white px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-1"
         >
-          <span>Пропустить</span>
+          <span>Skip</span>
           <XIcon size={14} />
         </button>
       </header>

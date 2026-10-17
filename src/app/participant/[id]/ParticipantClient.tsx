@@ -45,7 +45,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
         return;
       }
       if (!data) {
-        setError('Профиль участника не найден.');
+        setError('Participant profile not found.');
         return;
       }
       setParticipant(data);
@@ -56,7 +56,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
         .eq('participant_id', participantId);
       if (resultsData) setResults(resultsData);
     } catch (err: any) {
-      setError(err.message || 'Ошибка загрузки данных участника.');
+      setError(err.message || 'Unable to load participant details.');
     } finally {
       setLoading(false);
     }
@@ -79,14 +79,14 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
     return (
       <main className="max-w-lg mx-auto px-4 py-20 text-center space-y-4">
         <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          {error || 'Участник не найден.'}
+          {error || 'Participant not found.'}
         </div>
         <Link
           href="/"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-colors"
         >
           <ArrowLeft size={14} />
-          <span>Вернуться в ленту</span>
+          <span>Return to feed</span>
         </Link>
       </main>
     );
@@ -96,7 +96,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
     participant.profiles?.display_name ||
     participant.profiles?.username ||
     participant.submission_data?.name ||
-    'Участник';
+    'Participant';
   const description = participant.submission_data?.description;
   const photos: string[] = participant.submission_data?.photos || [];
   const mainPhoto = photos[0] || participant.submission_data?.photo || '';
@@ -112,7 +112,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-white transition-colors py-1"
         >
           <ArrowLeft size={15} />
-          <span>Назад к конкурсу</span>
+          <span>Back to contest</span>
         </Link>
 
         {mainPhoto && (
@@ -122,50 +122,31 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-medium border border-white/10 transition-colors"
           >
             <Maximize2 size={13} />
-            <span>На весь экран</span>
+            <span>View fullscreen</span>
           </button>
         )}
       </div>
 
       {/* Main Showcase Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Photo Stage: Ambient Glow + Natural Crisp Photo Fit */}
+        {/* Photo Stage: immersive crop, matching the battle-feed treatment */}
         <div className="lg:col-span-7">
           <div
             onClick={() => setIsLightboxOpen(true)}
-            className="relative w-full h-[52vh] sm:h-[62vh] rounded-3xl overflow-hidden bg-[#121216] border border-white/10 shadow-2xl flex items-center justify-center group cursor-zoom-in"
+            className="relative w-full h-[52vh] sm:h-[62vh] rounded-3xl overflow-hidden bg-[#121216] border border-white/10 shadow-2xl group cursor-zoom-in"
           >
             {mainPhoto ? (
-              <>
-                {/* Soft ambient glow to eliminate harsh dead black space */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  <Image
-                    src={mainPhoto}
-                    alt=""
-                    fill
-                    sizes="100vw"
-                    className="object-cover filter blur-3xl opacity-35 scale-110"
-                    referrerPolicy="no-referrer"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-[#0d0d12]/40" />
-                </div>
-
-                {/* Natural fit photo */}
-                <div className="relative w-full h-full p-2 sm:p-4 flex items-center justify-center z-10">
-                  <Image
-                    src={mainPhoto}
-                    alt={name}
-                    fill
-                    priority
-                    sizes="(max-width: 1024px) 100vw, 700px"
-                    className="object-contain group-hover:scale-[1.01] transition-transform duration-300"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-              </>
+              <Image
+                src={mainPhoto}
+                alt={name}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 700px"
+                className="object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
+                referrerPolicy="no-referrer"
+              />
             ) : (
-              <div className="text-neutral-500 text-xs">Нет загруженного фото</div>
+              <div className="absolute inset-0 grid place-items-center text-neutral-500 text-xs">No photo uploaded</div>
             )}
           </div>
 
@@ -257,7 +238,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
                   >
                     <Globe size={12} className="text-emerald-400" />
-                    <span>Сайт</span>
+                    <span>Website</span>
                   </a>
                 )}
               </div>
@@ -270,7 +251,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
               <Award size={18} className="text-amber-400 shrink-0" />
               <div className="min-w-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/90 block">
-                  Спонсор работы
+                  Submission sponsor
                 </span>
                 <h4 className="text-xs font-bold text-white truncate">{sponsor.name}</h4>
                 {sponsor.product_name && (
@@ -284,7 +265,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
           {results.length > 0 && (
             <div className="p-4 rounded-3xl bg-[#141418] border border-white/5 space-y-2 shadow-lg">
               <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                История раундов
+                Round history
               </h3>
               <div className="space-y-1.5">
                 {results.map((res) => (
@@ -294,21 +275,21 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
                   >
                     <div>
                       <span className="font-semibold text-white block">
-                        {res.contest_stages?.title || `Этап ${res.contest_stages?.stage_number}`}
+                        {res.contest_stages?.title || `Stage ${res.contest_stages?.stage_number}`}
                       </span>
                       <span
                         className={`text-[10px] font-bold uppercase ${
                           res.passed ? 'text-emerald-400' : 'text-neutral-500'
                         }`}
                       >
-                        {res.passed ? '✓ Прошел' : '✗ Выбыл'}
+                        {res.passed ? '✓ Advanced' : '✗ Eliminated'}
                       </span>
                     </div>
                     <div className="text-right tabular-nums">
                       <span className="font-bold text-white block">
                         {formatPercentage(res.vote_percentage)}
                       </span>
-                      <span className="text-[10px] text-neutral-400">Ранг #{res.rank_in_group}</span>
+                      <span className="text-[10px] text-neutral-400">Rank #{res.rank_in_group}</span>
                     </div>
                   </div>
                 ))}

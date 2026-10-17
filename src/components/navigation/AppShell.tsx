@@ -2,7 +2,6 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { SideNav } from './SideNav';
-import { BottomNav } from './BottomNav';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [initialLoading, setInitialLoading] = useState(true);
@@ -60,9 +59,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="app-shell-main w-full">
         {children}
       </div>
-
-      {/* Mobile bottom navigation */}
-      <BottomNav />
     </div>
   );
 }

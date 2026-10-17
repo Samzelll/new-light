@@ -825,7 +825,7 @@
     inset-block: 0;
     right: 0;
     z-index: 40;
-    width: 18rem;
+    width: min(23rem, calc(100vw - 1.25rem));
     background-color: rgb(var(--c-surface-2));
     padding: 1.5rem;
     transition: transform 300ms ease-out;

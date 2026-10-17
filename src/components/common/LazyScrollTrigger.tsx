@@ -59,7 +59,7 @@ export function LazyScrollTrigger({
     return (
       <div className={`py-6 flex items-center justify-center gap-2 text-xs font-semibold text-neutral-500 ${className}`}>
         <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
-        <span>Вы просмотрели все конкурсы</span>
+        <span>You’ve viewed all contests</span>
         <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
       </div>
     );
@@ -70,7 +70,7 @@ export function LazyScrollTrigger({
       {isLoading ? (
         <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#161619] border border-neutral-800 text-xs font-bold text-neutral-300 shadow-sm animate-fade-in">
           <Loader2 size={15} className="animate-spin text-[#ff6a2b]" />
-          <span>Загрузка следующих конкурсов...</span>
+          <span>Loading more contests…</span>
         </div>
       ) : showButtonFallback ? (
         <button
@@ -78,7 +78,7 @@ export function LazyScrollTrigger({
           onClick={onLoadMore}
           className="px-5 py-2 rounded-full text-xs font-bold bg-[#1a1a1f] hover:bg-[#222228] text-neutral-300 hover:text-white border border-neutral-800 transition-colors shadow-sm active:scale-95"
         >
-          Показать еще
+          Show more
         </button>
       ) : null}
     </div>
