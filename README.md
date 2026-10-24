@@ -2,6 +2,14 @@
 
 Premium dark-mode web/PWA port of the Opinion Net contests platform with a focus on mobile UX, moderated feeds, and frictionless contest creation.
 
+## 📚 Documentation & Roadmap
+
+- **[Master Roadmap & Vision](docs/ROADMAP.md)**: Product mission, current baseline, 5-phase evolution roadmap, non-negotiable principles, and future developer guide.
+- **[Full Project Documentation](docs/PROJECT_DOCUMENTATION.md)**: Detailed specifications of tournament engine, groups of 4, scoring formulas, and database schema.
+- **[Design System](docs/DESIGN_SYSTEM.md)**: UI tokens, typography, component classes, and accessibility rules.
+- **[Data Layer Contract](docs/DATA_LAYER.md)**: Service architecture and adapter contracts (Mock DB vs Supabase).
+- **[Live Battle Architecture](LIVE_BATTLE_FEED_ARCHITECTURE.md)**: In-depth mechanics of the TikTok-style 1v1 duel feed.
+
 ## Quick start
 
 1. **Install dependencies**
