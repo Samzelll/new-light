@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { LazyImage } from '@/components/common/LazyImage';
 import {
   X,
   Save,
@@ -508,12 +509,11 @@ export function PostProductionModal({
                   />
                   {coverUrl && (
                     <div className="relative w-12 h-10 rounded-lg overflow-hidden border border-neutral-700 shrink-0">
-                      <Image
+                      <LazyImage
                         src={coverUrl}
                         alt="Preview"
                         fill
                         className="object-cover"
-                        referrerPolicy="no-referrer"
                       />
                     </div>
                   )}
@@ -907,12 +907,11 @@ export function PostProductionModal({
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-black shrink-0 border border-neutral-700">
                             {photo ? (
-                              <Image
+                              <LazyImage
                                 src={photo}
                                 alt={name}
                                 fill
                                 className="object-cover"
-                                referrerPolicy="no-referrer"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-neutral-600">

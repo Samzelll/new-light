@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { setAuth, clearAuth, setInitialized } from '@/features/auth/authSlice';
 import { RootState } from '@/lib/store';
+import { resolveImageUrl } from '@/services/storageService';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const dispatch = useDispatch();
@@ -31,15 +32,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single();
 
         if (isMounted) {
-          dispatch(
-            setAuth({
-              user: { id: user.id, email: user.email || '' },
-              profile: profile || {
+          const resolvedProfile = profile
+            ? {
+                ...profile,
+                avatar_url: profile.avatar_url
+                  ? resolveImageUrl(profile.avatar_url, 'avatars')
+                  : null,
+              }
+            : {
                 id: user.id,
                 username: user.email?.split('@')[0] || 'user',
                 role: 'user',
                 avatar_url: null,
-              },
+              };
+
+          dispatch(
+            setAuth({
+              user: { id: user.id, email: user.email || '' },
+              profile: resolvedProfile,
             })
           );
         }

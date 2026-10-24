@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { UserRole } from '@/constants/permissions';
+import { resolveImageUrl } from './storageService';
 
 // ── Types ────────────────────────────────────────────────────────
 export interface Profile {
@@ -33,7 +34,12 @@ export async function getProfile(
     .eq('id', userId)
     .single();
 
-  return { data: (data as Profile) ?? null, error: error?.message ?? null };
+  const profile = (data as Profile) ?? null;
+  if (profile && profile.avatar_url) {
+    profile.avatar_url = resolveImageUrl(profile.avatar_url, 'avatars');
+  }
+
+  return { data: profile, error: error?.message ?? null };
 }
 
 // ── getMyProfile ──────────────────────────────────────────────────
@@ -58,14 +64,24 @@ export async function updateProfile(
   } = await supabase.auth.getUser();
   if (!user) return { data: null, error: 'Authentication required' };
 
+  const sanitizedUpdates = { ...updates };
+  if (sanitizedUpdates.avatar_url) {
+    sanitizedUpdates.avatar_url = resolveImageUrl(sanitizedUpdates.avatar_url, 'avatars');
+  }
+
   const { data, error } = await supabase
     .from('profiles')
-    .update(updates)
+    .update(sanitizedUpdates)
     .eq('id', user.id)
     .select()
     .single();
 
-  return { data: (data as Profile) ?? null, error: error?.message ?? null };
+  const profile = (data as Profile) ?? null;
+  if (profile && profile.avatar_url) {
+    profile.avatar_url = resolveImageUrl(profile.avatar_url, 'avatars');
+  }
+
+  return { data: profile, error: error?.message ?? null };
 }
 
 // ── getMyTrust ────────────────────────────────────────────────────

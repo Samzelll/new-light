@@ -20,7 +20,8 @@ export async function uploadAvatar(
       });
 
     if (error) return { path: null, error: error.message };
-    return { path: data.path, error: null };
+    const publicUrl = getPublicUrl('avatars', data?.path || filePath);
+    return { path: publicUrl || data?.path || filePath, error: null };
   } catch (err: any) {
     return { path: null, error: err.message || 'An error occurred during upload' };
   }
@@ -102,11 +103,12 @@ export function getPublicUrl(
 ): string {
   if (!path) return '';
 
-  // Pass-through for absolute external URLs (Unsplash CDN, data-URIs, etc.)
+  // Pass-through for absolute external URLs (Unsplash CDN, data-URIs, etc.) or local assets
   if (
     path.startsWith('http://') ||
     path.startsWith('https://') ||
-    path.startsWith('data:')
+    path.startsWith('data:') ||
+    path.startsWith('/')
   ) {
     return path;
   }
@@ -125,11 +127,102 @@ export function getPublicUrl(
     const { data } = supabase.storage
       .from(bucketName)
       .getPublicUrl(path, { transform: transformOptions as any });
-    return data.publicUrl;
+    return data?.publicUrl || '';
   }
 
   const { data } = supabase.storage.from(bucketName).getPublicUrl(path);
-  return data.publicUrl;
+  return data?.publicUrl || '';
+}
+
+/**
+ * Safely resolves an image path or URL into a format guaranteed to be valid for Next.js <Image>.
+ * - Keeps absolute URLs ('http://', 'https://', 'data:') and root-relative paths ('/...').
+ * - Resolves Supabase storage paths (e.g. "usr-admin-01/avatar.jpg" or "contests/cover.jpg") to public URLs.
+ * - Always returns a valid string starting with '/', 'http://', 'https://', or 'data:', or fallback.
+ */
+export function resolveImageUrl(
+  path?: string | null,
+  bucket: 'avatars' | 'submissions' | 'contests' = 'avatars',
+  fallback: string = ''
+): string {
+  if (!path || typeof path !== 'string') return fallback;
+  const trimmed = path.trim();
+  if (!trimmed) return fallback;
+
+  // Already valid URL or absolute path
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('/')
+  ) {
+    return trimmed;
+  }
+
+  // Determine bucket if path has bucket prefix
+  let targetBucket = bucket;
+  let targetPath = trimmed;
+  if (trimmed.startsWith('avatars/')) {
+    targetBucket = 'avatars';
+    targetPath = trimmed.replace(/^avatars\//, '');
+  } else if (trimmed.startsWith('submissions/')) {
+    targetBucket = 'submissions';
+    targetPath = trimmed.replace(/^submissions\//, '');
+  } else if (trimmed.startsWith('contests/')) {
+    targetBucket = 'contests';
+    targetPath = trimmed.replace(/^contests\//, '');
+  }
+
+  const publicUrl = getPublicUrl(targetBucket, targetPath);
+  if (
+    publicUrl &&
+    (publicUrl.startsWith('http://') ||
+      publicUrl.startsWith('https://') ||
+      publicUrl.startsWith('data:') ||
+      publicUrl.startsWith('/'))
+  ) {
+    return publicUrl;
+  }
+
+  return fallback || (targetBucket === 'avatars'
+    ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces'
+    : 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800');
+}
+
+const OPTIMIZED_HOST_SUFFIXES = [
+  '.supabase.co',
+  'images.unsplash.com',
+  'plus.unsplash.com',
+  'picsum.photos',
+  'elements-resized.envatousercontent.com',
+  '.envatousercontent.com',
+  '.envato.com',
+  'images.pexels.com',
+  'cdn.pixabay.com',
+  '.googleusercontent.com',
+  '.githubusercontent.com',
+  '.cloudinary.com',
+  '.imgur.com',
+];
+
+/**
+ * Checks if a given image URL belongs to a configured Next.js remote domain.
+ * If not, unoptimized: true should be passed to Next.js <Image> to prevent
+ * runtime crashes when users or admins link arbitrary external images.
+ */
+export function shouldBeUnoptimized(src?: string | null): boolean {
+  if (!src || typeof src !== 'string') return false;
+  if (src.startsWith('/') || src.startsWith('data:')) return false;
+  try {
+    const url = new URL(src);
+    const host = url.hostname.toLowerCase();
+    const isConfigured = OPTIMIZED_HOST_SUFFIXES.some(
+      (suffix) => host === suffix || host.endsWith(suffix)
+    );
+    return !isConfigured;
+  } catch {
+    return true;
+  }
 }
 
 /**

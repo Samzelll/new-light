@@ -125,15 +125,63 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
     }, 250);
   }, [battle, isTransitioning]);
 
-  // Handle card tap to vote
+  // Handle card tap to vote or re-tap to cancel/unvote
   const handleVote = async (competitor: BattleCompetitor) => {
-    if (!battle || userVotedCorner) return; // Cannot vote twice or change vote
+    if (!battle) return;
 
-    // Haptic/scale tap animation
+    // ── СЦЕНАРИЙ 1: Повторный тап на уже выбранный угол -> ОТМЕНА ГОЛОСА ──
+    if (userVotedCorner === competitor.corner) {
+      setUserVotedCorner(null);
+
+      let weightToDeduct = 1.0;
+      try {
+        const { getMyTrust } = await import('@/services/trustService');
+        const { data: trustData } = await getMyTrust();
+        if (trustData?.score && trustData.score > 0) {
+          weightToDeduct = Number(trustData.score);
+        }
+      } catch {}
+
+      const updatedCompetitors = battle.competitors.map((c) => {
+        const isPick = c.id === competitor.id;
+        const newVotes = isPick ? Math.max(0, Math.round((c.votes - weightToDeduct) * 10) / 10) : c.votes;
+        return {
+          ...c,
+          votes: newVotes,
+          isUserPick: false,
+        };
+      }) as [BattleCompetitor, BattleCompetitor];
+
+      const total = Math.round((updatedCompetitors[0].votes + updatedCompetitors[1].votes) * 10) / 10;
+      if (total > 0) {
+        updatedCompetitors[0].percentage = Number(((updatedCompetitors[0].votes / total) * 100).toFixed(1));
+        updatedCompetitors[1].percentage = Number((100 - updatedCompetitors[0].percentage).toFixed(1));
+      } else {
+        updatedCompetitors[0].percentage = 50;
+        updatedCompetitors[1].percentage = 50;
+      }
+
+      setBattle({
+        ...battle,
+        totalVotes: Math.round(total),
+        competitors: updatedCompetitors,
+        userVotedId: null,
+      });
+
+      try {
+        const { cancelBattleVote } = await import('@/services/battleDataService');
+        await cancelBattleVote(battle.id);
+      } catch (e) {
+        console.warn('Cancel battle vote notice:', e);
+      }
+      return;
+    }
+
+    // ── СЦЕНАРИЙ 2: Голосование (первый выбор или переключение на противоположный) ──
     setActiveTapCorner(competitor.corner);
     setTimeout(() => setActiveTapCorner(null), 200);
 
-    // Optimistic UI update
+    const prevCorner = userVotedCorner;
     setUserVotedCorner(competitor.corner);
 
     let weightToAdd = 1.0;
@@ -147,9 +195,13 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
 
     const updatedCompetitors = battle.competitors.map((c) => {
       const isPick = c.id === competitor.id;
+      const isPrev = prevCorner && c.corner === prevCorner;
+      let newVotes = c.votes;
+      if (isPick) newVotes += weightToAdd;
+      if (isPrev) newVotes = Math.max(0, newVotes - weightToAdd);
       return {
         ...c,
-        votes: isPick ? Math.round((c.votes + weightToAdd) * 10) / 10 : c.votes,
+        votes: Math.round(newVotes * 10) / 10,
         isUserPick: isPick,
       };
     }) as [BattleCompetitor, BattleCompetitor];
@@ -167,7 +219,6 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
       userVotedId: competitor.id,
     });
 
-    // Cast vote through data layer
     await castVote(battle.id, competitor.id);
   };
 
@@ -260,20 +311,24 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
           {/* 1. Top Photo Card: Competitor 1 */}
           <div
             role="button"
-            tabIndex={hasVoted ? -1 : 0}
-            onClick={() => !hasVoted && handleVote(redComp)}
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              handleVote(redComp);
+            }}
             onKeyDown={(e) => {
-              if (!hasVoted && (e.key === 'Enter' || e.key === ' ')) {
+              if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 handleVote(redComp);
               }
             }}
             aria-label={`Vote for: ${redComp.name}`}
-            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden ${hasVoted ? 'cursor-default' : 'cursor-pointer'} text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-300 origin-center border border-neutral-800/80 bg-[#121215] ${
+            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-300 origin-center border border-neutral-800/80 bg-[#121215] ${
               hasVoted
                 ? userVotedCorner === 'red'
                   ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
-                  : 'opacity-70 brightness-[0.7]'
+                  : 'opacity-70 brightness-[0.7] hover:opacity-85'
                 : activeTapCorner === 'red'
                 ? 'scale-[0.98]'
                 : 'hover:brightness-105 active:scale-[0.98]'
@@ -281,10 +336,13 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
           >
             {/* Selected Badge Top-Left (Only when selected) */}
             {hasVoted && userVotedCorner === 'red' && (
-              <div className="absolute top-3 left-3 z-10 pointer-events-none animate-fade-in">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 shadow-md inline-flex items-center gap-1 border border-emerald-400/40">
+              <div className="absolute top-3 left-3 z-10 animate-fade-in">
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md inline-flex items-center gap-1 border border-emerald-400/40 cursor-pointer transition-colors"
+                  title="Нажмите повторно, чтобы отменить выбор"
+                >
                   <Check size={12} strokeWidth={3} />
-                  <span>Selected</span>
+                  <span>Выбрано</span>
                 </span>
               </div>
             )}
@@ -389,20 +447,24 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
           {/* 3. Bottom Photo Card: Competitor 2 */}
           <div
             role="button"
-            tabIndex={hasVoted ? -1 : 0}
-            onClick={() => !hasVoted && handleVote(blueComp)}
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              handleVote(blueComp);
+            }}
             onKeyDown={(e) => {
-              if (!hasVoted && (e.key === 'Enter' || e.key === ' ')) {
+              if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 handleVote(blueComp);
               }
             }}
             aria-label={`Vote for: ${blueComp.name}`}
-            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden ${hasVoted ? 'cursor-default' : 'cursor-pointer'} text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-300 origin-center border border-neutral-800/80 bg-[#121215] ${
+            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-300 origin-center border border-neutral-800/80 bg-[#121215] ${
               hasVoted
                 ? userVotedCorner === 'blue'
                   ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
-                  : 'opacity-70 brightness-[0.7]'
+                  : 'opacity-70 brightness-[0.7] hover:opacity-85'
                 : activeTapCorner === 'blue'
                 ? 'scale-[0.98]'
                 : 'hover:brightness-105 active:scale-[0.98]'
@@ -410,10 +472,13 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
           >
             {/* Selected Badge Top-Left (Only when selected) */}
             {hasVoted && userVotedCorner === 'blue' && (
-              <div className="absolute top-3 left-3 z-10 pointer-events-none animate-fade-in">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 shadow-md inline-flex items-center gap-1 border border-emerald-400/40">
+              <div className="absolute top-3 left-3 z-10 animate-fade-in">
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md inline-flex items-center gap-1 border border-emerald-400/40 cursor-pointer transition-colors"
+                  title="Нажмите повторно, чтобы отменить выбор"
+                >
                   <Check size={12} strokeWidth={3} />
-                  <span>Selected</span>
+                  <span>Выбрано</span>
                 </span>
               </div>
             )}
@@ -508,24 +573,12 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
           </div>
         </div>
 
-      {/* ── Bottom Section: Thin Split Bar after voting & Desktop-Only Controls ── */}
-      <footer className="shrink-0 pt-1 pb-1">
+      {/* ── Bottom Section: Desktop-Only Controls ── */}
+      <footer className="shrink-0 pt-0.5 pb-1">
         {hasVoted ? (
-          <div className="space-y-1.5 animate-fade-in">
-            {/* Thin Split Bar with Corner Colors */}
-            <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-white/10 shadow-inner">
-              <div
-                style={{ width: `${redComp.percentage}%`, backgroundColor: userVotedCorner === 'red' ? '#10b981' : '#52525b' }}
-                className="h-full transition-all duration-500"
-              />
-              <div
-                style={{ width: `${blueComp.percentage}%`, backgroundColor: userVotedCorner === 'blue' ? '#10b981' : '#52525b' }}
-                className="h-full transition-all duration-500"
-              />
-            </div>
-
+          <div className="animate-fade-in">
             {/* Desktop-only Next Battle controls */}
-            <div className="hidden lg:flex items-center justify-end pt-1">
+            <div className="hidden lg:flex items-center justify-end">
               <button
                 type="button"
                 onClick={goToNextBattle}

@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
+import { photoLoader, FEED_SIZES } from '@/perf/imageUrls';
+import { HAPTIC, haptic } from '@/perf/haptics';
 import {
   X,
   Camera,
@@ -39,6 +42,7 @@ export interface PhotoLightboxProps {
     portfolio?: string;
   };
   isSelected?: boolean;
+  percentage?: number | string;
   onVote?: () => void;
 }
 
@@ -57,14 +61,18 @@ export function PhotoLightbox({
   prizePool,
   socialLinks,
   isSelected,
+  percentage,
   onVote,
 }: PhotoLightboxProps) {
   // Normalize photos list
   const allPhotos = useMemo(() => {
-    if (photos && photos.length > 0) return photos;
-    if (photoUrl) return [photoUrl];
-    return [];
+    const list = photos && photos.length > 0 ? photos : photoUrl ? [photoUrl] : [];
+    return list.map((p) => resolveImageUrl(p, 'submissions'));
   }, [photos, photoUrl]);
+
+  const resolvedAuthorAvatar = useMemo(() => {
+    return authorAvatar ? resolveImageUrl(authorAvatar, 'avatars') : null;
+  }, [authorAvatar]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [isFullscreenModal, setIsFullscreenModal] = useState(false);
@@ -230,6 +238,7 @@ export function PhotoLightbox({
                   alt={title}
                   fill
                   priority
+                  loader={photoLoader}
                   referrerPolicy="no-referrer"
                   sizes="(max-width: 1024px) 100vw, 850px"
                   className={`object-cover object-center transition-transform duration-500 ${
@@ -242,6 +251,11 @@ export function PhotoLightbox({
                   <div className="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-full bg-emerald-600/90 backdrop-blur-md text-white font-bold text-xs flex items-center gap-1.5 shadow-lg border border-emerald-400/40 animate-fade-in pointer-events-none">
                     <Check size={13} strokeWidth={3} />
                     <span>Выбрано</span>
+                    {percentage !== undefined && (
+                      <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                        {percentage}%
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -305,6 +319,7 @@ export function PhotoLightbox({
                           src={photo}
                           alt=""
                           fill
+                          unoptimized={shouldBeUnoptimized(photo)}
                           sizes="48px"
                           className="object-cover"
                           referrerPolicy="no-referrer"
@@ -325,11 +340,12 @@ export function PhotoLightbox({
               {author && (
                 <div className="bg-[#141418] border border-white/5 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
                   <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-800 border border-white/10 shrink-0">
-                    {authorAvatar ? (
+                    {resolvedAuthorAvatar ? (
                       <Image
-                        src={authorAvatar}
+                        src={resolvedAuthorAvatar}
                         alt={author}
                         fill
+                        unoptimized={shouldBeUnoptimized(resolvedAuthorAvatar)}
                         className="object-cover"
                         referrerPolicy="no-referrer"
                       />
@@ -439,19 +455,20 @@ export function PhotoLightbox({
                 <button
                   type="button"
                   onClick={() => {
+                    haptic(isSelected ? HAPTIC.unvote : HAPTIC.vote);
                     onVote();
                     onClose();
                   }}
-                  className={`w-full py-3.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 ${
+                  className={`w-full py-3.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-400/40'
+                      ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
                       : 'bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white shadow-[#ff6a2b]/30'
                   }`}
                 >
                   {isSelected ? (
                     <>
-                      <Check size={16} strokeWidth={3} />
-                      <span>Выбранная работа</span>
+                      <X size={16} strokeWidth={2.5} className="text-red-400" />
+                      <span>Отменить голос за эту работу</span>
                     </>
                   ) : (
                     <span>Проголосовать за эту работу</span>
@@ -514,6 +531,7 @@ export function PhotoLightbox({
                 alt={title}
                 fill
                 priority
+                unoptimized={shouldBeUnoptimized(currentPhoto)}
                 referrerPolicy="no-referrer"
                 className="object-contain"
                 sizes="100vw"

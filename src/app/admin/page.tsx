@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { LazyImage } from '@/components/common/LazyImage';
 import {
   ArrowLeft,
   Edit3,
@@ -553,12 +554,11 @@ export default function AdminPage() {
                     <div className="flex items-start gap-3.5 min-w-0">
                       {c.cover_url && (
                         <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-black shrink-0 border border-neutral-700">
-                          <Image
+                          <LazyImage
                             src={c.cover_url}
                             alt={c.title}
                             fill
                             className="object-cover"
-                            referrerPolicy="no-referrer"
                           />
                         </div>
                       )}
@@ -690,7 +690,7 @@ export default function AdminPage() {
                   <div key={app.id} className="bg-[#141418] border border-neutral-800 p-4 sm:p-5 rounded-2xl flex flex-col md:flex-row gap-4">
                     <div className="w-full md:w-44 aspect-video bg-neutral-900 overflow-hidden rounded-xl border border-neutral-800 relative">
                       {image ? (
-                        <Image src={image} alt="Application" fill className="object-cover" referrerPolicy="no-referrer" />
+                        <LazyImage src={image} alt="Application" fill className="object-cover" />
                       ) : (
                         <div className="h-full flex items-center justify-center text-xs text-neutral-600">No media</div>
                       )}

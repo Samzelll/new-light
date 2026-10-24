@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { SlidersHorizontal, User } from 'lucide-react';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 
 export interface AppHeaderProps {
   activeTab: 'contests' | 'feed' | 'battles';
@@ -29,6 +30,16 @@ export function AppHeader({
   }, []);
 
   const tabIndex = activeTab === 'contests' ? 0 : activeTab === 'feed' ? 1 : 2;
+
+  const rawResolved = avatarUrl ? resolveImageUrl(avatarUrl, 'avatars') : null;
+  const validAvatarUrl =
+    rawResolved &&
+    (rawResolved.startsWith('http://') ||
+      rawResolved.startsWith('https://') ||
+      rawResolved.startsWith('data:') ||
+      rawResolved.startsWith('/'))
+      ? rawResolved
+      : null;
 
   return (
     <header className="app-header justify-between select-none">
@@ -106,11 +117,12 @@ export function AppHeader({
         aria-label="Open profile menu"
         className="avatar h-10 w-10 flex-none shrink-0 p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent hover:border-accent-solid transition-colors"
       >
-        {mounted && avatarUrl ? (
+        {mounted && validAvatarUrl ? (
           <Image
-            src={avatarUrl}
+            src={validAvatarUrl}
             alt={username}
             fill
+            unoptimized={shouldBeUnoptimized(validAvatarUrl)}
             className="object-cover"
             referrerPolicy="no-referrer"
           />

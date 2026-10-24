@@ -28,6 +28,55 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'plus.unsplash.com',
       },
+      // Picsum Photos
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+      // Envato Elements and assets
+      {
+        protocol: 'https',
+        hostname: 'elements-resized.envatousercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.envatousercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.envato.com',
+      },
+      // Pexels & Pixabay
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.pixabay.com',
+      },
+      // Google & GitHub user content
+      {
+        protocol: 'https',
+        hostname: '*.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.githubusercontent.com',
+      },
+      // Imgur & Cloudinary
+      {
+        protocol: 'https',
+        hostname: '*.cloudinary.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.imgur.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
+      },
     ],
   },
 

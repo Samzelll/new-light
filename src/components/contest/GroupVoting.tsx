@@ -57,9 +57,28 @@ export function GroupVoting({
   } | null>(null);
 
   const handleSelect = (participantId: string) => {
-    if (hasVoted) return;
+    if (hasVoted) {
+      if (votedParticipantId === participantId) {
+        handleCancelVote();
+      }
+      return;
+    }
     setSelectedId(participantId);
     setConfirmOpen(true);
+  };
+
+  const handleCancelVote = async () => {
+    setIsSubmitting(true);
+    try {
+      const { cancelVote } = await import('@/services/voteService');
+      await cancelVote({ contestId, stageId, groupId });
+      onVoteSuccess('');
+      setSelectedId(null);
+    } catch (err: any) {
+      console.warn('Cancel vote note:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleConfirmVote = async () => {
@@ -93,8 +112,16 @@ export function GroupVoting({
     <div className="space-y-6">
       <h3 className="text-xl font-bold text-white mb-2">Cast your vote in this group</h3>
       {hasVoted ? (
-        <div className="p-4 bg-accent-green/10 border border-accent-green/20 text-accent-green rounded-xl text-sm">
-          ✓ Your vote has been recorded for this group.
+        <div className="p-4 bg-accent-green/10 border border-accent-green/20 text-accent-green rounded-xl text-sm flex items-center justify-between gap-3">
+          <span>✓ Your vote has been recorded for this group.</span>
+          <button
+            type="button"
+            onClick={handleCancelVote}
+            disabled={isSubmitting}
+            className="text-xs font-bold text-red-400 hover:text-red-300 underline shrink-0 transition-colors"
+          >
+            {isSubmitting ? 'Отмена...' : 'Отменить голос'}
+          </button>
         </div>
       ) : (
         <p className="text-gray-400 text-sm">

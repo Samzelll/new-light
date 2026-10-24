@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { ImageOff, Camera } from 'lucide-react';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 
 export interface LazyImageProps {
   src?: string | null;
@@ -14,6 +15,7 @@ export interface LazyImageProps {
   containerClassName?: string;
   /** Mark above-the-fold images as priority so they are eagerly fetched */
   priority?: boolean;
+  unoptimized?: boolean;
   sizes?: string;
   quality?: number;
   fallbackText?: string;
@@ -42,6 +44,7 @@ export function LazyImage({
   className = '',
   containerClassName = '',
   priority = false,
+  unoptimized,
   sizes,
   quality = 82,
   fallbackText,
@@ -92,7 +95,17 @@ export function LazyImage({
     setIsLoaded(true);
   }, []);
 
-  const hasValidSrc = Boolean(src && typeof src === 'string' && src.trim().length > 0);
+  // Safely resolve image URL from storage path or external URL
+  const resolvedSrc = src ? resolveImageUrl(src, 'submissions') : '';
+  const hasValidSrc = Boolean(
+    resolvedSrc &&
+    typeof resolvedSrc === 'string' &&
+    resolvedSrc.trim().length > 0 &&
+    (resolvedSrc.startsWith('http://') ||
+     resolvedSrc.startsWith('https://') ||
+     resolvedSrc.startsWith('data:') ||
+     resolvedSrc.startsWith('/'))
+  );
 
   // Determine container class
   const baseContainerStyle = fill
@@ -136,14 +149,15 @@ export function LazyImage({
       )}
 
       {/* ── Next.js Image: only rendered once in viewport ── */}
-      {shouldLoad && (
+      {shouldLoad && hasValidSrc && (
         <Image
-          src={src!}
+          src={resolvedSrc}
           alt={alt}
           fill={fill}
           width={!fill ? width ?? 400 : undefined}
           height={!fill ? height ?? 400 : undefined}
           priority={priority}
+          unoptimized={unoptimized ?? shouldBeUnoptimized(resolvedSrc)}
           loading={priority ? 'eager' : 'lazy'}
           sizes={sizes ?? defaultSizes}
           quality={quality}

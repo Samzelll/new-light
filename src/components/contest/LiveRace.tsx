@@ -139,23 +139,16 @@ export function LiveRace({ contestId, participants, userTrustScore }: LiveRacePr
                 </div>
 
                 <div className="text-right">
-                  <span className="text-lg font-extrabold text-white">
+                  <span className={`text-lg font-black ${isVotedFor ? 'text-accent-green' : 'text-white'}`}>
                     {formatPercentage(p.percentage)}
                   </span>
                 </div>
               </div>
 
-              {/* Progress bar */}
-              <div className="progress-bar w-full">
-                <div 
-                  className={`progress-bar-fill transition-all duration-500 ${isVotedFor ? 'bg-accent-green' : 'bg-brand-500'}`}
-                  style={{ width: `${p.percentage}%` }}
-                />
-              </div>
-
               {isVotedFor && (
-                <div className="absolute top-2 right-2 bg-brand-600 text-white font-bold text-[8px] uppercase px-1.5 py-0.5 rounded shadow">
-                  Voted
+                <div className="absolute top-2 right-2 bg-accent-green text-surface-900 font-extrabold text-[9px] uppercase px-2 py-0.5 rounded shadow flex items-center gap-1">
+                  <span>✓ Voted</span>
+                  <span className="border-l border-surface-900/40 pl-1">{formatPercentage(p.percentage)}</span>
                 </div>
               )}
             </div>

@@ -2,30 +2,43 @@
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * LIVE BATTLE FEED — COMPLETE STANDALONE MODULE
+ * LIVE BATTLE FEED — HIGH-PERFORMANCE NATIVE SCROLL-SNAP ENGINE
  * ═══════════════════════════════════════════════════════════════════════════
- * 
- * Полный автономный файл ленты 1v1 Лайв-Батлов в стиле TikTok / Reels.
- * Содержит в себе:
- *  1. Все TypeScript интерфейсы данных и состояний
- *  2. Движок жестов: Touch Swipe (мобильные), Mouse Wheel (десктоп с дебаунсом),
- *     Framer Motion Drag (перетаскивание мышью), Keyboard (стрелки Вверх/Вниз)
- *  3. Механику голосования в 1 клик с оптимистичным пересчетом процентов
- *  4. Экраны деталей: Встроенный PhotoLightbox (зум/оригинал) и DescriptionSheet (правила/описание)
- *  5. Механизм предзагрузки изображений и бесконечной подгрузки новых пар
- * 
- * Этот файл можно использовать как эталон, вносить в него любые изменения
- * логики просмотра/голосования и возвращать обратно для интеграции.
+ *
+ * Архитектурно переработанная лента 1v1 батлов в стиле TikTok / Instagram Reels:
+ * 1. Нативный CSS Scroll-Snap (snap-y snap-mandatory) с аппаратным ускорением,
+ *    естественной инерцией и нулевой задержкой тач-жестов.
+ * 2. Идентификация позиции по стабильному activeId через IntersectionObserver (threshold 0.6)
+ *    вместо числового индекса — 100% защита от выбивания на 1-й батл.
+ * 3. Аппаратная предзагрузка и декодирование через Next.js getImageProps (useBattleReady)
+ *    с блокировкой тапа и skeleton-анимацией до готовности обоих фото.
+ * 4. Защита от повторных голосов, атомарные статусы (pending -> confirmed),
+ *    математически выверенные проценты из реальных голосов и откат при ошибках.
+ * 5. Финальный экран EndOfFeedSlide с плавным возвратом в начало ленты.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion, AnimatePresence, PanInfo } from 'motion/react';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
+import {
+  FEED_SIZES,
+  preloadPhoto,
+  useBattleReady,
+  calcPercents,
+} from '@/services/battleImagePreloader';
+import { photoLoader } from '@/perf/imageUrls';
+import { HAPTIC, haptic } from '@/perf/haptics';
+import { useTimeToVotable } from '@/features/battle-feed/hooks/useTimeToVotable';
+import type {
+  BattleCorner,
+  BattleItem,
+  CompetitorDetails,
+  LiveBattleFeedProps,
+  VoteState,
+} from '@/types/battle';
 import {
   ChevronRight,
-  ChevronUp,
-  ChevronDown,
   Check,
   Maximize2,
   X,
@@ -36,62 +49,17 @@ import {
   ZoomOut,
   Layers,
   ArrowRight,
+  ArrowUp,
+  RotateCcw,
+  Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. DATA TYPES & INTERFACES
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface CompetitorDetails {
-  id: string;
-  name: string;
-  author: string;
-  photo: string;
-  photos?: string[];
-  percent: number;
-  authorAvatar?: string;
-  authorBio?: string;
-  sponsorName?: string;
-  sponsorTier?: string;
-  prizePool?: string;
-  socialLinks?: {
-    instagram?: string;
-    telegram?: string;
-    twitter?: string;
-    portfolio?: string;
-  };
-}
-
-export interface BattleItem {
-  id: string;
-  contestId?: string;
-  title: string;
-  category: string;
-  timeRemaining?: string;
-  tags?: string[];
-  isPopular?: boolean;
-  sponsorName?: string;
-  red: CompetitorDetails;    // Верхний угол (Challenger 1)
-  green: CompetitorDetails;  // Нижний угол (Challenger 2)
-}
-
-export interface LiveBattleFeedProps {
-  /** Список батл-пар для показа в ленте */
-  battles: BattleItem[];
-  /** Хэш-таблица конкурсов для быстрого доступа к описанию и правилам */
-  contestsMap?: Record<string, any>;
-  /** Уже отданные голоса пользователя: battleId -> 'red' | 'green' */
-  battleVotes?: Record<string, 'red' | 'green'>;
-  /** Callback при голосовании за одного из участников */
-  onVote?: (battleId: string, corner: 'red' | 'green') => void;
-  /** Callback сброса фильтров, если список пуст */
-  onResetFilters?: () => void;
-  /** Callback подгрузки следующей порции батлов (инфинит-скролл) */
-  onLoadMore?: () => void;
-}
+// Re-export canonical types for backward compatibility
+export type { BattleCorner, BattleItem, CompetitorDetails, LiveBattleFeedProps };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. EMBEDDED LIGHTBOX MODAL (PHOTO & CREATOR DETAILS)
+// 1. EMBEDDED LIGHTBOX MODAL (PHOTO & CREATOR DETAILS)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface EmbeddedLightboxProps {
@@ -162,22 +130,29 @@ function EmbeddedLightbox({
   const currentPhoto = allPhotos[activeIndex] || photoUrl;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md animate-fade-in select-none">
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
+      onClick={onClose}
+    >
       <div
-        className="fixed inset-0 bg-transparent"
-        onClick={() => {
-          if (isFullscreenModal) setIsFullscreenModal(false);
-          else onClose();
-        }}
-      />
-
-      <div className="relative z-10 w-full max-w-4xl max-h-[94vh] bg-[#141417] border border-neutral-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+        className="relative z-10 w-full max-w-4xl max-h-[94vh] bg-[#141417] border border-neutral-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Шапка модалки */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-neutral-800/80 bg-[#18181c]">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             {authorAvatar && (
               <div className="relative w-7 h-7 rounded-full overflow-hidden border border-white/20 shrink-0">
-                <Image src={authorAvatar} alt={author || ''} fill className="object-cover" referrerPolicy="no-referrer" />
+                <Image
+                  src={resolveImageUrl(authorAvatar, 'avatars')}
+                  alt={author || ''}
+                  fill
+                  unoptimized={shouldBeUnoptimized(authorAvatar)}
+                  className="object-cover"
+                  referrerPolicy="no-referrer"
+                />
               </div>
             )}
             <div className="min-w-0">
@@ -202,6 +177,7 @@ function EmbeddedLightbox({
             <button
               type="button"
               onClick={onClose}
+              aria-label="Закрыть"
               className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white flex items-center justify-center transition-colors"
             >
               <X size={16} />
@@ -211,7 +187,7 @@ function EmbeddedLightbox({
 
         {/* Тело модалки */}
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col md:flex-row">
-          {/* Фото: Естественная посадка с мягким амбиентным свечением */}
+          {/* Фото */}
           <div
             onClick={() => {
               setIsFullscreenModal(true);
@@ -225,6 +201,7 @@ function EmbeddedLightbox({
                 src={currentPhoto}
                 alt=""
                 fill
+                unoptimized={shouldBeUnoptimized(currentPhoto)}
                 sizes="100vw"
                 className="object-cover filter blur-3xl opacity-35 scale-110"
                 referrerPolicy="no-referrer"
@@ -238,6 +215,7 @@ function EmbeddedLightbox({
                 src={currentPhoto}
                 alt={title}
                 fill
+                unoptimized={shouldBeUnoptimized(currentPhoto)}
                 className="object-contain group-hover:scale-[1.01] transition-transform duration-300"
                 referrerPolicy="no-referrer"
                 sizes="(max-width: 768px) 100vw, 60vw"
@@ -245,31 +223,80 @@ function EmbeddedLightbox({
             </div>
           </div>
 
-          {/* Боковая панель: Автор, спонсоры, голос */}
+          {/* Боковая панель */}
           <div className="w-full md:w-80 p-5 bg-[#141417] border-t md:border-t-0 md:border-l border-neutral-800 flex flex-col justify-between gap-4">
             <div className="space-y-4">
               {category && (
-                <span className="inline-block px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-neutral-300 font-bold text-[11px] uppercase tracking-wider">
-                  {category}
-                </span>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[#ff6a2b] flex items-center gap-1.5">
+                  <Tag size={12} />
+                  <span>{category}</span>
+                </div>
               )}
 
-              <div>
-                <h4 className="text-sm font-black text-white">{title}</h4>
-                {author && <p className="text-xs text-neutral-400 mt-0.5">Автор: {author}</p>}
-                {authorBio && <p className="text-xs text-neutral-300 mt-2 leading-relaxed">{authorBio}</p>}
-              </div>
+              {authorBio && (
+                <div>
+                  <h4 className="text-xs font-bold text-neutral-400 mb-1">Об авторе</h4>
+                  <p className="text-xs text-neutral-300 leading-relaxed">{authorBio}</p>
+                </div>
+              )}
 
               {sponsorName && (
-                <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Спонсор</span>
-                  <p className="text-xs font-bold text-white mt-0.5">{sponsorName}</p>
-                  {prizePool && <p className="text-[11px] text-emerald-400 font-semibold mt-1">Приз: {prizePool}</p>}
+                <div className="p-3 rounded-xl bg-neutral-900/90 border border-neutral-800 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                    <Award size={14} className="text-[#ff6a2b]" />
+                    <span>{sponsorName}</span>
+                  </div>
+                  {sponsorTier && (
+                    <div className="text-[11px] text-neutral-400">{sponsorTier}</div>
+                  )}
+                  {prizePool && (
+                    <div className="text-xs font-extrabold text-emerald-400">
+                      Призовой фонд: {prizePool}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {socialLinks && Object.values(socialLinks).some(Boolean) && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-neutral-400">Контакты и портфолио</h4>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {socialLinks.instagram && (
+                      <a
+                        href={socialLinks.instagram}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors"
+                      >
+                        Instagram
+                      </a>
+                    )}
+                    {socialLinks.telegram && (
+                      <a
+                        href={socialLinks.telegram}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors"
+                      >
+                        Telegram
+                      </a>
+                    )}
+                    {socialLinks.portfolio && (
+                      <a
+                        href={socialLinks.portfolio}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors"
+                      >
+                        Портфолио
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Кнопка голосования внутри модалки */}
+            {/* Кнопка голосования / отмены голоса внутри модалки */}
             {onVote && (
               <button
                 type="button"
@@ -277,22 +304,19 @@ function EmbeddedLightbox({
                   onVote();
                   onClose();
                 }}
-                className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg ${
+                className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 transition-all active:scale-98 shadow-lg cursor-pointer ${
                   isSelected
-                    ? 'bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-400/50'
-                    : 'bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white shadow-[#ff6a2b]/30'
+                    ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
+                    : 'bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white shadow-[#ff6a2b]/20'
                 }`}
               >
                 {isSelected ? (
                   <>
-                    <Check size={16} strokeWidth={3} />
-                    <span>Вы выбрали эту работу</span>
+                    <X size={16} strokeWidth={2.5} className="text-red-400" />
+                    <span>Отменить голос за эту работу</span>
                   </>
                 ) : (
-                  <>
-                    <span>Проголосовать за эту работу</span>
-                    <ArrowRight size={14} />
-                  </>
+                  <span>Отдать голос за эту работу</span>
                 )}
               </button>
             )}
@@ -300,44 +324,41 @@ function EmbeddedLightbox({
         </div>
       </div>
 
-      {/* Полноэкранный просмотр оригинала с зумом */}
+      {/* Полноэкранный просмотр оригинала */}
       {isFullscreenModal && (
         <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center p-2 select-none animate-fade-in"
           onClick={() => setIsFullscreenModal(false)}
-          className="fixed inset-0 z-60 bg-black flex flex-col animate-fade-in"
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center justify-between px-4 py-3 bg-neutral-950/80 backdrop-blur-md border-b border-neutral-800 z-10"
-          >
-            <span className="text-xs font-semibold text-neutral-300">
-              Оригинал ({title})
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setZoomLevel((prev) => (prev === 1 ? 1.5 : prev === 1.5 ? 2.5 : 1))}
-                className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white flex items-center gap-1.5 transition-all"
-              >
-                {zoomLevel === 1 ? <ZoomIn size={13} /> : <ZoomOut size={13} />}
-                <span>{zoomLevel}x</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsFullscreenModal(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setZoomLevel((prev) => (prev === 1 ? 1.5 : prev === 1.5 ? 2.5 : 1));
+              }}
+              className="px-3 py-1.5 rounded-full bg-neutral-900/90 text-white text-xs font-bold border border-white/10 flex items-center gap-1.5"
+            >
+              {zoomLevel === 1 ? <ZoomIn size={14} /> : <ZoomOut size={14} />}
+              <span>{zoomLevel}x</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsFullscreenModal(false)}
+              className="w-9 h-9 rounded-full bg-neutral-900/90 text-white flex items-center justify-center border border-white/10"
+            >
+              <X size={18} />
+            </button>
           </div>
 
           <div
-            className="flex-1 w-full h-full flex items-center justify-center overflow-auto p-2"
+            className="flex-1 w-full h-full flex items-center justify-center overflow-auto p-2 cursor-zoom-out"
             onClick={() => setIsFullscreenModal(false)}
           >
             <div
-              className="relative w-full h-full max-w-7xl max-h-screen transition-transform duration-200 flex items-center justify-center cursor-zoom-out select-none"
+              className="relative w-full h-full max-w-7xl max-h-screen transition-transform duration-200 flex items-center justify-center"
               style={{ transform: `scale(${zoomLevel})` }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -349,6 +370,7 @@ function EmbeddedLightbox({
                 alt={title}
                 fill
                 priority
+                unoptimized={shouldBeUnoptimized(currentPhoto)}
                 referrerPolicy="no-referrer"
                 className="object-contain"
                 sizes="100vw"
@@ -362,13 +384,17 @@ function EmbeddedLightbox({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. EMBEDDED CONTEST DESCRIPTION SHEET
+// 2. EMBEDDED DESCRIPTION SHEET
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface EmbeddedDescriptionSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  contest: any;
+  contest: {
+    title: string;
+    description?: string | null;
+    category?: string;
+  };
   stageInfo?: string;
 }
 
@@ -387,44 +413,493 @@ function EmbeddedDescriptionSheet({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !contest) return null;
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/80 backdrop-blur-xs animate-fade-in select-none">
-      <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-md mx-auto bg-[#161619] border-t border-neutral-800 rounded-t-3xl p-5 max-h-[80vh] overflow-y-auto space-y-4 shadow-2xl">
-        <div className="w-10 h-1 rounded-full bg-neutral-700 mx-auto -mt-1 mb-2" />
-
-        <div className="flex items-start justify-between gap-3 border-b border-neutral-800 pb-3">
-          <div className="min-w-0">
-            <span className="text-[11px] font-bold text-[#ff6a2b] uppercase tracking-wider block mb-1">
-              {stageInfo || '1v1 Battle Duel'}
-            </span>
-            <h2 className="text-base font-black text-white uppercase tracking-tight truncate">
-              {contest.title}
-            </h2>
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-xs animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-[#16161a] border border-neutral-800 rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl flex flex-col space-y-4 max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#ff6a2b]" />
+            <h3 className="text-sm font-black text-white">{contest.title}</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white flex items-center justify-center shrink-0 transition-colors"
+            aria-label="Закрыть описание"
+            className="w-7 h-7 rounded-full bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
-        <div className="space-y-1.5">
-          <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Описание</h3>
-          <p className="text-sm text-neutral-200 leading-relaxed bg-[#121215] p-3 rounded-2xl border border-neutral-800/60">
-            {contest.description}
-          </p>
+        <div className="space-y-3 text-xs text-neutral-300">
+          <div>
+            <h4 className="font-bold text-white mb-1">Формат турнира</h4>
+            <p className="text-neutral-400">
+              {stageInfo || '1v1 Лайв-Батл с моментальным учетом голосов.'}
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-white mb-1">Правила голосования</h4>
+            <p className="text-neutral-400 leading-relaxed">
+              Один голос на одну дуэль. Выберите наиболее качественную и атмосферную
+              работу. Результаты учитывают веса доверия авторов.
+            </p>
+          </div>
+
+          {contest.description && (
+            <div>
+              <h4 className="font-bold text-white mb-1">О конкурсе</h4>
+              <p className="text-neutral-400 leading-relaxed">{contest.description}</p>
+            </div>
+          )}
         </div>
 
-        {contest.prize && (
-          <div className="flex items-center gap-2 p-3 rounded-2xl bg-[#121215] border border-neutral-800/60 text-xs font-semibold text-emerald-400">
-            <Award size={14} />
-            <span>Призовой фонд: {contest.prize}</span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-colors"
+        >
+          Понятно
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. BATTLE SLIDE COMPONENT (50/50 VIEWPORT SECTION)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface BattleSlideProps {
+  battle: BattleItem;
+  isActive: boolean;
+  userVote: BattleCorner | null;
+  voteTotals?: { red: number; green: number };
+  canVote: boolean;
+  onVote: (corner: BattleCorner) => void;
+  onOpenLightbox: (data: EmbeddedLightboxProps) => void;
+  onOpenDescription: () => void;
+}
+
+function BattleSlide({
+  battle,
+  isActive,
+  userVote,
+  voteTotals,
+  canVote,
+  onVote,
+  onOpenLightbox,
+  onOpenDescription,
+}: BattleSlideProps) {
+  const { state: photosState, retry: retryPhotos } = useBattleReady(battle);
+  useTimeToVotable(isActive, photosState);
+
+  // Вычисляем проценты из актуальных или начальных голосов
+  const effectiveRedVotes =
+    voteTotals?.red ?? (battle.red.votes || Math.round((battle.red.percent || 50) * 2));
+  const effectiveGreenVotes =
+    voteTotals?.green ?? (battle.green.votes || Math.round((battle.green.percent || 50) * 2));
+
+  const percentages = useMemo(
+    () => calcPercents(effectiveRedVotes, effectiveGreenVotes),
+    [effectiveRedVotes, effectiveGreenVotes]
+  );
+
+  const targetContestId = battle.contestId || battle.id;
+  const isReady = photosState === 'ready';
+
+  return (
+    <div className="h-full w-full flex flex-col relative select-none px-1 pt-0 pb-16 lg:pb-0 overflow-hidden min-h-0">
+      {/* ── Шапка: Заголовок конкурса ── */}
+      <header className="flex items-center justify-center px-3 py-1.5 shrink-0 z-20 bg-transparent border-none w-full">
+        <Link
+          href={`/contest/${targetContestId}`}
+          className="group inline-flex items-center justify-center gap-1.5 max-w-[92%] text-center cursor-pointer transition-all active:scale-95"
+          title="Открыть детали и правила конкурса"
+        >
+          <span className="text-sm sm:text-base font-black tracking-wide text-white group-hover:text-[#ff6a2b] transition-colors truncate drop-shadow-md">
+            {battle.title}
+          </span>
+          <ChevronRight
+            size={16}
+            className="text-neutral-500 group-hover:text-[#ff6a2b] group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
+          />
+        </Link>
+      </header>
+
+      {/* ── Арена 50/50: Две карточки ── */}
+      <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full h-full pb-0.5 gap-1.5">
+        {/* ══════════════════════════════════════════════════════════ */}
+        {/* 1. ВЕРХНЯЯ КАРТОЧКА (RED CORNER) — 50% Высоты             */}
+        {/* ══════════════════════════════════════════════════════════ */}
+        <div
+          role="button"
+          tabIndex={isReady ? 0 : -1}
+          aria-disabled={!isReady}
+          aria-pressed={userVote === 'red'}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (isReady) {
+              onVote('red');
+            }
+          }}
+          className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
+            userVote === 'red'
+              ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10 cursor-pointer'
+              : userVote === 'green'
+              ? 'opacity-70 brightness-[0.7] cursor-pointer hover:opacity-90'
+              : isReady
+              ? 'cursor-pointer hover:brightness-105 active:scale-[0.98]'
+              : 'cursor-wait'
+          }`}
+        >
+          {/* Skeleton Shimmer пока фото не декодированы */}
+          {!isReady && (
+            <div className="absolute inset-0 bg-neutral-900 animate-pulse flex items-center justify-center z-10">
+              <div className="w-8 h-8 rounded-full bg-neutral-800/80 animate-ping opacity-40" />
+            </div>
+          )}
+
+          {/* Фото участника */}
+          {battle.red?.photo && (
+            <Image
+              src={battle.red.photo}
+              alt={battle.red.name}
+              fill
+              loader={photoLoader}
+              sizes={FEED_SIZES}
+              priority={isActive}
+              referrerPolicy="no-referrer"
+              className={`object-cover object-center transition-all duration-500 ${
+                isReady ? 'opacity-100' : 'opacity-0'
+              } ${userVote === 'red' ? '' : 'group-hover:scale-105'}`}
+            />
+          )}
+
+          {/* Затемнение */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+
+          {/* Верхняя плашка карточки: Бейдж выбора + Кнопка зума */}
+          <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
+            <div>
+              {userVote === 'red' && (
+                <span
+                  className="px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in transition-colors cursor-pointer"
+                  title="Нажмите повторно, чтобы отменить выбор"
+                >
+                  <Check size={12} strokeWidth={3} />
+                  <span>Выбрано</span>
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenLightbox({
+                  isOpen: true,
+                  onClose: () => {},
+                  photoUrl: battle.red.photo,
+                  photos: battle.red.photos || [battle.red.photo],
+                  title: battle.red.name,
+                  author: battle.red.author,
+                  authorAvatar: battle.red.authorAvatar,
+                  authorBio: battle.red.authorBio,
+                  category: battle.category,
+                  sponsorName: battle.red.sponsorName || battle.sponsorName,
+                  sponsorTier: battle.red.sponsorTier,
+                  prizePool: battle.red.prizePool,
+                  socialLinks: battle.red.socialLinks,
+                  isSelected: userVote === 'red',
+                  onVote: isReady ? () => onVote('red') : undefined,
+                });
+              }}
+              aria-label="Увеличить фото и открыть детали"
+              className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
+            >
+              <Maximize2 size={14} strokeWidth={2.4} />
+            </button>
           </div>
+
+          {/* Нижняя плашка: Автор + Название работы */}
+          <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
+            <div className="flex items-center gap-2">
+              {battle.red.author && battle.red.authorAvatar && (
+                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                  <Image
+                    src={resolveImageUrl(battle.red.authorAvatar, 'avatars')}
+                    alt={battle.red.author}
+                    fill
+                    unoptimized={shouldBeUnoptimized(battle.red.authorAvatar)}
+                    className="object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
+              <div className="min-w-0">
+                {battle.red.author && (
+                  <span className="text-xs sm:text-sm font-black text-white drop-shadow-lg truncate block leading-tight">
+                    {battle.red.author}
+                  </span>
+                )}
+                {battle.red.name && (
+                  <span
+                    className={`${
+                      battle.red.author
+                        ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5'
+                        : 'text-sm sm:text-base font-black text-white'
+                    } drop-shadow truncate block leading-tight`}
+                  >
+                    {battle.red.name}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Процент голосов (отображается после голосования) */}
+          {userVote && (
+            <div className="absolute bottom-2.5 right-3 z-10 animate-fade-in">
+              <div
+                className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
+                  userVote === 'red'
+                    ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/60'
+                    : 'bg-black/80 text-neutral-300 border-neutral-700/60'
+                }`}
+              >
+                {percentages.red}%
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════ */}
+        {/* ЦЕНТРАЛЬНЫЙ БЕЙДЖ "VS"                                     */}
+        {/* ══════════════════════════════════════════════════════════ */}
+        <div
+          aria-hidden="true"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] border-2 border-[#0b0b0d] flex items-center justify-center font-black text-xs text-white shadow-2xl pointer-events-none ring-2 ring-white/20 animate-pulse"
+        >
+          VS
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════ */}
+        {/* 2. НИЖНЯЯ КАРТОЧКА (GREEN CORNER) — 50% Высоты           */}
+        {/* ══════════════════════════════════════════════════════════ */}
+        <div
+          role="button"
+          tabIndex={isReady ? 0 : -1}
+          aria-disabled={!isReady}
+          aria-pressed={userVote === 'green'}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (isReady) {
+              onVote('green');
+            }
+          }}
+          className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
+            userVote === 'green'
+              ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10 cursor-pointer'
+              : userVote === 'red'
+              ? 'opacity-70 brightness-[0.7] cursor-pointer hover:opacity-90'
+              : isReady
+              ? 'cursor-pointer hover:brightness-105 active:scale-[0.98]'
+              : 'cursor-wait'
+          }`}
+        >
+          {/* Skeleton Shimmer пока фото не декодированы */}
+          {!isReady && (
+            <div className="absolute inset-0 bg-neutral-900 animate-pulse flex items-center justify-center z-10">
+              <div className="w-8 h-8 rounded-full bg-neutral-800/80 animate-ping opacity-40" />
+            </div>
+          )}
+
+          {/* Фото участника */}
+          {battle.green?.photo && (
+            <Image
+              src={battle.green.photo}
+              alt={battle.green.name}
+              fill
+              loader={photoLoader}
+              sizes={FEED_SIZES}
+              priority={isActive}
+              referrerPolicy="no-referrer"
+              className={`object-cover object-center transition-all duration-500 ${
+                isReady ? 'opacity-100' : 'opacity-0'
+              } ${userVote === 'green' ? '' : 'group-hover:scale-105'}`}
+            />
+          )}
+
+          {/* Затемнение */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+
+          {/* Верхняя плашка карточки: Бейдж выбора + Кнопка зума */}
+          <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
+            <div>
+              {userVote === 'green' && (
+                <span
+                  className="px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in transition-colors cursor-pointer"
+                  title="Нажмите повторно, чтобы отменить выбор"
+                >
+                  <Check size={12} strokeWidth={3} />
+                  <span>Выбрано</span>
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenLightbox({
+                  isOpen: true,
+                  onClose: () => {},
+                  photoUrl: battle.green.photo,
+                  photos: battle.green.photos || [battle.green.photo],
+                  title: battle.green.name,
+                  author: battle.green.author,
+                  authorAvatar: battle.green.authorAvatar,
+                  authorBio: battle.green.authorBio,
+                  category: battle.category,
+                  sponsorName: battle.green.sponsorName || battle.sponsorName,
+                  sponsorTier: battle.green.sponsorTier,
+                  prizePool: battle.green.prizePool,
+                  socialLinks: battle.green.socialLinks,
+                  isSelected: userVote === 'green',
+                  onVote: isReady ? () => onVote('green') : undefined,
+                });
+              }}
+              aria-label="Увеличить фото и открыть детали"
+              className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
+            >
+              <Maximize2 size={14} strokeWidth={2.4} />
+            </button>
+          </div>
+
+          {/* Нижняя плашка: Автор + Название работы */}
+          <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
+            <div className="flex items-center gap-2">
+              {battle.green.author && battle.green.authorAvatar && (
+                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                  <Image
+                    src={resolveImageUrl(battle.green.authorAvatar, 'avatars')}
+                    alt={battle.green.author}
+                    fill
+                    unoptimized={shouldBeUnoptimized(battle.green.authorAvatar)}
+                    className="object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
+              <div className="min-w-0">
+                {battle.green.author && (
+                  <span className="text-xs sm:text-sm font-black text-white drop-shadow-lg truncate block leading-tight">
+                    {battle.green.author}
+                  </span>
+                )}
+                {battle.green.name && (
+                  <span
+                    className={`${
+                      battle.green.author
+                        ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5'
+                        : 'text-sm sm:text-base font-black text-white'
+                    } drop-shadow truncate block leading-tight`}
+                  >
+                    {battle.green.name}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Процент голосов (отображается после голосования) */}
+          {userVote && (
+            <div className="absolute bottom-2.5 right-3 z-10 animate-fade-in">
+              <div
+                className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
+                  userVote === 'green'
+                    ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/60'
+                    : 'bg-black/80 text-neutral-300 border-neutral-700/60'
+                }`}
+              >
+                {percentages.green}%
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Ошибка загрузки фото с возможностью повтора */}
+      {photosState === 'error' && (
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-red-950/90 border border-red-500/60 text-red-200 text-xs font-bold flex items-center gap-2 shadow-xl animate-fade-in">
+          <AlertCircle size={14} className="text-red-400 shrink-0" />
+          <span>Фото не загрузились</span>
+          <button
+            type="button"
+            onClick={retryPhotos}
+            className="underline hover:text-white transition-colors"
+          >
+            Повторить
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. END OF FEED SLIDE COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface EndOfFeedSlideProps {
+  onScrollToTop: () => void;
+  onResetFilters?: () => void;
+}
+
+function EndOfFeedSlide({ onScrollToTop, onResetFilters }: EndOfFeedSlideProps) {
+  return (
+    <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center select-none bg-[#0b0b0d]">
+      <div className="w-16 h-16 rounded-3xl bg-neutral-900 border border-neutral-800 flex items-center justify-center text-3xl mb-4 shadow-xl">
+        🏆
+      </div>
+      <h3 className="text-base sm:text-lg font-black text-white mb-2 tracking-wide">
+        Вы посмотрели все дуэли
+      </h3>
+      <p className="text-xs text-neutral-400 mb-6 max-w-xs leading-relaxed">
+        Все активные 1v1 батлы в этой подборке просмотрены. Вы можете вернуться к началу
+        или выбрать другие категории.
+      </p>
+      <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-xs">
+        <button
+          type="button"
+          onClick={onScrollToTop}
+          className="w-full py-3 px-5 rounded-full bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-[#ff6a2b]/25 transition-all active:scale-95"
+        >
+          <ArrowUp size={16} strokeWidth={2.5} />
+          <span>Вернуться в начало</span>
+        </button>
+        {onResetFilters && (
+          <button
+            type="button"
+            onClick={onResetFilters}
+            className="w-full py-3 px-5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white font-bold text-xs border border-neutral-800 transition-all active:scale-95"
+          >
+            Сбросить фильтры
+          </button>
         )}
       </div>
     </div>
@@ -432,7 +907,7 @@ function EmbeddedDescriptionSheet({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. MAIN LIVE BATTLE FEED COMPONENT
+// 5. MAIN LIVE BATTLE FEED (NATIVE SCROLL-SNAP CONTAINER)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function LiveBattleFeedComplete({
@@ -442,163 +917,238 @@ export function LiveBattleFeedComplete({
   onVote,
   onResetFilters,
   onLoadMore,
+  modalOpen = false,
+  activeBattleId,
+  onActiveBattleChange,
 }: LiveBattleFeedProps) {
-  // Текущая батл-пара в ленте
-  const [currentIndex, setCurrentIndex] = useState(0);
-  // Направление анимации перехода (1 = вниз / следующий, -1 = вверх / предыдущий)
-  const [direction, setDirection] = useState<1 | -1>(1);
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
-  // Локальные оверрайды процентов для мгновенного отклика при клике
-  const [localOverrides, setLocalOverrides] = useState<
-    Record<string, { redPercent: number; greenPercent: number }>
-  >({});
+  // Стабильная позиция по activeId, а не числовому индексу
+  const [activeId, setActiveId] = useState<string | null>(
+    activeBattleId || (battles[0]?.id ?? null)
+  );
+  const activeIdRef = useRef<string | null>(activeId);
+
+  const updateActiveId = useCallback(
+    (newId: string | null) => {
+      if (newId && newId !== activeIdRef.current) {
+        activeIdRef.current = newId;
+        setActiveId(newId);
+        onActiveBattleChange?.(newId);
+      }
+    },
+    [onActiveBattleChange]
+  );
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  // Синхронизация при внешнем изменении activeBattleId
+  useEffect(() => {
+    if (activeBattleId && activeBattleId !== activeIdRef.current) {
+      activeIdRef.current = activeBattleId;
+      setActiveId(activeBattleId);
+    }
+  }, [activeBattleId]);
+
+  const activeIndex = useMemo(() => {
+    const idx = battles.findIndex((b) => b.id === activeId);
+    return idx >= 0 ? idx : 0;
+  }, [battles, activeId]);
+
+  // Локальные голоса и защита от повторных кликов
+  const [localVotes, setLocalVotes] = useState<Record<string, VoteState>>({});
+  const voteLockRef = useRef<Set<string>>(new Set());
+  const [errorToast, setErrorToast] = useState<string | null>(null);
 
   // Модальные окна
-  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
   const [lightboxData, setLightboxData] = useState<EmbeddedLightboxProps | null>(null);
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
 
-  // Ссылки для предотвращения спама и троттлинга жестов
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isTransitioningRef = useRef(false);
-  const touchStartY = useRef<number | null>(null);
-
-  // 4.1. Контроль границ индекса при обновлении списка батлов
+  // Синхронизация activeId при первой загрузке или смене фильтра
   useEffect(() => {
-    if (currentIndex >= battles.length && battles.length > 0) {
-      setCurrentIndex(0);
+    if (battles.length > 0 && (!activeId || !battles.some((b) => b.id === activeId))) {
+      const fallbackId =
+        activeBattleId && battles.some((b) => b.id === activeBattleId)
+          ? activeBattleId
+          : battles[0].id;
+      setActiveId(fallbackId);
+      activeIdRef.current = fallbackId;
     }
-  }, [battles.length, currentIndex]);
+  }, [battles, activeId, activeBattleId]);
 
-  // 4.2. Порог автоматической догрузки батлов (за 2 карточки до конца)
+  // 5.1. Восстановление и удержание позиции скролла: предотвращает сброс на 1-й батл
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || !activeIdRef.current) return;
+    const targetSection = scroller.querySelector(
+      `[data-battle-id="${activeIdRef.current}"]`
+    ) as HTMLElement | null;
+    if (targetSection) {
+      const expectedTop = targetSection.offsetTop;
+      if (Math.abs(scroller.scrollTop - expectedTop) > 5) {
+        scroller.scrollTop = expectedTop;
+      }
+    }
+  }, [battles, localVotes, battleVotes]);
+
+  // 5.2. Точный трекинг activeId при любом нативном скролле / свайпе
+  const handleScroll = useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || scroller.clientHeight === 0) return;
+    const idx = Math.round(scroller.scrollTop / scroller.clientHeight);
+    if (idx >= 0 && idx < battles.length) {
+      const b = battles[idx];
+      if (b && b.id !== activeIdRef.current) {
+        updateActiveId(b.id);
+      }
+    }
+  }, [battles, updateActiveId]);
+
+  // 5.3. IntersectionObserver для дополнительной надежности
   useEffect(() => {
-    if (battles.length > 0 && currentIndex >= battles.length - 2) {
-      if (onLoadMore) onLoadMore();
+    const root = scrollerRef.current;
+    if (!root || battles.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const bId = (entry.target as HTMLElement).dataset.battleId;
+            if (bId && bId !== activeIdRef.current) {
+              updateActiveId(bId);
+            }
+          }
+        }
+      },
+      { root, threshold: 0.6 }
+    );
+
+    const sections = root.querySelectorAll('[data-battle-id]');
+    sections.forEach((sec) => observer.observe(sec));
+
+    return () => observer.disconnect();
+  }, [battles, updateActiveId]);
+
+  // 5.4. Аппаратная предзагрузка на 2-3 слайда вперед
+  useEffect(() => {
+    if (typeof window === 'undefined' || battles.length === 0) return;
+
+    for (let i = activeIndex + 1; i <= activeIndex + 3; i++) {
+      const nextBattle = battles[i];
+      if (!nextBattle) break;
+      if (nextBattle.red?.photo) preloadPhoto(nextBattle.red.photo).catch(() => {});
+      if (nextBattle.green?.photo) preloadPhoto(nextBattle.green.photo).catch(() => {});
     }
-  }, [currentIndex, battles.length, onLoadMore]);
+  }, [activeIndex, battles]);
 
-  // 4.3. Переключение на следующий батл
-  const goToNext = useCallback(() => {
-    if (battles.length <= 1 || isTransitioningRef.current) return;
-    isTransitioningRef.current = true;
-    setDirection(1);
-    setCurrentIndex((prev) => (prev + 1) % battles.length);
-    setTimeout(() => {
-      isTransitioningRef.current = false;
-    }, 280);
-  }, [battles.length]);
-
-  // 4.4. Переключение на предыдущий батл
-  const goToPrev = useCallback(() => {
-    if (battles.length <= 1 || isTransitioningRef.current) return;
-    isTransitioningRef.current = true;
-    setDirection(-1);
-    setCurrentIndex((prev) => (prev - 1 + battles.length) % battles.length);
-    setTimeout(() => {
-      isTransitioningRef.current = false;
-    }, 280);
-  }, [battles.length]);
-
-  // 4.5. Touch-жесты свайпа для мобильных телефонов (deltaY > 40px)
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartY.current === null) return;
-    const deltaY = touchStartY.current - e.changedTouches[0].clientY;
-    touchStartY.current = null;
-
-    if (deltaY > 40) {
-      goToNext(); // Свайп снизу вверх -> Следующий батл
-    } else if (deltaY < -40) {
-      goToPrev(); // Свайп сверху вниз -> Предыдущий батл
+  // 5.5. Триггер подгрузки новых батлов при приближении к концу очереди
+  useEffect(() => {
+    if (activeIndex >= battles.length - 2 && onLoadMore) {
+      onLoadMore();
     }
-  };
+  }, [activeIndex, battles.length, onLoadMore]);
 
-  // 4.6. Клавиатурная навигация (Стрелки Вверх / Вниз)
+  // 5.6. Клавиатурная навигация (ArrowDown / ArrowUp)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isDescriptionOpen || lightboxData) return;
+      const scroller = scrollerRef.current;
+      if (!scroller || modalOpen || lightboxData || isDescriptionOpen) return;
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        goToNext();
+        scroller.scrollBy({ top: scroller.clientHeight, behavior: 'smooth' });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        goToPrev();
+        scroller.scrollBy({ top: -scroller.clientHeight, behavior: 'smooth' });
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToNext, goToPrev, isDescriptionOpen, lightboxData]);
+  }, [modalOpen, lightboxData, isDescriptionOpen]);
 
-  // 4.7. Колесико мыши (Mouse Wheel с дебаунсом 60мс для TikTok-ощущения на ПК)
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+  // 5.7. Голосование и отмена голоса (toggle / unvote)
+  const handleVote = useCallback(
+    async (battle: BattleItem, corner: BattleCorner) => {
+      const bId = battle.id;
+      updateActiveId(bId);
 
-    let wheelTimer: NodeJS.Timeout | null = null;
-    let accumulatedDelta = 0;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (isDescriptionOpen || lightboxData) return;
-      accumulatedDelta += e.deltaY;
-
-      if (wheelTimer) clearTimeout(wheelTimer);
-      wheelTimer = setTimeout(() => {
-        if (accumulatedDelta > 35) {
-          goToNext();
-        } else if (accumulatedDelta < -35) {
-          goToPrev();
+      // Немедленная фиксация позиции скролла на текущем слайде в DOM
+      const scroller = scrollerRef.current;
+      if (scroller) {
+        const targetSection = scroller.querySelector(
+          `[data-battle-id="${bId}"]`
+        ) as HTMLElement | null;
+        if (targetSection) {
+          scroller.scrollTop = targetSection.offsetTop;
         }
-        accumulatedDelta = 0;
-      }, 60);
-    };
+      }
 
-    el.addEventListener('wheel', handleWheel, { passive: true });
-    return () => {
-      el.removeEventListener('wheel', handleWheel);
-      if (wheelTimer) clearTimeout(wheelTimer);
-    };
-  }, [goToNext, goToPrev, isDescriptionOpen, lightboxData]);
+      const currentVote = localVotes[bId]?.corner || battleVotes[bId] || null;
 
-  // 4.8. Драг мышью на десктопе через Framer Motion PanInfo
-  const handleDragEnd = (_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const offsetThreshold = 35;
-    const velocityThreshold = 140;
+      // ── СЦЕНАРИЙ 1: Отмена голоса (повторное нажатие на выбранный угол) ──
+      if (currentVote === corner) {
+        haptic(HAPTIC.unvote);
+        voteLockRef.current.delete(bId);
 
-    if (info.offset.y < -offsetThreshold || info.velocity.y < -velocityThreshold) {
-      goToNext();
-    } else if (info.offset.y > offsetThreshold || info.velocity.y > velocityThreshold) {
-      goToPrev();
-    }
-  };
+        setLocalVotes((prev) => {
+          const next = { ...prev };
+          delete next[bId];
+          return next;
+        });
 
-  // 4.9. Обработка голоса с мгновенным локальным откликом
-  const handleInternalVote = (battleId: string, corner: 'red' | 'green') => {
-    if (onVote) {
-      onVote(battleId, corner);
-    }
+        if (onVote) {
+          onVote(bId, null);
+        } else {
+          try {
+            const { cancelBattleVote } = await import('@/services/battleDataService');
+            await cancelBattleVote(battle.contestId ?? battle.id);
+          } catch (e) {
+            console.warn('Cancel vote note:', e);
+          }
+        }
+        return;
+      }
 
-    // Мгновенно сдвигаем проценты для наглядности
-    const targetBattle = battles.find((b) => b.id === battleId);
-    if (!targetBattle) return;
+      // ── СЦЕНАРИЙ 2: Голосование (новый голос или переключение на противоположный) ──
+      haptic(HAPTIC.vote);
+      const baseRedVotes = Math.max(0, battle.red.votes || Math.round((battle.red.percent || 50) * 2));
+      const baseGreenVotes = Math.max(0, battle.green.votes || Math.round((battle.green.percent || 50) * 2));
 
-    const currentRed = localOverrides[battleId]?.redPercent ?? targetBattle.red.percent;
-    let newRed = currentRed;
-    if (corner === 'red') {
-      newRed = Math.min(99, currentRed + 2);
-    } else {
-      newRed = Math.max(1, currentRed - 2);
-    }
+      // Если переключаем с красного на зеленый (или наоборот), корректируем
+      const optimisticTotals = {
+        red: baseRedVotes + (corner === 'red' ? 1 : currentVote === 'red' ? -1 : 0),
+        green: baseGreenVotes + (corner === 'green' ? 1 : currentVote === 'green' ? -1 : 0),
+      };
 
-    setLocalOverrides((prev) => ({
-      ...prev,
-      [battleId]: {
-        redPercent: newRed,
-        greenPercent: 100 - newRed,
-      },
-    }));
-  };
+      setLocalVotes((prev) => ({
+        ...prev,
+        [bId]: {
+          corner,
+          status: 'confirmed',
+          totals: optimisticTotals,
+        },
+      }));
+
+      if (onVote) {
+        onVote(bId, corner);
+      } else {
+        try {
+          const { castBattleVote } = await import('@/services/battleDataService');
+          await castBattleVote(battle.contestId ?? battle.id, battle[corner].id);
+        } catch (err: any) {
+          console.warn('Vote background sync note:', err);
+        }
+      }
+    },
+    [battleVotes, localVotes, onVote, updateActiveId]
+  );
+
+  const handleScrollToTop = useCallback(() => {
+    scrollerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   // Пустое состояние
   if (battles.length === 0) {
@@ -626,373 +1176,82 @@ export function LiveBattleFeedComplete({
     );
   }
 
-  const currentBattle = battles[currentIndex];
-  const currentContest = currentBattle.contestId
-    ? contestsMap[currentBattle.contestId]
-    : null;
-  const userVote = battleVotes[currentBattle.id] || null;
-
-  // Динамические проценты (с учетом локального сдвига)
-  const redPercent =
-    localOverrides[currentBattle.id]?.redPercent ?? currentBattle.red.percent;
-  const greenPercent =
-    localOverrides[currentBattle.id]?.greenPercent ?? currentBattle.green.percent;
-
-  const targetContestId = currentBattle.contestId || currentBattle.id;
-
   return (
-    <div
-      ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      className="flex-1 flex flex-col relative select-none px-1 pt-0 pb-16 lg:pb-0 overflow-hidden h-full w-full min-h-0"
-    >
-      {/* ── ВЕРХНЯЯ ШАПКА: Заголовок конкурса с кликом для перехода в детали ── */}
-      <header className="flex items-center justify-center px-3 py-1.5 shrink-0 z-20 bg-transparent border-none w-full">
-        <Link
-          href={`/contest/${targetContestId}`}
-          className="group inline-flex items-center justify-center gap-1.5 max-w-[92%] text-center cursor-pointer transition-all active:scale-95"
-          title="Открыть детали и правила конкурса"
+    <div className="flex-1 flex flex-col relative w-full h-full min-h-0 overflow-hidden">
+      {/* Тост об ошибке голосования */}
+      {errorToast && (
+        <div
+          role="alert"
+          className="fixed top-4 inset-x-0 mx-auto w-fit z-50 bg-red-950/90 border border-red-500/80 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-fade-in"
         >
-          <span className="text-sm sm:text-base font-black tracking-wide text-white group-hover:text-[#ff6a2b] transition-colors truncate drop-shadow-md">
-            {currentBattle.title}
-          </span>
-          <ChevronRight
-            size={16}
-            className="text-neutral-500 group-hover:text-[#ff6a2b] group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
+          <AlertCircle size={15} className="text-red-400" />
+          <span>{errorToast}</span>
+        </div>
+      )}
+
+      {/* ── Нативный вертикальный контейнер со Scroll-Snap ── */}
+      <div
+        ref={scrollerRef}
+        onScroll={handleScroll}
+        className="flex-1 w-full h-full overflow-y-scroll snap-y snap-mandatory overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {battles.map((battle) => {
+          const userVote =
+            localVotes[battle.id]?.corner || battleVotes[battle.id] || null;
+          const voteTotals = localVotes[battle.id]?.totals;
+
+          return (
+            <section
+              key={battle.id}
+              data-battle-id={battle.id}
+              className="h-full w-full snap-start snap-always relative overflow-hidden shrink-0 [content-visibility:auto] [contain-intrinsic-size:auto_100dvh]"
+            >
+              <BattleSlide
+                battle={battle}
+                isActive={battle.id === activeId}
+                userVote={userVote}
+                voteTotals={voteTotals}
+                canVote={true}
+                onVote={(corner) => handleVote(battle, corner)}
+                onOpenLightbox={(data) => setLightboxData(data)}
+                onOpenDescription={() => setIsDescriptionOpen(true)}
+              />
+            </section>
+          );
+        })}
+
+        {/* ── Финальный слайд завершения очереди ── */}
+        <section className="h-full w-full snap-start snap-always relative overflow-hidden shrink-0 [content-visibility:auto] [contain-intrinsic-size:auto_100dvh]">
+          <EndOfFeedSlide
+            onScrollToTop={handleScrollToTop}
+            onResetFilters={onResetFilters}
           />
-        </Link>
-      </header>
-
-      {/* ── АРЕНА 50 / 50: Вертикальное разделение на 2 карточки с плавной анимацией ── */}
-      <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full h-full pb-0.5">
-        <AnimatePresence initial={false} custom={direction} mode="wait">
-          <motion.div
-            key={currentBattle.id}
-            custom={direction}
-            variants={{
-              enter: (d: number) => ({
-                y: d > 0 ? 90 : -90,
-                opacity: 0,
-                scale: 0.98,
-              }),
-              center: {
-                y: 0,
-                opacity: 1,
-                scale: 1,
-                transition: {
-                  y: { type: 'spring', stiffness: 360, damping: 32 },
-                  opacity: { duration: 0.18 },
-                },
-              },
-              exit: (d: number) => ({
-                y: d > 0 ? -90 : 90,
-                opacity: 0,
-                scale: 0.98,
-                transition: { duration: 0.16 },
-              }),
-            }}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.2}
-            onDragEnd={handleDragEnd}
-            className="flex-1 flex flex-col h-full min-h-0 relative bg-transparent border-none shadow-none cursor-grab active:cursor-grabbing gap-1.5"
-          >
-            {/* ══════════════════════════════════════════════════════════ */}
-            {/* 1. ВЕРХНЯЯ КАРТОЧКА (RED CORNER) — 50% Высоты             */}
-            {/* ══════════════════════════════════════════════════════════ */}
-            <div
-              onClick={() => handleInternalVote(currentBattle.id, 'red')}
-              className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden cursor-pointer transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
-                userVote === 'red'
-                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
-                  : userVote
-                  ? 'opacity-70 brightness-[0.7]'
-                  : 'hover:brightness-105 active:scale-[0.98]'
-              }`}
-            >
-              {/* Фото участника */}
-              <Image
-                src={currentBattle.red.photo}
-                alt={currentBattle.red.name}
-                fill
-                sizes="(max-width: 640px) 100vw, 480px"
-                className={`object-cover object-center transition-transform duration-500 ${
-                  userVote === 'red' ? '' : 'group-hover:scale-105'
-                }`}
-                priority
-                referrerPolicy="no-referrer"
-              />
-
-              {/* Затемнение */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
-
-              {/* Верхняя плашка карточки: Бейдж выбора + Кнопка зума */}
-              <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
-                <div>
-                  {userVote === 'red' && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in">
-                      <Check size={12} strokeWidth={3} />
-                      <span>Выбрано</span>
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLightboxData({
-                      isOpen: true,
-                      onClose: () => setLightboxData(null),
-                      photoUrl: currentBattle.red.photo,
-                      photos: currentBattle.red.photos || [currentBattle.red.photo],
-                      title: currentBattle.red.name,
-                      author: currentBattle.red.author,
-                      authorAvatar: currentBattle.red.authorAvatar,
-                      authorBio: currentBattle.red.authorBio,
-                      category: currentBattle.category,
-                      sponsorName: currentBattle.red.sponsorName || currentBattle.sponsorName,
-                      sponsorTier: currentBattle.red.sponsorTier,
-                      prizePool: currentBattle.red.prizePool,
-                      socialLinks: currentBattle.red.socialLinks,
-                      isSelected: userVote === 'red',
-                      onVote: () => handleInternalVote(currentBattle.id, 'red'),
-                    });
-                  }}
-                  aria-label="Увеличить фото и открыть детали"
-                  className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
-                >
-                  <Maximize2 size={14} strokeWidth={2.4} />
-                </button>
-              </div>
-
-              {/* Нижняя плашка: Автор + Название работы */}
-              <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
-                <div className="flex items-center gap-2">
-                  {currentBattle.red.author && currentBattle.red.authorAvatar && (
-                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
-                      <Image
-                        src={currentBattle.red.authorAvatar}
-                        alt={currentBattle.red.author}
-                        fill
-                        className="object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    {currentBattle.red.author && (
-                      <span className="text-xs sm:text-sm font-black text-white drop-shadow-lg truncate block leading-tight">
-                        {currentBattle.red.author}
-                      </span>
-                    )}
-                    {currentBattle.red.name && (
-                      <span
-                        className={`${
-                          currentBattle.red.author
-                            ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5'
-                            : 'text-sm sm:text-base font-black text-white'
-                        } drop-shadow truncate block leading-tight`}
-                      >
-                        {currentBattle.red.name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Процент голосов (отображается после голосования) */}
-              {userVote && (
-                <div className="absolute bottom-2.5 right-3 z-10">
-                  <div
-                    className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
-                      userVote === 'red'
-                        ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/60'
-                        : 'bg-black/80 text-neutral-300 border-neutral-700/60'
-                    }`}
-                  >
-                    {redPercent}%
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ══════════════════════════════════════════════════════════ */}
-            {/* ЦЕНТРАЛЬНЫЙ БЕЙДЖ "VS"                                     */}
-            {/* ══════════════════════════════════════════════════════════ */}
-            <div
-              aria-hidden="true"
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] border-2 border-[#0b0b0d] flex items-center justify-center font-black text-xs text-white shadow-2xl pointer-events-none ring-2 ring-white/20 animate-pulse"
-            >
-              VS
-            </div>
-
-            {/* ══════════════════════════════════════════════════════════ */}
-            {/* 2. НИЖНЯЯ КАРТОЧКА (GREEN CORNER) — 50% Высоты           */}
-            {/* ══════════════════════════════════════════════════════════ */}
-            <div
-              onClick={() => handleInternalVote(currentBattle.id, 'green')}
-              className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden cursor-pointer transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
-                userVote === 'green'
-                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
-                  : userVote
-                  ? 'opacity-70 brightness-[0.7]'
-                  : 'hover:brightness-105 active:scale-[0.98]'
-              }`}
-            >
-              {/* Фото участника */}
-              <Image
-                src={currentBattle.green.photo}
-                alt={currentBattle.green.name}
-                fill
-                sizes="(max-width: 640px) 100vw, 480px"
-                className={`object-cover object-center transition-transform duration-500 ${
-                  userVote === 'green' ? '' : 'group-hover:scale-105'
-                }`}
-                priority
-                referrerPolicy="no-referrer"
-              />
-
-              {/* Затемнение */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
-
-              {/* Верхняя плашка карточки: Бейдж выбора + Кнопка зума */}
-              <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
-                <div>
-                  {userVote === 'green' && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in">
-                      <Check size={12} strokeWidth={3} />
-                      <span>Выбрано</span>
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLightboxData({
-                      isOpen: true,
-                      onClose: () => setLightboxData(null),
-                      photoUrl: currentBattle.green.photo,
-                      photos: currentBattle.green.photos || [currentBattle.green.photo],
-                      title: currentBattle.green.name,
-                      author: currentBattle.green.author,
-                      authorAvatar: currentBattle.green.authorAvatar,
-                      authorBio: currentBattle.green.authorBio,
-                      category: currentBattle.category,
-                      sponsorName: currentBattle.green.sponsorName || currentBattle.sponsorName,
-                      sponsorTier: currentBattle.green.sponsorTier,
-                      prizePool: currentBattle.green.prizePool,
-                      socialLinks: currentBattle.green.socialLinks,
-                      isSelected: userVote === 'green',
-                      onVote: () => handleInternalVote(currentBattle.id, 'green'),
-                    });
-                  }}
-                  aria-label="Увеличить фото и открыть детали"
-                  className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
-                >
-                  <Maximize2 size={14} strokeWidth={2.4} />
-                </button>
-              </div>
-
-              {/* Нижняя плашка: Автор + Название работы */}
-              <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
-                <div className="flex items-center gap-2">
-                  {currentBattle.green.author && currentBattle.green.authorAvatar && (
-                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
-                      <Image
-                        src={currentBattle.green.authorAvatar}
-                        alt={currentBattle.green.author}
-                        fill
-                        className="object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    {currentBattle.green.author && (
-                      <span className="text-xs sm:text-sm font-black text-white drop-shadow-lg truncate block leading-tight">
-                        {currentBattle.green.author}
-                      </span>
-                    )}
-                    {currentBattle.green.name && (
-                      <span
-                        className={`${
-                          currentBattle.green.author
-                            ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5'
-                            : 'text-sm sm:text-base font-black text-white'
-                        } drop-shadow truncate block leading-tight`}
-                      >
-                        {currentBattle.green.name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Процент голосов (отображается после голосования) */}
-              {userVote && (
-                <div className="absolute bottom-2.5 right-3 z-10">
-                  <div
-                    className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
-                      userVote === 'green'
-                        ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/60'
-                        : 'bg-black/80 text-neutral-300 border-neutral-700/60'
-                    }`}
-                  >
-                    {greenPercent}%
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </AnimatePresence>
+        </section>
       </div>
 
-      {/* ── КНОПКИ НАВИГАЦИИ (Только для экранов ноутбуков/десктопа) ── */}
-      <footer className="mt-1 pt-0.5 hidden lg:flex items-center justify-end text-neutral-400 text-xs shrink-0 z-20">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={goToPrev}
-            disabled={currentIndex === 0}
-            aria-label="Предыдущий батл"
-            className="w-7 h-7 rounded-full bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-neutral-300 transition-colors active:scale-95"
-          >
-            <ChevronUp size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={goToNext}
-            aria-label="Следующий батл"
-            className="w-7 h-7 rounded-full bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 flex items-center justify-center text-neutral-300 transition-colors active:scale-95"
-          >
-            <ChevronDown size={16} />
-          </button>
-        </div>
-      </footer>
+      {/* ── Встроенный лайтбокс (фото и детали) ── */}
+      {lightboxData && (
+        <EmbeddedLightbox
+          {...lightboxData}
+          onClose={() => setLightboxData(null)}
+        />
+      )}
 
-      {/* ── МОДАЛЬНОЕ ОКНО ОПИСАНИЯ КОНКУРСА ── */}
-      <EmbeddedDescriptionSheet
-        isOpen={isDescriptionOpen}
-        onClose={() => setIsDescriptionOpen(false)}
-        contest={
-          currentContest || {
-            title: currentBattle.title,
-            description: `Лайв 1v1 батл-дуэль между работами «${currentBattle.red.name}» и «${currentBattle.green.name}». Отдайте свой голос, чтобы определить победителя раунда!`,
-            category: currentBattle.category,
+      {/* ── Встроенное описание конкурса ── */}
+      {isDescriptionOpen && (
+        <EmbeddedDescriptionSheet
+          isOpen={isDescriptionOpen}
+          onClose={() => setIsDescriptionOpen(false)}
+          contest={
+            contestsMap[battles[activeIndex]?.contestId || ''] || {
+              title: battles[activeIndex]?.title || 'Батл',
+              description: '1v1 Лайв-Батл дуэль между двумя лучшими работами турнира.',
+              category: battles[activeIndex]?.category,
+            }
           }
-        }
-        stageInfo="1v1 Battle Duel"
-      />
-
-      {/* ── ВСТРОЕННЫЙ ФОТО-ЛАЙТБОКС (ЗУМ И ОРИГИНАЛ) ── */}
-      {lightboxData && <EmbeddedLightbox {...lightboxData} />}
+          stageInfo="1v1 Battle Duel"
+        />
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@
  * and endless recommendations for 1v1 Battles and 4-way Group Contests.
  */
 
-import { BattleItem } from '@/components/contest/TikTokBattleView';
+import type { BattleItem } from '@/types/battle';
 import type { Group } from '@/services/types';
 
 // Curated pool of dynamic battles to expand the infinite stream with full author and sponsor data
@@ -27,6 +27,7 @@ const SAMPLE_EXPANSION_BATTLES: BattleItem[] = [
       authorBio: 'Tokyo street photographer focusing on high-contrast silhouetted figures and rainy pavements. Shot on 35mm f/1.4 prime lens.',
       photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=900&q=80',
       percent: 54,
+      votes: 108,
       sponsorName: 'Leica Masters & Urban Street Guild',
       sponsorTier: 'Premier Diamond Partner',
       prizePool: '$5,000 Cash Grant + Exhibition in Berlin',
@@ -45,6 +46,7 @@ const SAMPLE_EXPANSION_BATTLES: BattleItem[] = [
       authorBio: 'Underground transit light explorer. Capturing beam reflections through dust and tile mosaics in metropolitan subways.',
       photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900&q=80',
       percent: 46,
+      votes: 92,
       sponsorName: 'Leica Masters & Urban Street Guild',
       sponsorTier: 'Premier Diamond Partner',
       prizePool: '$5,000 Cash Grant + Exhibition in Berlin',
@@ -73,6 +75,7 @@ const SAMPLE_EXPANSION_BATTLES: BattleItem[] = [
       authorBio: 'Alpinist and high-altitude visual creator. Documenting glacier melt and twilight ridge lines above 3,000 meters.',
       photo: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=900&q=80',
       percent: 62,
+      votes: 124,
       sponsorName: 'National Geographic Visual Fund',
       sponsorTier: 'Official Title Sponsor',
       prizePool: '$10,000 Expedition Grant',
@@ -91,6 +94,7 @@ const SAMPLE_EXPANSION_BATTLES: BattleItem[] = [
       authorBio: 'Fjord and Nordic forest photographer. Specializing in long exposure morning fog and emerald moss ecosystems.',
       photo: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=900&q=80',
       percent: 38,
+      votes: 76,
       sponsorName: 'National Geographic Visual Fund',
       sponsorTier: 'Official Title Sponsor',
       prizePool: '$10,000 Expedition Grant',
@@ -119,6 +123,7 @@ const SAMPLE_EXPANSION_BATTLES: BattleItem[] = [
       authorBio: 'Procedural hard-surface artist working on neon geometry, mathematical fractals, and raytraced reflections.',
       photo: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=900&q=80',
       percent: 48,
+      votes: 96,
       sponsorName: 'Houdini & Octane Render Labs',
       sponsorTier: 'Innovator Sponsor',
       prizePool: '$4,000 Creative Software Bundle',
@@ -137,6 +142,7 @@ const SAMPLE_EXPANSION_BATTLES: BattleItem[] = [
       authorBio: 'Fluid dynamics specialist and digital sculptor creating hyper-gloss chrome and iridescent viscosities.',
       photo: 'https://images.unsplash.com/photo-1515260268569-9271009adfdb?w=900&q=80',
       percent: 52,
+      votes: 104,
       sponsorName: 'Houdini & Octane Render Labs',
       sponsorTier: 'Innovator Sponsor',
       prizePool: '$4,000 Creative Software Bundle',
@@ -165,6 +171,7 @@ const SAMPLE_EXPANSION_BATTLES: BattleItem[] = [
       authorBio: 'High-speed sports photographer capturing 1/8000s shutter action at Grand Slam and clay court tourneys.',
       photo: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=900&q=80',
       percent: 57,
+      votes: 114,
       sponsorName: 'Nike Action Sports & Sony Alpha',
       sponsorTier: 'Official Grand Slam Partner',
       prizePool: '$7,500 Gear Grant + VIP Media Pass',
@@ -183,6 +190,7 @@ const SAMPLE_EXPANSION_BATTLES: BattleItem[] = [
       authorBio: 'Editorial sports documentarian focusing on athlete determination, dust clouds, and dynamic courtside kinetics.',
       photo: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=900&q=80',
       percent: 43,
+      votes: 86,
       sponsorName: 'Nike Action Sports & Sony Alpha',
       sponsorTier: 'Official Grand Slam Partner',
       prizePool: '$7,500 Gear Grant + VIP Media Pass',
@@ -254,13 +262,16 @@ export function preloadGroupImages(groups: Group[], currentIndex: number) {
 }
 
 /**
- * Generates an extended batch of recommended battles to simulate infinite Reels/TikTok feed
+ * Generates an extended batch of unique recommended battles without artificial duplication
  */
-export function getMoreRecommendedBattles(existingCount: number): BattleItem[] {
-  const batchNumber = Math.floor(existingCount / SAMPLE_EXPANSION_BATTLES.length) + 1;
-  return SAMPLE_EXPANSION_BATTLES.map((b, idx) => ({
-    ...b,
-    id: `${b.id}-v${batchNumber}-${idx}`,
-    title: `${b.title} #${batchNumber}`,
-  }));
+export function getMoreRecommendedBattles(existingCount: number, existingIds?: Set<string>): BattleItem[] {
+  if (existingIds) {
+    return SAMPLE_EXPANSION_BATTLES.filter((b) => !existingIds.has(b.id));
+  }
+  return SAMPLE_EXPANSION_BATTLES;
 }
+
+export function getUniqueExpansionBattles(existingIds: Set<string>): BattleItem[] {
+  return SAMPLE_EXPANSION_BATTLES.filter((b) => !existingIds.has(b.id));
+}
+

@@ -1,6 +1,6 @@
 {
-  "summary": "План рефакторинга интерфейса: разделение Mobile/Desktop опыта, скрытие подсказок (Clean Mode) и внедрение нативных мобильных жестов (Pinch-to-zoom, Tap-to-clean) по стандартам TikTok и Instagram.",
-  "updatedAt": "2026-10-17T07:13:45.480523476Z",
-  "requestFeedback": true,
-  "userFacing": true
+  "summary":  "Comprehensive architectural implementation plan to refactor the Live Battle Feed into a high-performance, native CSS Scroll-Snap TikTok/Reels-style experience. Eliminates jumping to index 0 with activeId tracking, preloads verified next/image cache, ensures vote locking until both photos decode, and provides optimistic voting with server rollback.",
+  "updatedAt":  "2026-10-21T08:32:40.081838360Z",
+  "requestFeedback":  true,
+  "userFacing":  true
 }

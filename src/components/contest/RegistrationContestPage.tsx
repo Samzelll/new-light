@@ -7,6 +7,8 @@ import Image from 'next/image';
 import { ArrowLeft, Share2, X, Check, AlertCircle } from 'lucide-react';
 import type { Contest } from '@/services/contestService';
 import type { Participant } from '@/services/participantService';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
+import { LazyImage } from '@/components/common/LazyImage';
 
 // Default rule sections when contest.rulesSections is not provided
 const DEFAULT_RULES_SECTIONS = [
@@ -366,12 +368,15 @@ export function ContestPage({ contest, participants = [], userHasApplied = false
     registerDisabledReason = 'Deadline has passed';
   }
 
-  const coverUrl = contest.cover_url || 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1080&q=80';
+  const coverUrl = contest.cover_url
+    ? resolveImageUrl(contest.cover_url, 'contests')
+    : 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1080&q=80';
 
   // Extract thumbnails for participants when entries > 0
   const participantPhotos = participants
     .map((p) => {
-      const photo = p.submission_data?.photos?.[0];
+      const rawPhoto = p.submission_data?.photos?.[0];
+      const photo = rawPhoto ? resolveImageUrl(rawPhoto, 'submissions') : null;
       return {
         id: p.id,
         name: p.submission_data?.name || 'Entry',
@@ -404,6 +409,7 @@ export function ContestPage({ contest, participants = [], userHasApplied = false
             fill
             className="object-cover"
             priority
+            unoptimized={shouldBeUnoptimized(coverUrl)}
             referrerPolicy="no-referrer"
           />
           {/* Subtle gradient overlay on cover */}
@@ -509,12 +515,11 @@ export function ContestPage({ contest, participants = [], userHasApplied = false
                       className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-neutral-800 bg-neutral-900 group"
                       title={entry.name}
                     >
-                      <Image
+                      <LazyImage
                         src={entry.photo!}
                         alt={entry.name}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform"
-                        referrerPolicy="no-referrer"
                       />
                     </div>
                   ))

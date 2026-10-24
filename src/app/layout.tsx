@@ -33,10 +33,19 @@ export const metadata: Metadata = {
   },
 };
 
+import { PerfInit } from '@/perf/PerfInit';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
   return (
     <html lang="en" className={`${manrope.variable} ${unbounded.variable}`} suppressHydrationWarning>
+      <head>
+        {supabaseUrl && <link rel="preconnect" href={supabaseUrl} />}
+        <link rel="preconnect" href="https://images.unsplash.com" />
+      </head>
       <body className="bg-bg text-ink font-sans min-h-screen">
+        <PerfInit />
         <ReduxProvider>
           <AuthProvider>
             <PwaRegister />

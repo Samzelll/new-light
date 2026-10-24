@@ -75,21 +75,13 @@ export function ResultsView({ results }: ResultsViewProps) {
                 </div>
 
                 <div className="text-right">
-                  <span className="text-lg font-extrabold text-white">
+                  <span className={`text-lg font-black ${result.passed ? 'text-accent-green' : 'text-white'}`}>
                     {formatPercentage(result.vote_percentage)}
                   </span>
                   <span className="block text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
                     Rank #{result.rank_in_group}
                   </span>
                 </div>
-              </div>
-
-              {/* Progress bar */}
-              <div className="progress-bar w-full">
-                <div 
-                  className={`progress-bar-fill ${result.passed ? 'bg-accent-green' : 'bg-brand-500'}`}
-                  style={{ width: `${result.vote_percentage}%` }}
-                />
               </div>
             </div>
           );

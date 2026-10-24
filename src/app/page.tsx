@@ -29,16 +29,22 @@ import { timeService } from '@/services/mock';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { SideDrawer } from '@/components/layout/SideDrawer';
 import { TikTokFeedView } from '@/components/feed/TikTokFeedView';
-import { TikTokBattleView, BattleItem } from '@/components/contest/TikTokBattleView';
+import { LiveBattleFeedComplete } from '@/components/contest/LiveBattleFeedComplete';
+import type { BattleItem } from '@/types/battle';
 import { getMoreRecommendedBattles } from '@/services/recommendationService';
 import { getContests, getMySubscriptions, Contest } from '@/services/contestService';
+import { resolveImageUrl } from '@/services/storageService';
 import {
   getAllBattleItems,
   SEED_SAMPLE_BATTLES,
   castVote as castBattleVote,
+  cancelBattleVote,
+  getPersistedBattleVotes,
 } from '@/services/battleDataService';
 import { feedService, voteService } from '@/services/mock';
+import { cancelVote as cancelContestVote } from '@/services/voteService';
 import type { Group } from '@/services/types';
+import { PinGrid, type PinItem } from '@/features/pin-grid';
 import { LazyImage } from '@/components/common/LazyImage';
 import {
   ContestGridSkeleton,
@@ -92,6 +98,8 @@ export default function HomePage() {
   const [extraBattles, setExtraBattles] = useState<BattleItem[]>([]);
   const [battleVotes, setBattleVotes] = useState<Record<string, 'red' | 'green'>>({});
   const [battleOverrides, setBattleOverrides] = useState<Record<string, { redPercent: number; greenPercent: number }>>({});
+  const [activeBattleId, setActiveBattleId] = useState<string | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
 
   // Filter & Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -155,8 +163,10 @@ export default function HomePage() {
   }, [isAuthenticated]);
 
   // 2. Load Battle items from database & seeds
-  const loadBattlesData = useCallback(async () => {
-    setLoadingBattles(true);
+  const loadBattlesData = useCallback(async (isInitial = false) => {
+    if (isInitial && dbBattles.length === 0) {
+      setLoadingBattles(true);
+    }
     try {
       const items = await getAllBattleItems();
       if (items && items.length > 0) {
@@ -165,23 +175,26 @@ export default function HomePage() {
     } catch (err) {
       console.error('Error loading battles:', err);
     } finally {
-      setLoadingBattles(false);
+      if (isInitial) {
+        setLoadingBattles(false);
+      }
     }
-  }, []);
+  }, [dbBattles.length]);
 
   useEffect(() => {
     loadContestsData();
   }, [loadContestsData]);
 
   useEffect(() => {
-    loadBattlesData();
+    loadBattlesData(true);
   }, [loadBattlesData]);
 
-  // Re-sync data only when local mock DB is updated (dev-only event)
+  // Re-sync data when local mock DB is updated (catalog changes only)
+  // Per Performance Playbook v2 §7.10: Never refetch battle feed on mockdb:updated.
+  // Votes update optimistically in-place with zero re-mounting.
   useEffect(() => {
     const handleDbUpdate = () => {
       loadContestsData();
-      loadBattlesData();
     };
 
     if (typeof window !== 'undefined') {
@@ -190,7 +203,7 @@ export default function HomePage() {
         window.removeEventListener('mockdb:updated', handleDbUpdate);
       };
     }
-  }, [loadContestsData, loadBattlesData]);
+  }, [loadContestsData]);
 
   // 2. Load Feed Groups (Groups of 4)
   useEffect(() => {
@@ -350,36 +363,46 @@ export default function HomePage() {
     setVisibleContestsCount((prev) => Math.min(prev + 8, displayedContests.length));
   }, [displayedContests.length]);
 
-  // Distribute into 2 Pinterest columns for masonry layout
-  const { column1, column2 } = useMemo(() => {
-    const col1: Array<{ contest: Contest; heightClass: string; isRegistration: boolean }> = [];
-    const col2: Array<{ contest: Contest; heightClass: string; isRegistration: boolean }> = [];
+  // Transform paginated contests into Pinterest-style PinItem batch entries
+  const contestPins: PinItem[] = useMemo(() => {
+    return paginatedContests.map((contest, index) => {
+      const isSubscribed = subscriptions.includes(contest.id);
+      const isVoting = (contest.status as string) === 'voting' || contest.status === 'active';
+      const isNew =
+        contest.created_at &&
+        Date.now() - new Date(contest.created_at).getTime() < 1000 * 60 * 60 * 48;
 
-    paginatedContests.forEach((contest, index) => {
-      const isRegistration = contest.status === 'registration';
-      const isCol1 = index % 2 === 0;
+      // Realistic dynamic aspect ratio variation for masonry harmony
+      const heightVariants = [760, 620, 800, 680, 720, 580];
+      const estimatedHeight =
+        (contest as any).cover_height || heightVariants[index % heightVariants.length];
+      const estimatedWidth = (contest as any).cover_width || 600;
 
-      if (isCol1) {
-        const heightClass =
-          index === 0
-            ? 'h-[290px] sm:h-[330px]'
-            : index % 4 === 0
-            ? 'h-[260px] sm:h-[300px]'
-            : 'h-[210px] sm:h-[240px]';
-        col1.push({ contest, heightClass, isRegistration });
-      } else {
-        const heightClass =
-          index === 1
-            ? 'h-[190px] sm:h-[220px]'
-            : index === 3
-            ? 'h-[160px] sm:h-[190px]'
-            : 'h-[240px] sm:h-[270px]';
-        col2.push({ contest, heightClass, isRegistration });
-      }
+      return {
+        id: contest.id,
+        photo: contest.cover_url || '',
+        title: contest.title,
+        subtitle: contest.categories?.name || 'Photography',
+        width: estimatedWidth,
+        height: estimatedHeight,
+        dominantColor: (contest as any).dominantColor || '#18181d',
+        blurDataURL: (contest as any).cover_blur,
+        isLive: isVoting,
+        badge: isVoting
+          ? undefined
+          : contest.type === 'battle'
+          ? 'Battle'
+          : contest.type === 'race'
+          ? 'Race'
+          : contest.type === 'eternal'
+          ? 'Hall of Fame'
+          : 'Contest',
+        tag: isSubscribed ? '★ Following' : isNew ? 'NEW' : undefined,
+        href: `/contest/${contest.id}`,
+        raw: contest,
+      };
     });
-
-    return { column1: col1, column2: col2 };
-  }, [paginatedContests]);
+  }, [paginatedContests, subscriptions]);
 
   // Contests map for instant lookup across tabs
   const contestsMap = useMemo(() => {
@@ -390,8 +413,23 @@ export default function HomePage() {
     return map;
   }, [contests]);
 
-  // ── Tab 2: Group Voting handler ──
-  const handleVoteInGroup = async (groupId: string, participantId: string) => {
+  // ── Tab 2: Group Voting handler (with unvote / toggle support) ──
+  const handleVoteInGroup = async (groupId: string, participantId: string | null) => {
+    setActiveGroupId(groupId);
+    if (!participantId) {
+      setGroupVotes((prev) => {
+        const next = { ...prev };
+        delete next[groupId];
+        return next;
+      });
+      try {
+        await cancelContestVote({ contestId: groupId });
+      } catch (e) {
+        console.warn('Group vote cancel recorded locally:', e);
+      }
+      return;
+    }
+
     setGroupVotes((prev) => ({ ...prev, [groupId]: participantId }));
     try {
       await voteService.castVote(groupId, participantId);
@@ -418,7 +456,23 @@ export default function HomePage() {
     });
   }, [effectiveBattles, extraBattles, battleOverrides]);
 
-  const handleBattleVote = (battleId: string, corner: 'red' | 'green') => {
+  const handleBattleVote = (battleId: string, corner: 'red' | 'green' | null) => {
+    setActiveBattleId(battleId);
+    if (!corner) {
+      setBattleVotes((prev) => {
+        const next = { ...prev };
+        delete next[battleId];
+        return next;
+      });
+      const targetBattle = allBattles.find((b) => b.id === battleId);
+      if (targetBattle && targetBattle.contestId) {
+        cancelBattleVote(targetBattle.contestId).catch((e) =>
+          console.warn('Battle vote cancel notice:', e)
+        );
+      }
+      return;
+    }
+
     setBattleVotes((prev) => ({
       ...prev,
       [battleId]: corner,
@@ -428,36 +482,19 @@ export default function HomePage() {
     if (targetBattle && targetBattle.contestId) {
       const chosenParticipantId = corner === 'red' ? targetBattle.red.id : targetBattle.green.id;
       castBattleVote(targetBattle.contestId, chosenParticipantId).catch((e) =>
-        console.warn('Battle vote persist error:', e)
+        console.warn('Battle vote persist notice:', e)
       );
     }
-
-    setBattleOverrides((prev) => {
-      const base = allBattles.find((b) => b.id === battleId);
-      if (!base) return prev;
-      const curRed = prev[battleId]?.redPercent ?? base.red.percent;
-      let newRed = curRed;
-      if (corner === 'red') {
-        newRed = Math.min(99, curRed + 2);
-      } else {
-        newRed = Math.max(1, curRed - 2);
-      }
-      return {
-        ...prev,
-        [battleId]: {
-          redPercent: newRed,
-          greenPercent: 100 - newRed,
-        },
-      };
-    });
   };
 
   const handleLoadMoreBattles = useCallback(() => {
     setExtraBattles((prev) => {
-      const newBatch = getMoreRecommendedBattles(effectiveBattles.length + prev.length);
+      const existingIds = new Set([...effectiveBattles.map((b) => b.id), ...prev.map((b) => b.id)]);
+      const newBatch = getMoreRecommendedBattles(effectiveBattles.length + prev.length, existingIds);
+      if (newBatch.length === 0) return prev;
       return [...prev, ...newBatch];
     });
-  }, [effectiveBattles.length]);
+  }, [effectiveBattles]);
 
   const handleLoadMoreFeed = useCallback(() => {
     setFeedGroups((prev) => {
@@ -653,8 +690,9 @@ export default function HomePage() {
     setTimeout(() => setCycleToast(null), 3500);
   };
 
-  const avatarUrl =
+  const rawAvatar =
     profile?.avatar_url || (profile as any)?.avatarUrl || null;
+  const avatarUrl = resolveImageUrl(rawAvatar, 'avatars');
   const username =
     profile?.username || (profile as any)?.username || 'user';
 
@@ -762,158 +800,14 @@ export default function HomePage() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                {/* Column 1 */}
-                <div className="flex flex-col gap-2 sm:gap-2.5">
-                  {column1.map(({ contest, heightClass, isRegistration }) => {
-                    const isSubscribed = subscriptions.includes(contest.id);
-                    const isVoting = (contest.status as string) === 'voting' || contest.status === 'active';
-                    return (
-                      <Link
-                        key={contest.id}
-                        href={`/contest/${contest.id}`}
-                        className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-b from-[#18181d] to-[#111114] border border-white/[0.08] hover:border-[#ff6a2b]/60 transition-all duration-300 hover:shadow-[0_12px_36px_-6px_rgba(255,106,43,0.3)] active:scale-[0.98] ${heightClass}`}
-                      >
-                        {/* Smooth Lazy Cover Image */}
-                        <LazyImage
-                          src={contest.cover_url}
-                          alt={contest.title}
-                          fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                          fallbackText={contest.title}
-                        />
-
-                        {/* Top Gradient & Pill Badge */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0d] via-black/30 to-black/60 pointer-events-none" />
-
-                        {/* Top Bar with Type, New Badge & Star */}
-                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10">
-                          <div className="flex items-center gap-1.5">
-                            {isVoting ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-950/80 backdrop-blur-xs text-emerald-400 border border-emerald-500/30 shadow-sm">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                Live
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/75 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30 shadow-sm">
-                                {contest.type === 'battle'
-                                  ? 'Battle'
-                                  : contest.type === 'race'
-                                  ? 'Race'
-                                  : contest.type === 'eternal'
-                                  ? 'Hall of Fame'
-                                  : 'Contest'}
-                              </span>
-                            )}
-                            {contest.created_at && (Date.now() - new Date(contest.created_at).getTime() < 1000 * 60 * 60 * 48) && (
-                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-xs">
-                                NEW
-                              </span>
-                            )}
-                          </div>
-                          {isSubscribed && (
-                            <span className="w-5 h-5 rounded-full bg-black/80 backdrop-blur-xs border border-amber-400/35 text-amber-400 flex items-center justify-center text-xs shadow-md">
-                              ★
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Bottom Info */}
-                        <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10">
-                          <h2 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white line-clamp-2 leading-tight drop-shadow-md">
-                            {contest.title}
-                          </h2>
-                          <div className="flex items-center justify-between text-[11px] text-neutral-300 mt-1.5">
-                            <span className="truncate text-neutral-400 font-medium">
-                              {contest.categories?.name || 'Photography'}
-                            </span>
-                            <span className="shrink-0 font-bold px-2 py-0.5 rounded-md text-[10px] uppercase tracking-wider bg-white/[0.08] backdrop-blur-xs border border-white/[0.1] text-[#ff6a2b]">
-                              {isVoting ? 'Voting' : contest.status === 'registration' ? 'Apply' : 'Final'}
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-
-                {/* Column 2 */}
-                <div className="flex flex-col gap-2 sm:gap-2.5">
-                  {column2.map(({ contest, heightClass, isRegistration }) => {
-                    const isSubscribed = subscriptions.includes(contest.id);
-                    const isVoting = (contest.status as string) === 'voting' || contest.status === 'active';
-                    return (
-                      <Link
-                        key={contest.id}
-                        href={`/contest/${contest.id}`}
-                        className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-b from-[#18181d] to-[#111114] border border-white/[0.08] hover:border-[#ff6a2b]/60 transition-all duration-300 hover:shadow-[0_12px_36px_-6px_rgba(255,106,43,0.3)] active:scale-[0.98] ${heightClass}`}
-                      >
-                        {/* Smooth Lazy Cover Image */}
-                        <LazyImage
-                          src={contest.cover_url}
-                          alt={contest.title}
-                          fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                          fallbackText={contest.title}
-                        />
-
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0d] via-black/30 to-black/60 pointer-events-none" />
-
-                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10">
-                          <div className="flex items-center gap-1.5">
-                            {isVoting ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-950/80 backdrop-blur-xs text-emerald-400 border border-emerald-500/30 shadow-sm">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                Live
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/75 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30 shadow-sm">
-                                {contest.type === 'battle'
-                                  ? 'Battle'
-                                  : contest.type === 'race'
-                                  ? 'Race'
-                                  : contest.type === 'eternal'
-                                  ? 'Hall of Fame'
-                                  : 'Contest'}
-                              </span>
-                            )}
-                            {contest.created_at && (Date.now() - new Date(contest.created_at).getTime() < 1000 * 60 * 60 * 48) && (
-                              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-xs">
-                                NEW
-                              </span>
-                            )}
-                          </div>
-                          {isSubscribed && (
-                            <span className="w-5 h-5 rounded-full bg-black/80 backdrop-blur-xs border border-amber-400/35 text-amber-400 flex items-center justify-center text-xs shadow-md">
-                              ★
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10">
-                          <h2 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white line-clamp-2 leading-tight drop-shadow-md">
-                            {contest.title}
-                          </h2>
-                          <div className="flex items-center justify-between text-[11px] text-neutral-300 mt-1.5">
-                            <span className="truncate text-neutral-400 font-medium">
-                              {contest.categories?.name || 'Photography'}
-                            </span>
-                            <span className="shrink-0 font-bold px-2 py-0.5 rounded-md text-[10px] uppercase tracking-wider bg-white/[0.08] backdrop-blur-xs border border-white/[0.1] text-[#ff6a2b]">
-                              {isVoting ? 'Voting' : contest.status === 'registration' ? 'Apply' : 'Final'}
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-                {/* Progressive Infinite Scroll Trigger */}
-                <LazyScrollTrigger
-                  onLoadMore={handleLoadMoreContests}
-                  hasMore={hasMoreContests}
-                  isLoading={false}
-                />
-              </div>
+              <PinGrid
+                pins={contestPins}
+                columns={2}
+                batchSize={8}
+                hasMore={hasMoreContests}
+                onLoadMore={handleLoadMoreContests}
+                onFail="placeholder"
+              />
             )}
           </motion.main>
         )}
@@ -939,6 +833,9 @@ export default function HomePage() {
                 onVote={handleVoteInGroup}
                 onResetFilters={handleResetFilters}
                 onLoadMore={handleLoadMoreFeed}
+                activeGroupId={activeGroupId}
+                onActiveGroupChange={setActiveGroupId}
+                modalOpen={isFilterOpen}
               />
             )}
           </motion.main>
@@ -958,13 +855,16 @@ export default function HomePage() {
             {loadingBattles ? (
               <BattleArenaSkeleton />
             ) : (
-              <TikTokBattleView
+              <LiveBattleFeedComplete
                 battles={displayedBattles}
                 contestsMap={contestsMap}
                 battleVotes={battleVotes}
                 onVote={handleBattleVote}
                 onResetFilters={handleResetFilters}
                 onLoadMore={handleLoadMoreBattles}
+                modalOpen={isFilterOpen}
+                activeBattleId={activeBattleId}
+                onActiveBattleChange={setActiveBattleId}
               />
             )}
           </motion.main>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { X, User } from 'lucide-react';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 
 export interface EditProfileSheetProps {
   isOpen: boolean;
@@ -135,19 +136,24 @@ export function EditProfileSheet({
           {/* ── Avatar Block ── */}
           <div className="flex flex-col items-center mb-6">
             <div className="relative w-20 h-20 rounded-full ring-2 ring-[#ff6a2b] ring-offset-2 ring-offset-[#0b0b0d] overflow-hidden bg-[#241712] flex items-center justify-center shadow-lg">
-              {initialData.avatarUrl ? (
-                <Image
-                  src={initialData.avatarUrl}
-                  alt={displayName || 'Avatar'}
-                  fill
-                  className="object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-[#ff824c] to-[#ff6a2b] text-white">
-                  <User size={44} strokeWidth={2} className="text-[#0b0b0d] fill-current translate-y-1" />
-                </div>
-              )}
+              {(() => {
+                const resolved = initialData.avatarUrl ? resolveImageUrl(initialData.avatarUrl, 'avatars') : null;
+                const isValid = resolved && (resolved.startsWith('http://') || resolved.startsWith('https://') || resolved.startsWith('data:') || resolved.startsWith('/'));
+                return isValid ? (
+                  <Image
+                    src={resolved}
+                    alt={displayName || 'Avatar'}
+                    fill
+                    unoptimized={shouldBeUnoptimized(resolved)}
+                    className="object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-[#ff824c] to-[#ff6a2b] text-white">
+                    <User size={44} strokeWidth={2} className="text-[#0b0b0d] fill-current translate-y-1" />
+                  </div>
+                );
+              })()}
 
               {/* Uploading indicator */}
               {isUploading && (

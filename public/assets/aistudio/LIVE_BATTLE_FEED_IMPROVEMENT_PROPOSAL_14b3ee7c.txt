@@ -1,0 +1,533 @@
+============================================================
+ПРЕДЛОЖЕНИЕ ПО УЛУЧШЕНИЮ
+Лента «Лайв Батл» (Live Battle Feed)
+============================================================
+
+Основа: LIVE_BATTLE_FEED_ARCHITECTURE.md
+(LiveBattleFeedComplete.tsx, battleDataService.ts, recommendationService.ts)
+
+Цель:
+  - лента как в TikTok / Instagram Reels: плавная полноценная прокрутка;
+  - голосование без ожидания и без «выбивания» на первый батл.
+
+Как читать: у каждого пункта две части —
+  «ЧТО УЛУЧШИТЬ» (коротко) и «КАК ДОЛЖНО БЫТЬ» (пример кода).
+
+Примечание: файл page.tsx (allBattles, battleVotes, battleOverrides)
+в документе не приложен, поэтому причины багов в разделе 2 — это
+наиболее вероятные сценарии по приложенному коду, их стоит
+подтвердить на page.tsx.
+
+
+============================================================
+1. ВЕРДИКТ ПО ТЕКУЩЕЙ СТРУКТУРЕ
+============================================================
+
+Структура НЕ соответствует TikTok/Reels. Сейчас это не лента,
+а «слайдер из одного экрана»:
+
+ 1) В DOM только один батл — battles[currentIndex]. Соседних экранов
+    нет, поэтому палец не двигает ленту: свайп — это «прыжок»
+    после порога 40 px, а не прокрутка.
+
+ 2) AnimatePresence mode="wait": старый батл уходит -> пустой экран ->
+    только потом входит новый и ТОЛЬКО ТОГДА начинает грузить фото.
+
+ 3) Три движка жестов на одном контейнере (touch + wheel + Framer drag)
+    и ручной мьютекс на 280 мс. dragConstraints = 0/0, поэтому карточка
+    почти не следует за пальцем. Колесо с debounce 60 мс срабатывает
+    только ПОСЛЕ остановки колеса/трекпада — ощущается как лаг.
+
+ 4) Позиция = число (currentIndex), а не id батла. Любое обновление
+    массива сдвигает или сбрасывает ленту.
+
+ 5) «Бесконечность» = (index + 1) % battles.length (зацикливание)
+    + копии одних и тех же батлов с изменёнными id
+    (getMoreRecommendedBattles). Это не лента, а карусель.
+
+
+============================================================
+2. ПОЧЕМУ ПРИХОДИТСЯ ЖДАТЬ И ПОЧЕМУ «ВЫБИВАЕТ» НА ПЕРВЫЙ БАТЛ
+============================================================
+
+А) Голосовать можно до загрузки фото. Нет состояния загрузки
+   и skeleton, тап по карточке работает сразу, даже если фото
+   ещё не пришло.
+
+Б) Предзагрузка почти бесполезна. new window.Image().src = url
+   качает ИСХОДНЫЙ файл, а next/image запрашивает другой адрес
+   (/_next/image?url=...&w=...&q=...). Кэш не совпадает, и каждый
+   батл грузится заново. (У unoptimized-картинок URL совпадает.)
+   Плюс картинки не декодируются заранее, а объекты Image
+   нигде не сохраняются.
+
+В) «Выбивание» на первый батл. Вероятные причины:
+   - эффект 4.1: если currentIndex >= battles.length, то
+     setCurrentIndex(0). onVote обновляет состояние родителя
+     (battleVotes / battleOverrides / allBattles), массив
+     пересобирается или укорачивается, и лента прыгает в начало;
+   - позиция хранится индексом: если массив пересортирован или
+     подгрузилась пачка с новыми id (key={currentBattle.id}),
+     индекс указывает уже на другой батл, происходит remount;
+   - goToNext() на последнем элементе даёт (prev + 1) % length = 0,
+     если следующая пачка ещё не успела подгрузиться.
+
+Г) Нет защиты от повторного голоса. handleInternalVote не проверяет
+   userVote: каждый тап сдвигает проценты ещё на 2%.
+
+Д) Проценты «±2%» — выдуманные. Когда отвечает сервер, числа
+   скачут. Если запрос упал, отката нет.
+
+Е) Click внутри draggable-контейнера. При драге мышью click может
+   сработать и поставить случайный голос.
+
+
+============================================================
+3. ЧТО УЛУЧШИТЬ И КАК ДОЛЖНО БЫТЬ
+============================================================
+
+
+------------------------------------------------------------
+3.1  ЛЕНТА НА НАТИВНОМ SCROLL-SNAP (как TikTok / Reels)
+------------------------------------------------------------
+
+ЧТО УЛУЧШИТЬ:
+  Убрать самописные touch / wheel / drag и мьютекс. Один экран =
+  одна секция в вертикальном контейнере со scroll-snap: браузер сам
+  даёт физику пальца, инерцию, «залипание» на экране, колесо и
+  трекпад. В DOM живёт окно из слайдов (-1 ... +2), остальные —
+  пустые секции той же высоты. Активный слайд определяет
+  IntersectionObserver. Framer Motion оставить только для
+  микро-анимаций (рамка выбора, проценты).
+
+КАК ДОЛЖНО БЫТЬ:
+
+  "use client";
+  import { useEffect, useRef, useState } from 'react';
+
+  const BEHIND = 1;   // сколько слайдов держим позади
+  const AHEAD  = 2;   // и впереди (они же предзагружаются)
+
+  export function LiveBattleFeed({ battles, onLoadMore, modalOpen }: Props) {
+    const scrollerRef = useRef<HTMLDivElement>(null);
+    const [activeId, setActiveId] = useState<string | null>(battles[0]?.id ?? null);
+    const activeIndex = Math.max(0, battles.findIndex((b) => b.id === activeId));
+
+    // Какой слайд на экране — определяет браузер (занимает >60% высоты)
+    useEffect(() => {
+      const root = scrollerRef.current;
+      if (!root) return;
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (e.isIntersecting) {
+              setActiveId((e.target as HTMLElement).dataset.battleId ?? null);
+            }
+          }
+        },
+        { root, threshold: 0.6 }
+      );
+      root.querySelectorAll('[data-battle-id]').forEach((el) => io.observe(el));
+      return () => io.disconnect();
+    }, [battles]);
+
+    // Клавиатура: листаем ровно на высоту экрана
+    useEffect(() => {
+      const onKey = (e: KeyboardEvent) => {
+        const el = scrollerRef.current;
+        if (!el || modalOpen) return;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          el.scrollBy({ top: el.clientHeight, behavior: 'smooth' });
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          el.scrollBy({ top: -el.clientHeight, behavior: 'smooth' });
+        }
+      };
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+    }, [modalOpen]);
+
+    return (
+      // Родитель обязан задавать высоту, например:
+      // h-[calc(100dvh - шапка - нижнее меню)]
+      <div
+        ref={scrollerRef}
+        className="h-full overflow-y-scroll snap-y snap-mandatory overscroll-y-contain
+                   [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {battles.map((battle, i) => {
+          const inWindow = i >= activeIndex - BEHIND && i <= activeIndex + AHEAD;
+          return (
+            <section
+              key={battle.id}                       // стабильный id, не индекс
+              data-battle-id={battle.id}
+              className="h-full snap-start snap-always"  // 1 батл = ровно 1 экран
+            >
+              {inWindow && (
+                <BattleSlide battle={battle} isActive={battle.id === activeId} />
+              )}
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Что исчезает: goToNext/goToPrev, isTransitioningRef, handleTouch*,
+  // wheel-дебаунс, Framer drag, AnimatePresence mode="wait", % length.
+
+
+------------------------------------------------------------
+3.2  ПОЗИЦИЯ ПО ID, А НЕ ПО ИНДЕКСУ (лечит «выбивание» на первый)
+------------------------------------------------------------
+
+ЧТО УЛУЧШИТЬ:
+  Хранить позицию как id батла (activeId), а голоса — отдельно от
+  массива battles. Голосование не должно пересоздавать,
+  переупорядочивать или сбрасывать список. К началу лента
+  возвращается только при реальной смене фильтра.
+
+КАК ДОЛЖНО БЫТЬ:
+
+  // ПЛОХО (сейчас): эффект «чинит» индекс сбросом в 0
+  useEffect(() => {
+    if (currentIndex >= battles.length && battles.length > 0) setCurrentIndex(0);
+  }, [battles.length, currentIndex]);
+
+  // ХОРОШО:
+  // 1) позиция — activeId (см. 3.1); ни одного setCurrentIndex(0)
+  //    при обновлении данных
+  // 2) голоса лежат в отдельном состоянии (см. 3.4), массив battles
+  //    при голосовании НЕ меняется
+  // 3) в родителе массив мемоизирован и меняется только при смене
+  //    фильтра или подгрузке новых батлов (в конец)
+  const battles = useMemo(() => applyFilters(allBattles, filters), [allBattles, filters]);
+
+  // 4) возврат к началу — только осознанно, при смене фильтров:
+  //    пересоздаём ленту через key
+  <LiveBattleFeed key={filtersKey} battles={battles} />
+
+
+------------------------------------------------------------
+3.3  ФОТО: ПРЕДЗАГРУЗКА + БЛОКИРОВКА ГОЛОСА, ПОКА НЕ ГОТОВЫ ОБА
+------------------------------------------------------------
+
+ЧТО УЛУЧШИТЬ:
+  Голосовать можно только когда ОБА фото батла загружены и
+  декодированы. Пока грузятся — skeleton и заблокированные карточки.
+  Предзагрузка должна качать те же URL, что и next/image
+  (getImageProps, Next.js 14.1+), хранить результат в кэше и
+  работать на 3 батла вперёд. Если фото не загрузилось за таймаут —
+  кнопка «Повторить», а не вечная заглушка. priority оставить только
+  первому слайду.
+
+КАК ДОЛЖНО БЫТЬ:
+
+  // battleImages.ts
+  import { getImageProps } from 'next/image';
+  import { shouldBeUnoptimized } from '@/services/storageService';
+
+  // тот же sizes, что в <Image sizes={FEED_SIZES}> на карточках
+  export const FEED_SIZES = '(max-width: 640px) 100vw, 480px';
+
+  const cache  = new Map<string, Promise<void>>();
+  const pinned = new Map<string, HTMLImageElement>();   // держим Image, чтобы загрузку не выкинуло
+
+  export function preloadPhoto(src: string, sizes = FEED_SIZES): Promise<void> {
+    const key = `${src}|${sizes}`;
+    const cached = cache.get(key);
+    if (cached) return cached;
+
+    // Берём РОВНО тот srcset, который запросит <Image>
+    const { props } = getImageProps({
+      src, alt: '', fill: true, sizes, unoptimized: shouldBeUnoptimized(src),
+    });
+
+    const img = new window.Image();
+    img.referrerPolicy = 'no-referrer';
+    if (props.srcSet) img.srcset = props.srcSet;
+    img.sizes = sizes;
+    img.src = String(props.src);
+    pinned.set(key, img);
+
+    const p = img.decode().then(() => undefined);      // загрузка + декодирование
+    p.catch(() => { cache.delete(key); pinned.delete(key); });  // при ошибке можно повторить
+    cache.set(key, p);
+
+    if (pinned.size > 12) {                            // не раздуваем память
+      const oldest = pinned.keys().next().value as string;
+      pinned.delete(oldest);
+      cache.delete(oldest);
+    }
+    return p;
+  }
+
+  function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('timeout')), ms);
+      p.then((v) => { clearTimeout(t); resolve(v); },
+             (e) => { clearTimeout(t); reject(e); });
+    });
+  }
+
+  export type PhotosState = 'loading' | 'ready' | 'error';
+
+  // Состояние «оба фото готовы» для одного батла
+  export function useBattleReady(battle: BattleItem) {
+    const [state, setState] = useState<PhotosState>('loading');
+    const [attempt, setAttempt] = useState(0);
+
+    useEffect(() => {
+      let alive = true;
+      setState('loading');
+      withTimeout(
+        Promise.all([preloadPhoto(battle.red.photo), preloadPhoto(battle.green.photo)]),
+        8000
+      )
+        .then(() => alive && setState('ready'))
+        .catch(() => alive && setState('error'));
+      return () => { alive = false; };
+    }, [battle.id, battle.red.photo, battle.green.photo, attempt]);
+
+    return { state, retry: () => setAttempt((a) => a + 1) };
+  }
+
+  // В ленте (3.1): фоновая загрузка на 3 батла вперёд
+  useEffect(() => {
+    for (let i = activeIndex + 1; i <= activeIndex + 3; i++) {
+      const b = battles[i];
+      if (!b) break;
+      preloadPhoto(b.red.photo).catch(() => {});
+      preloadPhoto(b.green.photo).catch(() => {});
+    }
+  }, [activeIndex, battles]);
+
+
+------------------------------------------------------------
+3.4  ГОЛОСОВАНИЕ: СОСТОЯНИЯ, ЗАЩИТА ОТ ДУБЛЕЙ, ЧЕСТНЫЕ ПРОЦЕНТЫ, ОТКАТ
+------------------------------------------------------------
+
+ЧТО УЛУЧШИТЬ:
+  1) У каждого голоса есть статус: pending -> confirmed / failed.
+  2) Один батл — один голос: повторный тап игнорируется.
+  3) Проценты считаются из реальных голосов (red.votes / green.votes),
+     а не «+2%». До ответа сервера показываем честный +1, после —
+     итоги от сервера.
+  4) Ошибка запроса: рамка снимается, тост, можно голосовать снова.
+  5) Запрос живёт по battleId, а не по тому, что сейчас на экране:
+     если пользователь сразу свайпнул дальше, ответ всё равно
+     попадёт в нужный батл.
+
+КАК ДОЛЖНО БЫТЬ:
+
+  type Corner = 'red' | 'green';
+  type VoteState = {
+    corner: Corner;
+    status: 'pending' | 'confirmed';
+    totals?: { red: number; green: number };   // итоги от сервера
+  };
+
+  // в CompetitorDetails добавить: votes: number (взвешенные голоса)
+
+  export function calcPercents(red: number, green: number) {
+    const total = red + green;
+    if (total === 0) return { red: 50, green: 50 };
+    const r = Math.round((red / total) * 100);
+    return { red: r, green: 100 - r };
+  }
+
+  export function useBattleVotes(serverVotes: Record<string, Corner> = {}) {
+    const [local, setLocal] = useState<Record<string, VoteState>>({});
+    const lock = useRef(new Set<string>());          // battleId, по которым запрос уже идёт
+
+    const getVote = (id: string): VoteState | null =>
+      local[id] ?? (serverVotes[id] ? { corner: serverVotes[id], status: 'confirmed' } : null);
+
+    const vote = useCallback(async (battle: BattleItem, corner: Corner) => {
+      if (lock.current.has(battle.id) || serverVotes[battle.id]) return;   // защита от дублей
+      lock.current.add(battle.id);
+
+      // мгновенно: рамка + «Выбрано»
+      setLocal((p) => ({ ...p, [battle.id]: { corner, status: 'pending' } }));
+
+      const res = await castBattleVote(battle.contestId ?? battle.id, battle[corner].id);
+
+      if (res.success) {
+        setLocal((p) => ({
+          ...p,
+          [battle.id]: { corner, status: 'confirmed', totals: res.totals },
+        }));
+      } else {
+        lock.current.delete(battle.id);                       // откат
+        setLocal((p) => { const { [battle.id]: _, ...rest } = p; return rest; });
+        showToast(res.error ?? 'Не удалось отправить голос');
+      }
+    }, [serverVotes]);
+
+    return { getVote, vote };
+  }
+
+  // Слайд: голос возможен, только если слайд активен + оба фото готовы
+  // + пользователь ещё не голосовал
+  function BattleSlide({ battle, isActive }: { battle: BattleItem; isActive: boolean }) {
+    const { state: photos, retry } = useBattleReady(battle);
+    const { getVote, vote } = useBattleVotes();       // или из контекста/пропсов родителя
+    const my = getVote(battle.id);
+    const canVote = isActive && photos === 'ready' && !my;
+
+    // До ответа сервера — честный +1 к выбранной стороне
+    const totals = my?.totals ?? {
+      red:   battle.red.votes   + (my?.corner === 'red'   ? 1 : 0),
+      green: battle.green.votes + (my?.corner === 'green' ? 1 : 0),
+    };
+    const pct = calcPercents(totals.red, totals.green);
+
+    return (
+      <div className="flex h-full flex-col gap-1.5">
+        {(['red', 'green'] as const).map((corner) => (
+          <div
+            key={corner}
+            role="button"
+            tabIndex={canVote ? 0 : -1}
+            aria-disabled={!canVote}
+            aria-pressed={my?.corner === corner}
+            onClick={() => canVote && vote(battle, corner)}
+            className={`relative flex-1 overflow-hidden rounded-2xl ${canVote ? '' : 'pointer-events-none'}`}
+          >
+            {photos !== 'ready' && <div className="absolute inset-0 animate-pulse bg-neutral-900" />}
+            <Image
+              src={battle[corner].photo}
+              alt={battle[corner].name}
+              fill
+              sizes={FEED_SIZES}
+              unoptimized={shouldBeUnoptimized(battle[corner].photo)}
+              className={`object-cover transition-opacity duration-300 ${photos === 'ready' ? 'opacity-100' : 'opacity-0'}`}
+            />
+            {my && <span className="absolute bottom-2 right-3">{pct[corner]}%</span>}
+            {/* кнопка Maximize2 остаётся, с e.stopPropagation(), и вызывает тот же vote() */}
+          </div>
+        ))}
+
+        {photos === 'error' && (
+          <button type="button" onClick={retry}>Не удалось загрузить фото — повторить</button>
+        )}
+      </div>
+    );
+  }
+
+
+------------------------------------------------------------
+3.5  БЕСКОНЕЧНАЯ ЛЕНТА БЕЗ ЗАЦИКЛИВАНИЯ И ДУБЛЕЙ
+------------------------------------------------------------
+
+ЧТО УЛУЧШИТЬ:
+  Убрать (index + 1) % length и getMoreRecommendedBattles (копии
+  с id вида `${id}-batch-N-idx`: один и тот же батл показывается как
+  «новый» и снова доступен для голоса). Вместо этого — постраничная
+  подгрузка с курсором. Подгрузка только дописывает в конец, id не
+  меняются, дубли отбрасываются, повторные вызовы блокируются.
+  Конец списка — честный финальный экран, а не молчаливый возврат
+  к первому батлу.
+
+КАК ДОЛЖНО БЫТЬ:
+
+  // родитель
+  const cursorRef  = useRef<string | null>(null);
+  const loadingRef = useRef(false);
+  const doneRef    = useRef(false);
+
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current || doneRef.current) return;   // защита от повторных вызовов
+    loadingRef.current = true;
+    try {
+      const page = await getBattlesPage({ cursor: cursorRef.current, limit: 10 });
+      cursorRef.current = page.nextCursor;
+      doneRef.current   = !page.nextCursor;
+      setAllBattles((prev) => {
+        const seen = new Set(prev.map((b) => b.id));
+        return [...prev, ...page.items.filter((b) => !seen.has(b.id))];  // только в конец
+      });
+    } finally {
+      loadingRef.current = false;
+    }
+  }, []);
+
+  // лента: триггер за 3 слайда до конца и только при смене активного
+  useEffect(() => {
+    if (activeIndex >= battles.length - 3) onLoadMore?.();
+  }, [activeIndex, battles.length, onLoadMore]);
+
+  // последний слайд: «Вы посмотрели все дуэли» + кнопка
+  // «Вернуться в начало» -> scrollerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+
+
+============================================================
+4. ДОПОЛНИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ (данные и сервер)
+============================================================
+
+ 1) Один голос на батл должен гарантироваться базой, а не
+    интерфейсом, а итоги считаться агрегатом, а не выгрузкой всех
+    строк votes на клиент (сейчас getBattle делает select по всем
+    голосам контеста). Если этого ещё нет:
+
+    create unique index if not exists votes_one_per_user_contest
+      on votes (contest_id, voter_id);
+
+    create or replace view battle_vote_totals as
+    select contest_id, participant_id,
+           sum(case when trust_weight > 0 then trust_weight else 1 end) as weighted_votes
+    from votes
+    group by contest_id, participant_id;
+
+    castBattleVote должен возвращать свежие итоги:
+    { success, error?, totals: { red, green } } — через RPC, которая
+    вставляет голос и сразу отдаёт посчитанные веса.
+
+ 2) Пары соперников хранить явно (таблица battles: id, contest_id,
+    red_participant_id, green_participant_id), а не брать
+    participants[0] и participants[1]. Убрать fallback-id 'part-1' /
+    'part-2': голос за несуществующего участника уйдёт в никуда.
+
+ 3) Один источник типов. BattleItem объявлен в трёх местах
+    (компонент, TikTokBattleView, сервис), а corner в сервисе
+    'red' | 'blue', в компоненте 'red' | 'green'. Вынести в
+    src/types/battle.ts.
+
+ 4) Realtime (Supabase channel на INSERT в votes) подключать ТОЛЬКО
+    для активного слайда, иначе на длинной ленте будет лишняя
+    нагрузка. Haptics (navigator.vibrate) и double-tap — после того,
+    как лента стабильна.
+
+
+============================================================
+5. ПОРЯДОК ВНЕДРЕНИЯ И КРИТЕРИИ ПРИЁМКИ
+============================================================
+
+ПОРЯДОК:
+  Шаг 1. Структура ленты: 3.1 + 3.2 (scroll-snap, activeId).
+         Сразу убирает «выбивание» и прыжки.
+  Шаг 2. Фото: 3.3 (кэш, блокировка голоса до загрузки обоих).
+  Шаг 3. Голосование: 3.4 (статусы, дубли, откат, честные %).
+  Шаг 4. Подгрузка и сервер: 3.5 + раздел 4.
+
+КРИТЕРИИ ПРИЁМКИ (проверять руками и e2e):
+  [ ] 20 быстрых свайпов подряд: без пропусков и дёрганья, лента
+      всегда останавливается ровно на одном экране.
+  [ ] Сеть «Slow 3G»: карточки показывают skeleton, голосовать
+      нельзя; после загрузки обоих фото — можно. Ни разу не
+      возвращает на первый батл.
+  [ ] Голос + мгновенный свайп дальше: голос остаётся за исходным
+      батлом, проценты обновляются именно у него.
+  [ ] Двойной тап / тап по обеим карточкам: в базе ровно 1 голос.
+  [ ] Ошибка сети при голосе: рамка снимается, есть тост, можно
+      повторить.
+  [ ] Подгрузка новой пачки в конце не сдвигает текущий экран и не
+      создаёт дубликатов id.
+  [ ] Фото не загрузилось: через 8 секунд показывается «Повторить».
+  [ ] Открытый лайтбокс блокирует клавиатурную навигацию ленты.
+
+============================================================
+КОНЕЦ ДОКУМЕНТА
+============================================================

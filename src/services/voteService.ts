@@ -91,6 +91,27 @@ export async function castVote(
   return { error: null };
 }
 
+// ── cancelVote ────────────────────────────────────────────────────
+// Cancel/remove an existing vote from the contest.
+export async function cancelVote(payload: {
+  contestId: string;
+  stageId?: string;
+  groupId?: string;
+}): Promise<{ error: string | null }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: null };
+
+  const { error } = await supabase
+    .from('votes')
+    .delete()
+    .eq('contest_id', payload.contestId)
+    .eq('voter_id', user.id);
+
+  return { error: error?.message ?? null };
+}
+
 // ── castEternalVote ───────────────────────────────────────────────
 // Cast or update a vote in an eternal contest.
 export async function castEternalVote(

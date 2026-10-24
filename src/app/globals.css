@@ -1006,3 +1006,22 @@
 img {
   content-visibility: auto;
 }
+
+/* Transform-based shimmer for batch pin-grid skeletons (GPU-only, no layout repaint) */
+@keyframes pin-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.pin-shimmer-beam {
+  animation: pin-shimmer 1.4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  article[data-pin-id] * {
+    transition-duration: 120ms !important;
+    transform: none !important;
+  }
+}
+

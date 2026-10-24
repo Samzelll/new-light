@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { ChevronRight, ChevronUp, ChevronDown, Check, Maximize2, Sparkles } from 'lucide-react';
 import { DescriptionSheet } from '../feed/DescriptionSheet';
@@ -12,38 +13,13 @@ import { preloadBattleImages } from '@/services/recommendationService';
 import { useDeviceMode } from '@/hooks/useDeviceMode';
 import { useUiPreferences } from '@/hooks/useUiPreferences';
 
-export interface CompetitorDetails {
-  id: string;
-  name: string;
-  author: string;
-  photo: string;
-  photos?: string[];
-  percent: number;
-  authorAvatar?: string;
-  authorBio?: string;
-  sponsorName?: string;
-  sponsorTier?: string;
-  prizePool?: string;
-  socialLinks?: {
-    instagram?: string;
-    telegram?: string;
-    twitter?: string;
-    portfolio?: string;
-  };
-}
+import type {
+  BattleCorner,
+  BattleItem,
+  CompetitorDetails,
+} from '@/types/battle';
 
-export interface BattleItem {
-  id: string;
-  contestId?: string;
-  title: string;
-  category: string;
-  timeRemaining?: string;
-  tags?: string[];
-  isPopular?: boolean;
-  sponsorName?: string;
-  red: CompetitorDetails;
-  green: CompetitorDetails;
-}
+export type { BattleCorner, BattleItem, CompetitorDetails };
 
 export interface TikTokBattleViewProps {
   battles: BattleItem[];
@@ -450,13 +426,19 @@ export function TikTokBattleView({
                 <div className="flex items-center gap-2">
                   {currentBattle.red.author && currentBattle.red.authorAvatar && (
                     <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
-                      <Image
-                        src={currentBattle.red.authorAvatar}
-                        alt={currentBattle.red.author}
-                        fill
-                        className="object-cover"
-                        referrerPolicy="no-referrer"
-                      />
+                      {(() => {
+                        const avatar = resolveImageUrl(currentBattle.red.authorAvatar, 'avatars');
+                        return (
+                          <Image
+                            src={avatar}
+                            alt={currentBattle.red.author}
+                            fill
+                            unoptimized={shouldBeUnoptimized(avatar)}
+                            className="object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        );
+                      })()}
                     </div>
                   )}
                   <div className="min-w-0">
@@ -525,35 +507,15 @@ export function TikTokBattleView({
                 /* Voted: Dynamic Voltage Tug-of-War Split Bar */
                 <div className="flex flex-col items-center gap-1.5 max-w-sm mx-auto animate-fade-in">
                   <div className="w-full flex items-center justify-between px-1 text-[11px] font-black tabular-nums">
-                    <span className={`flex items-center gap-1 ${userVote === 'red' ? 'text-emerald-400 font-extrabold' : 'text-neutral-400'}`}>
+                    <span className={`flex items-center gap-1.5 ${userVote === 'red' ? 'text-emerald-400 font-extrabold' : 'text-neutral-400'}`}>
                       {userVote === 'red' && '✓ '}{currentBattle.red.name} • {currentBattle.red.percent}%
                     </span>
-                    <span className={`flex items-center gap-1 ${userVote === 'green' ? 'text-emerald-400 font-extrabold' : 'text-neutral-400'}`}>
+                    <span className={`flex items-center gap-1.5 ${userVote === 'green' ? 'text-emerald-400 font-extrabold' : 'text-neutral-400'}`}>
                       {currentBattle.green.percent}% • {currentBattle.green.name}{userVote === 'green' && ' ✓'}
                     </span>
                   </div>
 
-                  {/* Dual Energy Track */}
-                  <div className="w-full h-3 rounded-full bg-black/90 p-0.5 border border-white/20 shadow-2xl flex overflow-hidden backdrop-blur-md">
-                    <div
-                      className={`h-full transition-all duration-700 ease-out rounded-l-full ${
-                        userVote === 'red'
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_14px_rgba(16,185,129,0.9)]'
-                          : 'bg-gradient-to-r from-neutral-600 to-neutral-500 opacity-60'
-                      }`}
-                      style={{ width: `${currentBattle.red.percent}%` }}
-                    />
-                    <div
-                      className={`h-full transition-all duration-700 ease-out rounded-r-full ${
-                        userVote === 'green'
-                          ? 'bg-gradient-to-r from-teal-400 to-emerald-500 shadow-[0_0_14px_rgba(16,185,129,0.9)]'
-                          : 'bg-gradient-to-r from-neutral-500 to-neutral-600 opacity-60'
-                      }`}
-                      style={{ width: `${currentBattle.green.percent}%` }}
-                    />
-                  </div>
-
-                  <div className="text-[10px] font-bold text-emerald-400 tracking-wider uppercase px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-xs border border-emerald-500/40 shadow-sm">
+                  <div className="text-[10px] font-bold text-emerald-400 tracking-wider uppercase px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-xs border border-emerald-500/40 shadow-sm">
                     ✓ Vote Registered • Live Split
                   </div>
                 </div>
@@ -648,13 +610,19 @@ export function TikTokBattleView({
                 <div className="flex items-center gap-2">
                   {currentBattle.green.author && currentBattle.green.authorAvatar && (
                     <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
-                      <Image
-                        src={currentBattle.green.authorAvatar}
-                        alt={currentBattle.green.author}
-                        fill
-                        className="object-cover"
-                        referrerPolicy="no-referrer"
-                      />
+                      {(() => {
+                        const avatar = resolveImageUrl(currentBattle.green.authorAvatar, 'avatars');
+                        return (
+                          <Image
+                            src={avatar}
+                            alt={currentBattle.green.author}
+                            fill
+                            unoptimized={shouldBeUnoptimized(avatar)}
+                            className="object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        );
+                      })()}
                     </div>
                   )}
                   <div className="min-w-0">

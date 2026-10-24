@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { LazyImage } from '@/components/common/LazyImage';
 import {
   ArrowLeft,
   Swords,
@@ -552,12 +553,11 @@ export default function CreateContestPage() {
                     {/* Live Thumbnail Preview */}
                     {redPhoto && (
                       <div className="relative w-full h-40 rounded-2xl overflow-hidden bg-black border-2 border-red-500/80 mt-2 shadow-lg">
-                        <Image
+                        <LazyImage
                           src={redPhoto}
                           alt="Challenger 1 preview"
                           fill
                           className="object-cover"
-                          referrerPolicy="no-referrer"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
                         <span className="absolute top-2 left-2 text-[10px] font-black px-2.5 py-1 rounded-full bg-red-600 text-white shadow-md">
@@ -699,12 +699,11 @@ export default function CreateContestPage() {
                     {/* Live Thumbnail Preview */}
                     {greenPhoto && (
                       <div className="relative w-full h-40 rounded-2xl overflow-hidden bg-black border-2 border-emerald-500/80 mt-2 shadow-lg">
-                        <Image
+                        <LazyImage
                           src={greenPhoto}
                           alt="Challenger 2 preview"
                           fill
                           className="object-cover"
-                          referrerPolicy="no-referrer"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
                         <span className="absolute top-2 left-2 text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-600 text-white shadow-md">

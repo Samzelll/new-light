@@ -159,8 +159,9 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
               <LazyImage src={p1Photo} alt={p1Name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="260px" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
               {votedId === p1.id && (
-                <span className="absolute bottom-3 left-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow">
-                  ✓ Selected
+                <span className="absolute bottom-3 left-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow flex items-center gap-1 backdrop-blur-xs">
+                  <span>✓ Selected</span>
+                  <span className="border-l border-emerald-400/50 pl-1">{formatPercentage(p1Percent)}</span>
                 </span>
               )}
               <span className="absolute top-3 right-3 text-[10px] bg-black/60 text-gray-200 px-2 py-0.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
@@ -213,8 +214,9 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
               <LazyImage src={p2Photo} alt={p2Name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="260px" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
               {votedId === p2.id && (
-                <span className="absolute bottom-3 right-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow">
-                  ✓ Selected
+                <span className="absolute bottom-3 right-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow flex items-center gap-1 backdrop-blur-xs">
+                  <span>✓ Selected</span>
+                  <span className="border-l border-emerald-400/50 pl-1">{formatPercentage(p2Percent)}</span>
                 </span>
               )}
               <span className="absolute top-3 left-3 text-[10px] bg-black/60 text-gray-200 px-2 py-0.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
@@ -255,26 +257,16 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
       </div>
 
       {/* Mid Split Percentage Indicator */}
-      <div className="space-y-2 card bg-surface-800 border-surface-700 p-4">
-        <div className="flex justify-between items-center text-xs font-extrabold uppercase tracking-wider">
+      <div className="card bg-surface-800 border-surface-700 p-3.5">
+        <div className="flex justify-between items-center text-xs font-black tracking-wide">
           <span className={`flex items-center gap-1.5 ${votedId === p1.id ? 'text-emerald-400' : 'text-neutral-300'}`}>
-            <span className={`w-2.5 h-2.5 rounded-full ${votedId === p1.id ? 'bg-emerald-500' : 'bg-neutral-500'}`}></span>
-            {p1Name} ({formatPercentage(p1Percent)})
+            <span className={`w-2 h-2 rounded-full ${votedId === p1.id ? 'bg-emerald-500' : 'bg-neutral-500'}`}></span>
+            {p1Name} · {formatPercentage(p1Percent)}
           </span>
           <span className={`flex items-center gap-1.5 ${votedId === p2.id ? 'text-emerald-400' : 'text-neutral-300'}`}>
-            {p2Name} ({formatPercentage(p2Percent)})
-            <span className={`w-2.5 h-2.5 rounded-full ${votedId === p2.id ? 'bg-emerald-500' : 'bg-neutral-500'}`}></span>
+            {formatPercentage(p2Percent)} · {p2Name}
+            <span className={`w-2 h-2 rounded-full ${votedId === p2.id ? 'bg-emerald-500' : 'bg-neutral-500'}`}></span>
           </span>
-        </div>
-        <div className="h-4 w-full rounded-full overflow-hidden flex bg-surface-900 border border-surface-700 shadow-inner p-0.5">
-          <div 
-            className={`h-full rounded-l-full transition-all duration-500 ${votedId === p1.id ? 'bg-emerald-500' : 'bg-neutral-600'}`}
-            style={{ width: `${p1Percent}%` }}
-          />
-          <div 
-            className={`h-full rounded-r-full transition-all duration-500 ${votedId === p2.id ? 'bg-emerald-500' : 'bg-neutral-600'}`}
-            style={{ width: `${p2Percent}%` }}
-          />
         </div>
       </div>
     </div>

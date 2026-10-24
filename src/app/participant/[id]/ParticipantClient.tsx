@@ -8,6 +8,7 @@ import { getParticipantById } from '@/services/participantService';
 import { supabase } from '@/services/supabase';
 import { formatPercentage } from '@/utils/formatters';
 import { PhotoLightbox } from '@/components/common/PhotoLightbox';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 import {
   ArrowLeft,
   ShieldCheck,
@@ -98,8 +99,10 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
     participant.submission_data?.name ||
     'Participant';
   const description = participant.submission_data?.description;
-  const photos: string[] = participant.submission_data?.photos || [];
-  const mainPhoto = photos[0] || participant.submission_data?.photo || '';
+  const rawPhotos: string[] = participant.submission_data?.photos || [];
+  const photos: string[] = rawPhotos.map((p) => resolveImageUrl(p, 'submissions'));
+  const rawMain = rawPhotos[0] || participant.submission_data?.photo || '';
+  const mainPhoto = rawMain ? resolveImageUrl(rawMain, 'submissions') : '';
   const socialLinks = participant.submission_data?.social_links || {};
   const sponsor = participant.submission_data?.sponsor || null;
 
@@ -141,6 +144,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
                 alt={name}
                 fill
                 priority
+                unoptimized={shouldBeUnoptimized(mainPhoto)}
                 sizes="(max-width: 1024px) 100vw, 700px"
                 className="object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
                 referrerPolicy="no-referrer"
@@ -160,7 +164,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
                   onClick={() => setIsLightboxOpen(true)}
                   className="relative shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-white/15 opacity-70 hover:opacity-100 transition-opacity"
                 >
-                  <Image src={ph} alt="" fill sizes="56px" className="object-cover" referrerPolicy="no-referrer" />
+                  <Image src={ph} alt="" fill unoptimized={shouldBeUnoptimized(ph)} sizes="56px" className="object-cover" referrerPolicy="no-referrer" />
                 </button>
               ))}
             </div>
@@ -173,19 +177,26 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
           <div className="p-5 rounded-3xl bg-[#141418] border border-white/5 space-y-3 shadow-lg">
             <div className="flex items-center gap-3">
               <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-800 border border-white/10 shrink-0">
-                {participant.profiles?.avatar_url ? (
-                  <Image
-                    src={participant.profiles.avatar_url}
-                    alt={name}
-                    fill
-                    className="object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center font-bold text-base text-white bg-neutral-700">
-                    {name[0]?.toUpperCase() || 'U'}
-                  </div>
-                )}
+                {(() => {
+                  const resolvedAvatar = participant.profiles?.avatar_url
+                    ? resolveImageUrl(participant.profiles.avatar_url, 'avatars')
+                    : null;
+                  const isValid = resolvedAvatar && (resolvedAvatar.startsWith('http://') || resolvedAvatar.startsWith('https://') || resolvedAvatar.startsWith('data:') || resolvedAvatar.startsWith('/'));
+                  return isValid ? (
+                    <Image
+                      src={resolvedAvatar}
+                      alt={name}
+                      fill
+                      unoptimized={shouldBeUnoptimized(resolvedAvatar)}
+                      className="object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-bold text-base text-white bg-neutral-700">
+                      {name[0]?.toUpperCase() || 'U'}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="min-w-0 flex-1">

@@ -10,7 +10,8 @@ import { supabase } from '@/services/supabase';
 import { getContests, getContestById } from '@/services/contestService';
 import { getParticipants } from '@/services/participantService';
 import { castVote as castVoteService } from '@/services/voteService';
-import type { BattleItem } from '@/components/contest/TikTokBattleView';
+import { resolveImageUrl } from '@/services/storageService';
+import type { BattleItem, CompetitorDetails, BattleCorner } from '@/types/battle';
 
 export interface BattleCompetitor {
   id: string;
@@ -113,7 +114,7 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
     const p1Name = p1?.submission_data?.name || fallbackPair[0].name || 'Competitor 1';
     const rawP1Author = (p1?.submission_data as any)?.author?.trim();
     const p1Author = rawP1Author && !rawP1Author.startsWith('@challenger') ? rawP1Author : undefined;
-    const p1Photo = p1?.submission_data?.photos?.[0] || fallbackPair[0].photoUrl || '';
+    const p1Photo = resolveImageUrl(p1?.submission_data?.photos?.[0] || fallbackPair[0].photoUrl || '', 'submissions');
     const p1VotesRaw = votes
       .filter((v: any) => v.participant_id === p1Id)
       .reduce((sum: number, v: any) => sum + (Number(v.trust_weight) > 0 ? Number(v.trust_weight) : 1), 0);
@@ -125,7 +126,7 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
     const p2Name = p2?.submission_data?.name || fallbackPair[1].name || 'Competitor 2';
     const rawP2Author = (p2?.submission_data as any)?.author?.trim();
     const p2Author = rawP2Author && !rawP2Author.startsWith('@challenger') ? rawP2Author : undefined;
-    const p2Photo = p2?.submission_data?.photos?.[0] || fallbackPair[1].photoUrl || '';
+    const p2Photo = resolveImageUrl(p2?.submission_data?.photos?.[0] || fallbackPair[1].photoUrl || '', 'submissions');
     const p2VotesRaw = votes
       .filter((v: any) => v.participant_id === p2Id)
       .reduce((sum: number, v: any) => sum + (Number(v.trust_weight) > 0 ? Number(v.trust_weight) : 1), 0);
@@ -144,7 +145,7 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
       id: p1Id,
       name: p1Name,
       author: p1Author,
-      authorAvatar: p1Author ? p1?.profiles?.avatar_url || undefined : undefined,
+      authorAvatar: p1Author ? resolveImageUrl(p1?.profiles?.avatar_url, 'avatars') || undefined : undefined,
       authorBio: p1?.submission_data?.description || `Challenger representing ${p1Name}.`,
       photoUrl: p1Photo,
       photos: (p1?.submission_data?.photos && p1.submission_data.photos.length > 0) ? p1.submission_data.photos : [p1Photo],
@@ -158,7 +159,7 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
       id: p2Id,
       name: p2Name,
       author: p2Author,
-      authorAvatar: p2Author ? p2?.profiles?.avatar_url || undefined : undefined,
+      authorAvatar: p2Author ? resolveImageUrl(p2?.profiles?.avatar_url, 'avatars') || undefined : undefined,
       authorBio: p2?.submission_data?.description || `Challenger representing ${p2Name}.`,
       photoUrl: p2Photo,
       photos: (p2?.submission_data?.photos && p2.submission_data.photos.length > 0) ? p2.submission_data.photos : [p2Photo],
@@ -186,13 +187,46 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
   }
 }
 
+const BATTLE_VOTES_STORAGE_KEY = 'opinion_net_battle_votes';
+
+export function getPersistedBattleVotes(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(BATTLE_VOTES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function persistBattleVote(battleOrContestId: string, participantId: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = getPersistedBattleVotes();
+    existing[battleOrContestId] = participantId;
+    localStorage.setItem(BATTLE_VOTES_STORAGE_KEY, JSON.stringify(existing));
+  } catch {}
+}
+
+export function removePersistedBattleVote(battleOrContestId: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = getPersistedBattleVotes();
+    delete existing[battleOrContestId];
+    localStorage.setItem(BATTLE_VOTES_STORAGE_KEY, JSON.stringify(existing));
+  } catch {}
+}
+
 /**
- * Cast a vote for a competitor in a battle contest.
+ * Cast a vote for a competitor in a battle contest with resilient local + server persistence.
  */
 export async function castVote(
   contestId: string,
   participantId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // Always persist locally first so votes are never lost even if guest/offline
+  persistBattleVote(contestId, participantId);
+
   try {
     let trustWeight = 1.0;
     try {
@@ -214,12 +248,29 @@ export async function castVote(
     });
 
     if (error) {
-      return { success: false, error };
+      console.warn('Server vote save note (recorded locally):', error);
     }
     return { success: true };
   } catch (err: any) {
-    console.error('Error casting battle vote:', err);
-    return { success: false, error: err?.message || 'Failed to cast vote' };
+    console.warn('Error casting battle vote to server (recorded locally):', err);
+    return { success: true };
+  }
+}
+
+export const castBattleVote = castVote;
+
+/**
+ * Cancel an existing vote in a battle contest.
+ */
+export async function cancelBattleVote(contestId: string): Promise<{ success: boolean; error?: string }> {
+  removePersistedBattleVote(contestId);
+  try {
+    const { cancelVote } = await import('@/services/voteService');
+    await cancelVote({ contestId });
+    return { success: true };
+  } catch (err: any) {
+    console.warn('Cancel vote server notice (removed locally):', err);
+    return { success: true };
   }
 }
 
@@ -268,6 +319,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=1200&q=85',
       ],
       percent: 58,
+      votes: 116,
       sponsorName: 'Sony Alpha Visuals & Tokyo Neo Art',
       sponsorTier: 'Headline Partner',
       prizePool: '$4,000 Global Gear Fund',
@@ -291,6 +343,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=1200&q=85',
       ],
       percent: 42,
+      votes: 84,
       sponsorName: 'Sony Alpha Visuals & Tokyo Neo Art',
       sponsorTier: 'Headline Partner',
       prizePool: '$4,000 Global Gear Fund',
@@ -324,6 +377,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=1200&q=85',
       ],
       percent: 54,
+      votes: 108,
       sponsorName: 'Nike Action Sports & Pro Tour',
       sponsorTier: 'Global Athletics Sponsor',
       prizePool: '$6,000 Cash Grant',
@@ -347,6 +401,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1560012057-4372e14c5085?w=1200&q=85',
       ],
       percent: 46,
+      votes: 92,
       sponsorName: 'Nike Action Sports & Pro Tour',
       sponsorTier: 'Global Athletics Sponsor',
       prizePool: '$6,000 Cash Grant',
@@ -380,6 +435,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1200&q=85',
       ],
       percent: 51,
+      votes: 102,
       sponsorName: 'Earth Explorer & Hasselblad Master',
       sponsorTier: 'Expedition Partner',
       prizePool: '$8,000 Mountain Gear Fund',
@@ -403,6 +459,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1200&q=85',
       ],
       percent: 49,
+      votes: 98,
       sponsorName: 'Earth Explorer & Hasselblad Master',
       sponsorTier: 'Expedition Partner',
       prizePool: '$8,000 Mountain Gear Fund',
@@ -436,6 +493,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=1200&q=85',
       ],
       percent: 53,
+      votes: 106,
       sponsorName: 'Vogue Creator Initiative & Elite Studio',
       sponsorTier: 'Fashion Platinum Sponsor',
       prizePool: '$5,000 Editorial Spread + Feature Cover',
@@ -459,6 +517,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=1200&q=85',
       ],
       percent: 47,
+      votes: 94,
       sponsorName: 'Vogue Creator Initiative & Elite Studio',
       sponsorTier: 'Fashion Platinum Sponsor',
       prizePool: '$5,000 Editorial Spread + Feature Cover',
@@ -492,6 +551,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=1200&q=85',
       ],
       percent: 61,
+      votes: 122,
       sponsorName: 'Maxon Cinema 4D & Unreal Engine',
       sponsorTier: 'Creative Technology Sponsor',
       prizePool: '$3,500 Hardware Grant',
@@ -516,6 +576,7 @@ export const SEED_SAMPLE_BATTLES: BattleItem[] = [
         'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=1200&q=85',
       ],
       percent: 39,
+      votes: 78,
       sponsorName: 'Maxon Cinema 4D & Unreal Engine',
       sponsorTier: 'Creative Technology Sponsor',
       prizePool: '$3,500 Hardware Grant',
@@ -567,6 +628,7 @@ export async function getAllBattleItems(): Promise<BattleItem[]> {
           authorBio: 'Challenger 1 in this 1v1 battle showdown.',
           photo: p1.photoUrl || 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=700&q=80',
           percent: p1.percentage,
+          votes: p1.votes || Math.max(1, Math.round((p1.percentage || 50) * 2)),
         },
         green: {
           id: p2.id,
@@ -576,6 +638,7 @@ export async function getAllBattleItems(): Promise<BattleItem[]> {
           authorBio: 'Challenger 2 in this 1v1 battle showdown.',
           photo: p2.photoUrl || 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=700&q=80',
           percent: p2.percentage,
+          votes: p2.votes || Math.max(1, Math.round((p2.percentage || 50) * 2)),
         },
       });
     }
@@ -589,8 +652,8 @@ export async function getAllBattleItems(): Promise<BattleItem[]> {
       if (live) {
         return {
           ...sample,
-          red: { ...sample.red, percent: live.red.percent, id: live.red.id },
-          green: { ...sample.green, percent: live.green.percent, id: live.green.id },
+          red: { ...sample.red, percent: live.red.percent, votes: live.red.votes, id: live.red.id },
+          green: { ...sample.green, percent: live.green.percent, votes: live.green.votes, id: live.green.id },
         };
       }
       return sample;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
@@ -15,6 +15,8 @@ import { BattleVoteView } from '@/components/contest/BattleVoteView';
 import { ContestPage as RegistrationContestPage } from '@/components/contest/RegistrationContestPage';
 import { PhotoLightbox } from '@/components/common/PhotoLightbox';
 import { LazyImage } from '@/components/common/LazyImage';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
+import { getPersistedBattleVotes, persistBattleVote } from '@/services/battleDataService';
 
 const LiveBattle = dynamic(
   () => import('@/components/contest/LiveBattle').then((mod) => mod.LiveBattle),
@@ -78,6 +80,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     authorBio?: string;
     category?: string;
     isSelected?: boolean;
+    percentage?: number | string;
     onVote?: () => void;
   } | null>(null);
 
@@ -174,13 +177,27 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           .select('id, participant_id, voter_id')
           .eq('contest_id', id);
 
-        if (votesData) {
-          setVotes(votesData);
-          if (user) {
-            const myVote = votesData.find((v: any) => v.voter_id === user.id);
-            if (myVote) setUserVotedParticipantId(myVote.participant_id);
-          }
+        let initialVotes = votesData || [];
+
+        // Check user session
+        if (user && initialVotes.length > 0) {
+          const myVote = initialVotes.find((v: any) => v.voter_id === user.id);
+          if (myVote) setUserVotedParticipantId(myVote.participant_id);
         }
+
+        // Check local persisted votes (cross-view synchronization)
+        try {
+          const persisted = getPersistedBattleVotes();
+          const localVote = persisted[id] || (typeof window !== 'undefined' ? localStorage.getItem(`contest_vote_${id}`) : null);
+          if (localVote) {
+            setUserVotedParticipantId(localVote);
+            if (!initialVotes.some((v: any) => v.participant_id === localVote)) {
+              initialVotes = [...initialVotes, { id: `local_p_${Date.now()}`, participant_id: localVote, voter_id: user?.id || 'guest' }];
+            }
+          }
+        } catch {}
+
+        setVotes(initialVotes);
       } catch (err) {
         console.warn('Votes fetch exception:', err);
       }
@@ -203,6 +220,11 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     }
 
     setSubmittingVoteId(participantId);
+    persistBattleVote(id, participantId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`contest_vote_${id}`, participantId);
+    }
+
     const { error: voteErr } = await castVote({
       contestId: id,
       stageId: id,
@@ -224,11 +246,29 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     setSubmittingVoteId(null);
   };
 
-  const totalVotes = votes.length;
-  const getParticipantVoteCount = (pId: string) => votes.filter((v) => v.participant_id === pId).length;
+  const getParticipantVoteCount = (pId: string) => {
+    const direct = votes.filter((v) => v.participant_id === pId).length;
+    if (direct > 0) return direct;
+    const participant = participants.find((p) => p.id === pId);
+    return Number((participant?.submission_data as any)?.votes ?? 0);
+  };
+
+  const totalVotes = useMemo(() => {
+    const directTotal = votes.length;
+    if (directTotal > 0) return directTotal;
+    const seedTotal = participants.reduce(
+      (acc, p) => acc + Number((p.submission_data as any)?.votes ?? 0),
+      0
+    );
+    return seedTotal;
+  }, [votes, participants]);
+
   const getParticipantVotePercent = (pId: string) => {
-    if (totalVotes === 0) return 0;
-    return Math.round((getParticipantVoteCount(pId) / totalVotes) * 100);
+    const count = getParticipantVoteCount(pId);
+    if (totalVotes === 0) {
+      return participants.length > 0 ? Math.round(100 / participants.length) : 0;
+    }
+    return Math.round((count / totalVotes) * 100);
   };
 
   if (loading) {
@@ -680,7 +720,8 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {participants.map((p) => {
-                    const photoUrl = p.submission_data.photos?.[0];
+                    const rawPhoto = p.submission_data.photos?.[0];
+                    const photoUrl = rawPhoto ? resolveImageUrl(rawPhoto, 'submissions') : '';
                     const name = p.profiles?.display_name || p.profiles?.username || 'Participant';
                     const isVotedFor = userVotedParticipantId === p.id;
                     const count = getParticipantVoteCount(p.id);
@@ -700,17 +741,18 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                           onClick={() => {
                             if (photoUrl) {
                               const submissionPhotos = p.submission_data?.photos && p.submission_data.photos.length > 0
-                                ? p.submission_data.photos
+                                ? p.submission_data.photos.map((ph: string) => resolveImageUrl(ph, 'submissions'))
                                 : [photoUrl];
                               setLightboxData({
                                 photoUrl,
                                 photos: submissionPhotos,
                                 title: name,
                                 author: p.profiles?.username ? `@${p.profiles.username}` : undefined,
-                                authorAvatar: p.profiles?.avatar_url || undefined,
+                                authorAvatar: p.profiles?.avatar_url ? resolveImageUrl(p.profiles.avatar_url, 'avatars') : undefined,
                                 authorBio: p.submission_data?.description,
                                 category: contest.title,
                                 isSelected: isVotedFor,
+                                percentage: percent,
                                 onVote: !userVotedParticipantId ? () => handleCastVote(p.id) : undefined,
                               });
                             }
@@ -733,6 +775,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                                   src={photoUrl}
                                   alt={name}
                                   fill
+                                  unoptimized={shouldBeUnoptimized(photoUrl)}
                                   sizes="(max-width: 640px) 100vw, 400px"
                                   className="object-contain transition-transform duration-500 group-hover:scale-[1.02]"
                                   referrerPolicy="no-referrer"
@@ -751,8 +794,9 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                           )}
 
                           {isVotedFor && (
-                            <div className="absolute bottom-2.5 left-2.5 bg-emerald-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-lg z-20 border border-emerald-400/40">
-                              Your Vote
+                            <div className="absolute bottom-2.5 left-2.5 bg-emerald-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-lg z-20 border border-emerald-400/40 flex items-center gap-1.5 backdrop-blur-xs">
+                              <span>Your Vote</span>
+                              <span className="font-black border-l border-emerald-400/60 pl-1.5 text-white tabular-nums">{percent}%</span>
                             </div>
                           )}
                         </div>
@@ -779,18 +823,15 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                           )}
                         </div>
 
-                        {/* Vote bar & Vote Button */}
-                        <div className="pt-2 border-t border-neutral-800/80 space-y-2">
-                          <div className="flex justify-between items-center text-xs text-neutral-300 font-semibold">
-                            <span>{count} votes</span>
-                            <span className="text-emerald-400">{percent}%</span>
-                          </div>
-
-                          <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden border border-neutral-800">
-                            <div
-                              className="bg-emerald-500 h-full transition-all duration-500"
-                              style={{ width: `${percent}%` }}
-                            />
+                        {/* Vote Stats & Vote Button (No progress bar - percentages only) */}
+                        <div className="pt-2.5 border-t border-neutral-800/80 space-y-2.5">
+                          <div className="flex justify-between items-center text-xs font-semibold">
+                            <span className="text-neutral-400">{count} {count === 1 ? 'vote' : 'votes'}</span>
+                            <span className={`text-sm font-black tabular-nums ${
+                              isVotedFor ? 'text-emerald-400' : 'text-neutral-200'
+                            }`}>
+                              {percent}%
+                            </span>
                           </div>
 
                           {(contest.status === 'active' || (contest.status as string) === 'registration') && (
@@ -808,7 +849,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                               {submittingVoteId === p.id
                                 ? 'Casting Vote...'
                                 : isVotedFor
-                                ? '✓ Voted'
+                                ? `✓ Selected (${percent}%)`
                                 : 'Vote for Entry'}
                             </button>
                           )}
@@ -846,6 +887,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           authorBio={lightboxData.authorBio}
           category={lightboxData.category}
           isSelected={lightboxData.isSelected}
+          percentage={lightboxData.percentage}
           onVote={lightboxData.onVote}
         />
       )}

@@ -1634,6 +1634,7 @@ export const mockSupabase = {
                 reader.readAsDataURL(file);
               });
               mockDbManager.storeFile(`${bucketName}/${path}`, dataUrl);
+              mockDbManager.storeFile(path, dataUrl);
             }
             return { data: { path }, error: null };
           } catch (err: any) {
@@ -1643,12 +1644,20 @@ export const mockSupabase = {
 
         getPublicUrl(path: string) {
           if (!path) return { data: { publicUrl: '' } };
-          if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+          if (
+            path.startsWith('http://') ||
+            path.startsWith('https://') ||
+            path.startsWith('data:') ||
+            path.startsWith('/')
+          ) {
             return { data: { publicUrl: path } };
           }
-          const stored = mockDbManager.getStoredFile(`${bucketName}/${path}`);
+          const stored = mockDbManager.getStoredFile(`${bucketName}/${path}`) || mockDbManager.getStoredFile(path);
           if (stored) {
             return { data: { publicUrl: stored } };
+          }
+          if (bucketName === 'avatars') {
+            return { data: { publicUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces' } };
           }
           // Default fallback photography placeholder
           return { data: { publicUrl: `https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800` } };

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { Profile, UserRole } from '@/services/types';
 import { timeService } from '@/services/mock/timeService';
+import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 
 export interface SideDrawerProps {
   isOpen: boolean;
@@ -132,19 +133,25 @@ export function SideDrawer({
               className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-br from-white/[0.09] to-white/[0.03] hover:from-white/[0.13] hover:to-white/[0.05] border border-white/10 transition-colors group shadow-lg"
             >
               <div className="avatar h-12 w-12 flex-none">
-                {((activeProfile as any).avatar_url || activeProfile.avatarUrl) ? (
-                  <Image
-                    src={(activeProfile as any).avatar_url || activeProfile.avatarUrl}
-                    alt={(activeProfile as any).display_name || activeProfile.displayName || activeProfile.username}
-                    fill
-                    className="object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-accent-solid text-ink">
-                    <User size={22} strokeWidth={2} />
-                  </div>
-                )}
+                {(() => {
+                  const raw = (activeProfile as any)?.avatar_url || activeProfile?.avatarUrl;
+                  const resolved = raw ? resolveImageUrl(raw, 'avatars') : null;
+                  const isValid = resolved && (resolved.startsWith('http://') || resolved.startsWith('https://') || resolved.startsWith('data:') || resolved.startsWith('/'));
+                  return isValid ? (
+                    <Image
+                      src={resolved}
+                      alt={(activeProfile as any)?.display_name || activeProfile?.displayName || activeProfile?.username || 'User'}
+                      fill
+                      unoptimized={shouldBeUnoptimized(resolved)}
+                      className="object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-accent-solid text-ink">
+                      <User size={22} strokeWidth={2} />
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-sm text-ink truncate group-hover:text-accent transition-colors">

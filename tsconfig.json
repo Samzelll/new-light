@@ -20,6 +20,15 @@
     "incremental": true,
     "baseUrl": "./src",
     "paths": {
+      "@/*": [
+        "*"
+      ],
+      "@/perf/*": [
+        "perf/*"
+      ],
+      "@/data/*": [
+        "data/*"
+      ],
       "@/lib/*": [
         "lib/*"
       ],

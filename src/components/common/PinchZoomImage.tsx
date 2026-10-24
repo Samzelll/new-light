@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Image, { ImageProps } from 'next/image';
+import { shouldBeUnoptimized } from '@/services/storageService';
 
 interface PinchZoomImageProps extends Omit<ImageProps, 'onAnimationStart' | 'onDragStart' | 'onDragEnd' | 'onDrag'> {
   containerClassName?: string;
@@ -160,6 +161,7 @@ export function PinchZoomImage({
         <Image
           alt={alt || 'Visual'}
           className={`${className} transition-opacity duration-300`}
+          unoptimized={props.unoptimized ?? (typeof props.src === 'string' ? shouldBeUnoptimized(props.src) : false)}
           {...props}
         />
       </div>
