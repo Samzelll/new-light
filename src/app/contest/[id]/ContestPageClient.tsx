@@ -1,63 +1,54 @@
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import dynamic from 'next/dynamic';
-import { useParams } from 'next/navigation';
-import { ArrowLeft, Search, Maximize2 } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Bookmark, MoreHorizontal, Check, Trash2, X, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getContestById, Contest, updateContestStatus } from '@/services/contestService';
 import { getParticipants, Participant, addBattleParticipant, deleteParticipant } from '@/services/participantService';
-import { castVote } from '@/services/voteService';
+import { castVote, cancelVote } from '@/services/voteService';
 import { supabase } from '@/services/supabase';
 import { BattleVoteView } from '@/components/contest/BattleVoteView';
 import { ContestPage as RegistrationContestPage } from '@/components/contest/RegistrationContestPage';
 import { PhotoLightbox } from '@/components/common/PhotoLightbox';
-import { LazyImage } from '@/components/common/LazyImage';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
-import { getPersistedBattleVotes, persistBattleVote } from '@/services/battleDataService';
+import {
+  getPersistedBattleVotes,
+  persistBattleVote,
+  removePersistedBattleVote,
+  getBattle,
+} from '@/services/battleDataService';
 
-const LiveBattle = dynamic(
-  () => import('@/components/contest/LiveBattle').then((mod) => mod.LiveBattle),
-  {
-    loading: () => (
-      <div className="card bg-surface-800 border-surface-600 p-6 space-y-4 animate-pulse">
-        <div className="h-6 w-48 bg-surface-700 rounded-md" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="h-64 bg-surface-700 rounded-xl" />
-          <div className="h-64 bg-surface-700 rounded-xl" />
-        </div>
-      </div>
-    ),
-    ssr: false,
-  }
-);
+const DEFAULT_COVER = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&q=80';
 
+const DEFAULT_RULES_RU = [
+  'Принимаются только пейзажные фото без сильной обработки',
+  'Один голос на конкурс, его можно изменить',
+  'Голосование бессрочное, работы можно добавлять в любое время',
+];
 
-function feedListingLabel(value: string) {
-  switch (value) {
-    case 'approved': return <span className="badge bg-accent-green/20 text-accent-green border-accent-green/30">Approved</span>;
-    case 'pending': return <span className="badge bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Pending</span>;
-    case 'rejected': return <span className="badge bg-red-500/20 text-red-400 border-red-500/30">Rejected</span>;
-    default: return <span className="badge bg-surface-700 text-gray-400 border-surface-600">Hidden</span>;
-  }
-}
+const DEFAULT_RULES_EN = [
+  'Only original landscape photos without heavy post-processing are accepted',
+  'One vote per contest; can be changed or undone at any time',
+  'Ongoing continuous contest: new entries can be added anytime',
+];
 
-function statusLabel(status: string) {
-  switch (status) {
-    case 'draft': return <span className="badge bg-surface-700 text-gray-400">Draft</span>;
-    case 'registration': return <span className="badge bg-brand-500 text-white shadow-[0_0_10px_rgba(var(--brand-500-rgb),0.5)]">Registration Open</span>;
-    case 'active': return <span className="badge bg-accent-blue text-white shadow-[0_0_10px_rgba(var(--accent-blue-rgb),0.5)] font-bold">Active Voting</span>;
-    case 'paused': return <span className="badge bg-yellow-500 text-black font-extrabold">⏸️ Paused</span>;
-    case 'blocked': return <span className="badge bg-red-600 text-white font-extrabold shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse">⚠️ Flagged / Caution</span>;
-    case 'completed': return <span className="badge bg-accent-green text-surface-900 font-bold">Completed</span>;
-    case 'cancelled': return <span className="badge bg-red-500 text-white">Cancelled</span>;
-    default: return <span className="badge">{status}</span>;
-  }
-}
+const DEFAULT_BATTLE_RULES_RU = [
+  '1v1 дуэль двух участников в реальном времени',
+  'Один голос на дуэль, его можно изменить в любой момент',
+  'Статистика и процентный перевес обновляются мгновенно',
+];
+
+const DEFAULT_BATTLE_RULES_EN = [
+  'Real-time 1v1 duel between two competitors',
+  'One vote per duel; can be changed or undone at any time',
+  'Live percentages and split update instantly',
+];
 
 export default function ContestPageClient({ id: propId }: { id?: string }) {
+  const router = useRouter();
   const routeParams = useParams();
   const id = (typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : propId) || '';
 
@@ -71,6 +62,20 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [showStatusSheet, setShowStatusSheet] = useState(false);
+  const [showAllEntries, setShowAllEntries] = useState(false);
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [showArenaView, setShowArenaView] = useState(false);
+
+  // Creator direct competitor modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newCompName, setNewCompName] = useState('');
+  const [newCompPhoto, setNewCompPhoto] = useState('');
+  const [newCompDesc, setNewCompDesc] = useState('');
+  const [addingComp, setAddingComp] = useState(false);
+
   const [lightboxData, setLightboxData] = useState<{
     photoUrl: string;
     photos?: string[];
@@ -89,18 +94,21 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     setTimeout(() => setToastMessage(null), 3200);
   };
 
-  // Creator Battle Competitor modal / inline form state
-  const [showAddBattleModal, setShowAddBattleModal] = useState(false);
-  const [newBattleCompName, setNewBattleCompName] = useState('');
-  const [newBattleCompPhoto, setNewBattleCompPhoto] = useState('');
-  const [newBattleCompDesc, setNewBattleCompDesc] = useState('');
-  const [addingBattleComp, setAddingBattleComp] = useState(false);
+  const isCreator = Boolean(
+    user && contest && (contest.created_by === user.id || user.email === 'samzelenkov@gmail.com')
+  );
 
-  const isCreator = Boolean(user && contest && (contest.created_by === user.id || user.email === 'samzelenkov@gmail.com'));
+  // Detect Russian/Cyrillic content for adaptive copy matching user screenshots
+  const isRu = useMemo(() => {
+    if (!contest) return false;
+    return /[а-яё]/i.test(contest.title + ' ' + (contest.description || ''));
+  }, [contest]);
 
   const reloadParticipants = async () => {
     const { data: participantsData } = await getParticipants(id, 'all');
-    setParticipants(participantsData || []);
+    if (participantsData && participantsData.length > 0) {
+      setParticipants(participantsData);
+    }
   };
 
   const handleDeleteCompetitor = async (participantId: string) => {
@@ -108,39 +116,39 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     if (success) {
       setParticipants((prev) => prev.filter((p) => p.id !== participantId));
       await reloadParticipants();
-      showToast('Participant removed.');
+      showToast(isRu ? 'Работа удалена' : 'Entry removed.');
     } else if (delErr) {
       showToast(delErr);
     }
   };
 
-  const handleAddBattleCompetitor = async (e: React.FormEvent) => {
+  const handleAddCompetitor = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBattleCompName.trim() || !newBattleCompPhoto.trim()) {
-      showToast('Please provide both a competitor name and photo image URL.');
+    if (!newCompName.trim() || !newCompPhoto.trim()) {
+      showToast(isRu ? 'Укажите название и ссылку на фото' : 'Please provide name and photo URL.');
       return;
     }
     if (!contest) return;
 
-    setAddingBattleComp(true);
-    const { data: newPart, error: addErr } = await addBattleParticipant({
+    setAddingComp(true);
+    const { error: addErr } = await addBattleParticipant({
       contestId: contest.id,
-      name: newBattleCompName.trim(),
-      photoUrl: newBattleCompPhoto.trim(),
-      description: newBattleCompDesc.trim(),
+      name: newCompName.trim(),
+      photoUrl: newCompPhoto.trim(),
+      description: newCompDesc.trim(),
     });
 
     if (addErr) {
       showToast(addErr);
     } else {
-      setNewBattleCompName('');
-      setNewBattleCompPhoto('');
-      setNewBattleCompDesc('');
-      setShowAddBattleModal(false);
-      showToast('Competitor added successfully!');
+      setNewCompName('');
+      setNewCompPhoto('');
+      setNewCompDesc('');
+      setShowAddModal(false);
+      showToast(isRu ? 'Работа успешно добавлена!' : 'Competitor added successfully!');
       await reloadParticipants();
     }
-    setAddingBattleComp(false);
+    setAddingComp(false);
   };
 
   const handleChangeStatus = async (newStatus: any) => {
@@ -149,8 +157,8 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     if (statusErr) {
       showToast(statusErr);
     } else {
-      setContest((prev) => prev ? { ...prev, status: newStatus } : null);
-      showToast(`Status updated to ${newStatus}`);
+      setContest((prev) => (prev ? { ...prev, status: newStatus } : null));
+      showToast(isRu ? `Статус обновлен на: ${newStatus}` : `Status updated to ${newStatus}`);
     }
   };
 
@@ -158,7 +166,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     async function loadData() {
       setLoading(true);
       setError(null);
-      
+
       const { data: contestData, error: contestError } = await getContestById(id);
       if (contestError || !contestData) {
         setError(contestError || 'Contest not found');
@@ -168,7 +176,42 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
       setContest(contestData);
 
       const { data: participantsData } = await getParticipants(id, 'approved');
-      setParticipants(participantsData || []);
+      let currentParts = participantsData || [];
+
+      // For battle contests, enrich or synthesize competitors if participant records are empty/fewer than 2
+      if (contestData.type === 'battle') {
+        try {
+          const battleData = await getBattle(id);
+          if (battleData) {
+            if (battleData.userVotedId) {
+              setUserVotedParticipantId(battleData.userVotedId);
+            }
+            if (currentParts.length < 2 && battleData.competitors?.length >= 2) {
+              const syntheticParts: Participant[] = battleData.competitors.map((c) => ({
+                id: c.id,
+                contest_id: id,
+                user_id: c.id,
+                submission_data: {
+                  name: c.name,
+                  photos: c.photos || (c.photoUrl ? [c.photoUrl] : []),
+                  description: c.authorBio || '',
+                  votes: c.votes,
+                },
+                status: 'approved',
+                admin_note: null,
+                submitted_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }));
+              currentParts = syntheticParts;
+            }
+          }
+        } catch (bErr) {
+          console.warn('Battle data fetch note:', bErr);
+        }
+      }
+
+      setParticipants(currentParts);
 
       // Fetch votes
       try {
@@ -185,7 +228,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           if (myVote) setUserVotedParticipantId(myVote.participant_id);
         }
 
-        // Check local persisted votes (cross-view synchronization)
+        // Check local persisted votes (including battle persistent storage)
         try {
           const persisted = getPersistedBattleVotes();
           const localVote = persisted[id] || (typeof window !== 'undefined' ? localStorage.getItem(`contest_vote_${id}`) : null);
@@ -201,7 +244,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
       } catch (err) {
         console.warn('Votes fetch exception:', err);
       }
-      
+
       setLoading(false);
     }
     loadData();
@@ -209,17 +252,39 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
   const userHasApplied = user ? participants.some((p) => p.user_id === user.id) : false;
 
-  const handleCastVote = async (participantId: string) => {
+  const handleToggleVote = async (participantId: string) => {
     if (!isAuthenticated || !user) {
-      showToast('Please sign in to vote in this contest.');
-      return;
-    }
-    if (userVotedParticipantId) {
-      showToast('You have already cast your vote in this contest.');
+      showToast(isRu ? 'Войдите в аккаунт, чтобы проголосовать' : 'Please sign in to vote.');
       return;
     }
 
+    // Tapping on your own vote removes it
+    if (userVotedParticipantId === participantId) {
+      setSubmittingVoteId(participantId);
+      try {
+        await cancelVote({ contestId: id });
+      } catch (err) {
+        console.warn('Cancel vote error:', err);
+      }
+      removePersistedBattleVote(id);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`contest_vote_${id}`);
+      }
+      setUserVotedParticipantId(null);
+      setVotes((prev) => prev.filter((v) => v.voter_id !== user.id && v.participant_id !== participantId));
+      setSubmittingVoteId(null);
+      showToast(isRu ? 'Голос отменён' : 'Vote removed.');
+      return;
+    }
+
+    // Otherwise, change or cast vote
     setSubmittingVoteId(participantId);
+    if (userVotedParticipantId) {
+      try {
+        await cancelVote({ contestId: id });
+      } catch {}
+    }
+
     persistBattleVote(id, participantId);
     if (typeof window !== 'undefined') {
       localStorage.setItem(`contest_vote_${id}`, participantId);
@@ -233,25 +298,27 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
       trustWeight: 1.0,
     });
 
-    if (voteErr) {
+    if (voteErr && !voteErr.toLowerCase().includes('duplicate')) {
       showToast(voteErr);
     } else {
       setUserVotedParticipantId(participantId);
       setVotes((prev) => [
-        ...prev,
+        ...prev.filter((v) => v.voter_id !== user.id),
         { id: `local_${Date.now()}`, participant_id: participantId, voter_id: user.id },
       ]);
-      showToast('Vote successfully recorded!');
+      const targetP = participants.find((p) => p.id === participantId);
+      const name = targetP?.submission_data?.name || targetP?.profiles?.display_name || 'Participant';
+      showToast(isRu ? `Голос за «${name}» учтён!` : `Vote for ${name} recorded!`);
     }
     setSubmittingVoteId(null);
   };
 
-  const getParticipantVoteCount = (pId: string) => {
+  const getParticipantVoteCount = useCallback((pId: string) => {
     const direct = votes.filter((v) => v.participant_id === pId).length;
     if (direct > 0) return direct;
     const participant = participants.find((p) => p.id === pId);
     return Number((participant?.submission_data as any)?.votes ?? 0);
-  };
+  }, [votes, participants]);
 
   const totalVotes = useMemo(() => {
     const directTotal = votes.length;
@@ -263,42 +330,131 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     return seedTotal;
   }, [votes, participants]);
 
-  const getParticipantVotePercent = (pId: string) => {
+  const getParticipantVotePercent = useCallback((pId: string) => {
     const count = getParticipantVoteCount(pId);
     if (totalVotes === 0) {
       return participants.length > 0 ? Math.round(100 / participants.length) : 0;
     }
     return Math.round((count / totalVotes) * 100);
+  }, [getParticipantVoteCount, totalVotes, participants.length]);
+
+  // Sorted by percentage descending
+  const sortedParticipants = useMemo(() => {
+    return [...participants].sort((a, b) => {
+      const pB = getParticipantVotePercent(b.id);
+      const pA = getParticipantVotePercent(a.id);
+      if (pB !== pA) return pB - pA;
+      return b.id.localeCompare(a.id);
+    });
+  }, [participants, getParticipantVotePercent]);
+
+  const INITIAL_LIMIT = 6;
+  const displayedParticipants = showAllEntries
+    ? sortedParticipants
+    : sortedParticipants.slice(0, INITIAL_LIMIT);
+
+  // Extract up to 3 rules from contest.rules or provide format-specific defaults
+  const rulesList = useMemo(() => {
+    if (contest?.rules && contest.rules.trim()) {
+      const splitLines = contest.rules
+        .split(/\n+/)
+        .map((r) => r.replace(/^[-*•\d.)\s]+/, '').trim())
+        .filter(Boolean);
+      if (splitLines.length > 0) {
+        return splitLines.slice(0, 3);
+      }
+    }
+    if (contest?.type === 'battle') {
+      return isRu ? DEFAULT_BATTLE_RULES_RU : DEFAULT_BATTLE_RULES_EN;
+    }
+    return isRu ? DEFAULT_RULES_RU : DEFAULT_RULES_EN;
+  }, [contest?.rules, contest?.type, isRu]);
+
+  const votedParticipant = useMemo(() => {
+    if (!userVotedParticipantId) return null;
+    return participants.find((p) => p.id === userVotedParticipantId) || null;
+  }, [userVotedParticipantId, participants]);
+
+  const votedParticipantName = useMemo(() => {
+    if (!votedParticipant) return '';
+    return (
+      votedParticipant.submission_data?.name ||
+      votedParticipant.profiles?.display_name ||
+      votedParticipant.profiles?.username ||
+      'Участник'
+    );
+  }, [votedParticipant]);
+
+  const handleToggleSubscribe = () => {
+    setIsSubscribed((prev) => {
+      const next = !prev;
+      showToast(
+        next
+          ? (isRu ? 'Вы подписались на обновления' : 'Subscribed to updates')
+          : (isRu ? 'Подписка отменена' : 'Unsubscribed')
+      );
+      return next;
+    });
+  };
+
+  const handleGoBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
   };
 
   if (loading) {
     return (
-      <main className="max-w-4xl mx-auto p-4 space-y-6 animate-fade-in pb-24">
-        <div className="card skeleton h-40"></div>
-        <div className="card skeleton h-64"></div>
+      <main className="min-h-screen bg-[#0d110e] text-[#eef2ec] max-w-lg mx-auto p-4 space-y-4 animate-fade-in font-['Onest',sans-serif]">
+        <div className="w-full h-[280px] bg-[#161c17] rounded-[18px] animate-pulse" />
+        <div className="h-8 w-3/4 bg-[#161c17] rounded-[14px] animate-pulse" />
+        <div className="h-20 bg-[#161c17] rounded-[18px] animate-pulse" />
       </main>
     );
   }
 
   if (error || !contest) {
     return (
-      <main className="max-w-4xl mx-auto p-4 pb-24">
-        <div className="card text-center p-8 text-gray-400">
-          <div className="text-4xl mb-4">⚠️</div>
-          <div>{error || 'Contest not found'}</div>
-          <Link href="/" className="btn btn-secondary mt-4 inline-block">Back to Feed</Link>
+      <main className="min-h-screen bg-[#0d110e] text-[#eef2ec] max-w-lg mx-auto p-6 flex flex-col items-center justify-center text-center font-['Onest',sans-serif]">
+        <div className="w-16 h-16 rounded-full bg-[#161c17] border border-[#232b24] flex items-center justify-center text-2xl mb-4">
+          ⚠️
         </div>
+        <h2 className="text-xl font-bold text-[#eef2ec]">
+          {error || (isRu ? 'Конкурс не найден' : 'Contest not found')}
+        </h2>
+        <button
+          onClick={handleGoBack}
+          className="mt-6 px-5 py-2.5 rounded-[18px] bg-[#161c17] border border-[#232b24] text-xs font-bold text-[#eef2ec] hover:bg-[#232b24] transition-colors"
+        >
+          {isRu ? 'Вернуться назад' : 'Go back'}
+        </button>
       </main>
     );
   }
 
-  // Pure 1v1 Battle View (Pinterest / TikTok-style duel arena)
-  // Battles have no registration, group size, or participant caps - always open for live voting
-  if (contest.type === 'battle') {
-    return <BattleVoteView initialContestId={contest.id} />;
+  // Interactive Fullscreen Duel Arena (rendered when user clicks "Enter Battle Arena")
+  if (showArenaView && contest.type === 'battle') {
+    return (
+      <BattleVoteView
+        initialContestId={contest.id}
+        onBack={() => {
+          setShowArenaView(false);
+          // Refresh user vote from persisted storage
+          try {
+            const persisted = getPersistedBattleVotes();
+            const localVote = persisted[id] || (typeof window !== 'undefined' ? localStorage.getItem(`contest_vote_${id}`) : null);
+            if (localVote) {
+              setUserVotedParticipantId(localVote);
+            }
+          } catch {}
+        }}
+      />
+    );
   }
 
-  // Registration Open status page (dedicated mobile-first view for standard tournaments)
+  // Registration Open state (dedicated view for registration tournaments)
   if (contest.status === 'registration') {
     return (
       <RegistrationContestPage
@@ -309,572 +465,677 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     );
   }
 
+  const coverUrl =
+    contest.cover_url ||
+    (participants[0]?.submission_data?.photos?.[0]
+      ? resolveImageUrl(participants[0].submission_data.photos[0], 'submissions')
+      : DEFAULT_COVER);
+
   return (
-    <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-8 animate-fade-in bg-[#000000] text-[#F9F9F9] relative">
+    <main className="min-h-screen bg-[#0d110e] text-[#eef2ec] font-['Onest',sans-serif] selection:bg-[#3fc27a]/30 pb-28">
       {/* Toast Feedback */}
       {toastMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#ff6a2b] text-white text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-[#161c17] border border-[#3fc27a]/50 text-[#3fc27a] text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
           {toastMessage}
         </div>
       )}
 
-      {/* ── Top Navigation Bar ── */}
-      <div className="flex items-center justify-between pb-1">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs font-bold text-[#F9F9F9] bg-[#141414] hover:bg-[#222222] border border-[#333333] px-3.5 py-2 rounded-xl transition-all"
-        >
-          <ArrowLeft size={16} strokeWidth={2.5} />
-          <span>Back to feed</span>
-        </Link>
-        <Link
-          href="/search"
-          aria-label="Search"
-          className="w-9 h-9 rounded-xl bg-[#141414] hover:bg-[#222222] text-[#F9F9F9] flex items-center justify-center transition-colors border border-[#333333]"
-        >
-          <Search size={16} strokeWidth={2} />
-        </Link>
-      </div>
-
-      {/* Contest Header */}
-      <div className="card flex flex-col gap-4 relative overflow-hidden bg-surface-800 border-surface-600 p-6 sm:p-8">
-        {contest.cover_url && (
-          <div 
-            className="absolute inset-0 opacity-20 pointer-events-none bg-cover bg-center"
-            style={{ backgroundImage: `url(${contest.cover_url})`, filter: 'blur(20px)' }}
+      <div className="max-w-lg mx-auto relative">
+        {/* 1. Full-bleed cover image (~280px tall) */}
+        <div className="relative w-full h-[280px] sm:h-[320px] overflow-hidden bg-[#161c17]">
+          <Image
+            src={coverUrl}
+            alt={contest.title}
+            fill
+            priority
+            unoptimized={shouldBeUnoptimized(coverUrl)}
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, 512px"
+            referrerPolicy="no-referrer"
           />
-        )}
-        
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-2 items-center text-xs font-semibold mb-2">
-              {statusLabel(contest.status)}
-              {contest.feed_listing_status ? feedListingLabel(contest.feed_listing_status) : null}
-              <span className="text-gray-400 uppercase tracking-wider">{contest.type} Format</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">{contest.title}</h1>
-            <p className="text-gray-300 max-w-2xl text-sm sm:text-base leading-relaxed">
-              {contest.description || 'No description provided.'}
-            </p>
-          </div>
-          
-          <div className="flex gap-2 shrink-0">
-            {userHasApplied ? (
-              <span className="badge bg-accent-green/20 text-accent-green border-accent-green/30 py-2 px-3 text-xs font-bold">
-                ✓ Entry Submitted
-              </span>
-            ) : contest.status === 'active' ? (
-              <Link href={`/apply/${contest.id}`} className="btn btn-primary text-xs py-2.5 px-5 font-bold shadow-lg">
-                + Register Entry
-              </Link>
-            ) : null}
-            <Link href="/" className="btn btn-secondary text-xs py-2.5 px-4">
-              Feed
-            </Link>
-          </div>
-        </div>
 
-        <div className="flex flex-wrap gap-3 mt-4 relative z-10 border-t border-surface-700 pt-4 text-xs font-semibold">
-          {contest.categories && (
-            <span className="badge bg-surface-900 text-gray-300 border-surface-700">
-              📁 {contest.categories.name}
-            </span>
-          )}
-          <span className="badge bg-surface-900 text-gray-300 border-surface-700">
-            👥 Participants · {participants.length}{contest.max_participants ? ` / ${contest.max_participants}` : ''}
-          </span>
-          <span className="badge bg-surface-900 text-gray-300 border-surface-700">
-            🗳️ Total Votes · {totalVotes}
-          </span>
-        </div>
-      </div>
+          {/* Bottom gradient fade into page background #0d110e */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d110e] via-[#0d110e]/60 to-black/25 pointer-events-none" />
 
-      {/* Creator Controls Panel */}
-      {isCreator && (
-        <div className="card bg-surface-800 border-brand-500/40 p-5 space-y-4 shadow-xl">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-surface-700 pb-3">
-            <div>
-              <h3 className="font-extrabold text-white text-base flex items-center gap-2">
-                <span>🛠️</span> Contest Management (Creator Panel)
-              </h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                You can change the contest status (active, open, paused, caution/blocked) and manage participants.
-              </p>
-            </div>
-            <span className="badge bg-brand-500/20 text-brand-400 border-brand-500/30 text-xs font-bold shrink-0 self-start sm:self-auto">
-              Organizer
-            </span>
-          </div>
+          {/* Cover overlay buttons (no separate top bar) */}
+          <div className="absolute top-4 inset-x-4 flex items-center justify-between z-20 pt-safe">
+            {/* Back button */}
+            <button
+              type="button"
+              onClick={handleGoBack}
+              aria-label={isRu ? 'Назад' : 'Back'}
+              className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#eef2ec] transition-colors"
+            >
+              <ArrowLeft size={18} strokeWidth={2.4} />
+            </button>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-300 block">
-              Contest Status:
-            </label>
-            <div className="flex flex-wrap gap-2">
+            {/* Right buttons: Bookmark & Manage */}
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleChangeStatus('active')}
-                className={`btn text-xs py-2 px-3 font-bold ${
-                  contest.status === 'active'
-                    ? 'bg-accent-blue text-white shadow'
-                    : 'bg-surface-700 hover:bg-surface-600 text-gray-300'
+                onClick={handleToggleSubscribe}
+                aria-label={isRu ? 'Подписаться' : 'Subscribe'}
+                className={`w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center transition-colors ${
+                  isSubscribed
+                    ? 'bg-[#3fc27a]/20 border-[#3fc27a]/40 text-[#3fc27a]'
+                    : 'bg-black/40 hover:bg-black/60 border-white/10 text-[#eef2ec]'
                 }`}
               >
-                ▶️ Active (Voting)
+                <Bookmark size={18} strokeWidth={2.4} className={isSubscribed ? 'fill-[#3fc27a]' : ''} />
               </button>
 
-              <button
-                type="button"
-                onClick={() => handleChangeStatus('registration')}
-                className={`btn text-xs py-2 px-3 font-bold ${
-                  (contest.status as string) === 'registration'
-                    ? 'bg-brand-600 text-white shadow'
-                    : 'bg-surface-700 hover:bg-surface-600 text-gray-300'
-                }`}
-              >
-                📝 Registration Open
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleChangeStatus('paused')}
-                className={`btn text-xs py-2 px-3 font-bold ${
-                  contest.status === 'paused'
-                    ? 'bg-yellow-500 text-black shadow'
-                    : 'bg-surface-700 hover:bg-yellow-500/20 hover:text-yellow-300 text-gray-300'
-                }`}
-              >
-                ⏸️ Pause (Paused)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleChangeStatus('blocked')}
-                className={`btn text-xs py-2 px-3 font-bold ${
-                  contest.status === 'blocked'
-                    ? 'bg-red-600 text-white shadow'
-                    : 'bg-surface-700 hover:bg-red-500/20 hover:text-red-300 text-gray-300'
-                }`}
-              >
-                ⚠️ Flag / Caution (Blocked)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleChangeStatus('completed')}
-                className={`btn text-xs py-2 px-3 font-bold ${
-                  contest.status === 'completed'
-                    ? 'bg-accent-green text-surface-900 shadow'
-                    : 'bg-surface-700 hover:bg-surface-600 text-gray-300'
-                }`}
-              >
-                🏁 Completed
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Warning Banner: Blocked / Caution */}
-      {contest.status === 'blocked' && (
-        <div className="card bg-red-500/15 border-red-500/40 p-5 flex items-start gap-3.5 text-red-200 shadow-xl">
-          <span className="text-3xl shrink-0">⚠️</span>
-          <div>
-            <h4 className="font-extrabold text-red-400 text-sm uppercase tracking-wide">
-              NOTICE: CONTEST FLAGGED / CAUTION
-            </h4>
-            <p className="text-xs text-red-200/90 mt-1 leading-relaxed">
-              This contest is suspended or flagged by administration/organizer. Submissions and voting are disabled. It is unlisted from the global feed and accessible only via direct search or favorites with a &quot;⚠️ Caution&quot; badge.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Warning Banner: Paused */}
-      {contest.status === 'paused' && (
-        <div className="card bg-yellow-500/15 border-yellow-500/40 p-5 flex items-start gap-3.5 text-yellow-200 shadow-xl">
-          <span className="text-3xl shrink-0">⏸️</span>
-          <div>
-            <h4 className="font-extrabold text-yellow-400 text-sm uppercase tracking-wide">
-              CONTEST TEMPORARILY PAUSED
-            </h4>
-            <p className="text-xs text-yellow-200/90 mt-1 leading-relaxed">
-              Voting and submissions are temporarily paused by the contest organizer.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Main Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-
-          {/* Registration Notice */}
-          {(contest.status as string) === 'registration' && (
-            <div className="card border-brand-500/30 bg-brand-500/10 p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div>
-                <h3 className="font-bold text-white text-lg">Registration is Open!</h3>
-                <p className="text-sm text-gray-300 mt-0.5">Submit your entry now to compete in this contest.</p>
-              </div>
-              {!userHasApplied ? (
-                <Link href={`/apply/${contest.id}`} className="btn btn-primary text-xs px-5 py-2.5 font-bold shrink-0">
-                  Register Entry Now →
-                </Link>
-              ) : (
-                <span className="text-xs font-bold text-accent-green">✓ You are entered</span>
+              {isCreator && (
+                <button
+                  type="button"
+                  onClick={() => setShowStatusSheet(true)}
+                  aria-label={isRu ? 'Управление конкурсом' : 'Manage contest'}
+                  className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#eef2ec] transition-colors"
+                >
+                  <MoreHorizontal size={18} strokeWidth={2.4} />
+                </button>
               )}
             </div>
-          )}
+          </div>
+        </div>
 
-          {/* Battle Format is handled by BattleVoteView */}
-          {false && contest && (
-            <div className="space-y-6">
-              <LiveBattle contestId={(contest as any)?.id || ''} participants={participants} userTrustScore={1.0} />
+        {/* 2. Header block overlapping cover bottom (-mt-8) */}
+        <div className="-mt-8 relative z-10 px-4 space-y-4">
+          <div>
+            {/* Small status line with pulsing green dot */}
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#3fc27a]">
+              <span className="w-2 h-2 rounded-full bg-[#3fc27a] animate-pulse shrink-0" />
+              <span>
+                {contest.type === 'battle'
+                  ? (isRu ? 'Голосование идёт · 1v1 баттл' : 'Voting is live · 1v1 Battle')
+                  : (isRu ? 'Голосование идёт · вечный конкурс' : 'Voting is live · Eternal contest')}
+              </span>
+            </div>
 
-              {/* Creator Options: Battle Competitors Management */}
-              <div className="card bg-surface-800 border-surface-600 p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-surface-700 pb-3">
-                  <div>
-                    <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                      <span>⚔️</span> Creator Options: Battle Competitors
-                    </h4>
-                    <p className="text-xs text-gray-400">
-                      Directly add or manage competitors for this 1v1 battle match. ({participants.length} added)
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowAddBattleModal(!showAddBattleModal)}
-                    className="btn btn-primary text-xs py-1.5 px-3 font-bold shrink-0 self-start sm:self-auto"
-                  >
-                    {showAddBattleModal ? 'Close Form' : '+ Add Competitor'}
-                  </button>
+            {/* Title */}
+            <h1 className="text-[30px] font-extrabold text-[#eef2ec] leading-tight tracking-tight mt-1.5">
+              {contest.title}
+            </h1>
+
+            {/* Description */}
+            {contest.description && (
+              <p className="text-[#8d998f] text-sm leading-relaxed line-clamp-2 mt-1">
+                {contest.description}
+              </p>
+            )}
+          </div>
+
+          {/* 3. Compact stats strip (3 cells) */}
+          <div className="rounded-[18px] bg-[#161c17] border border-[#232b24] p-3.5 grid grid-cols-3 divide-x divide-[#232b24]">
+            {/* Cell 1: Participants with thin green progress bar */}
+            <div className="px-3 flex flex-col justify-between">
+              <div>
+                <div className="text-base sm:text-lg font-extrabold text-[#eef2ec] tabular-nums">
+                  {contest.type === 'battle'
+                    ? `${participants.length} / 2`
+                    : `${participants.length} / ${contest.max_participants || 50}`}
                 </div>
-
-                {showAddBattleModal && (
-                  <form onSubmit={handleAddBattleCompetitor} className="p-4 rounded-xl bg-surface-900 border border-brand-500/30 space-y-4 animate-fade-in">
-                    <h5 className="text-xs font-bold uppercase tracking-wider text-brand-400">New Battle Competitor Entry</h5>
-                    
-                    <div>
-                      <label className="label text-[11px] text-gray-400 block mb-1 font-semibold">Item / Competitor Name *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Challenger 1 / Entry A"
-                        value={newBattleCompName}
-                        onChange={(e) => setNewBattleCompName(e.target.value)}
-                        className="input text-xs py-2"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="label text-[11px] text-gray-400 block font-semibold">Competitor Photo *</label>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <label className="btn btn-secondary text-xs py-1.5 px-3 cursor-pointer inline-flex items-center gap-1.5 font-medium">
-                          <span>📷</span> Upload Image File
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (uploadEvent) => {
-                                  const dataUrl = uploadEvent.target?.result as string;
-                                  if (dataUrl) setNewBattleCompPhoto(dataUrl);
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                          />
-                        </label>
-                        <span className="text-[10px] text-gray-500 uppercase font-semibold">or paste URL:</span>
-                      </div>
-
-                      <input
-                        type="text"
-                        placeholder="https://images.unsplash.com/..."
-                        value={newBattleCompPhoto}
-                        onChange={(e) => setNewBattleCompPhoto(e.target.value)}
-                        className="input text-xs py-2 font-mono text-[11px]"
-                        required
-                      />
-
-                      {/* Sample photo presets */}
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        <span className="text-[10px] text-gray-400 self-center">Sample Photos:</span>
-                        {[
-                          { label: '🏋️ Combat', url: 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=600' },
-                          { label: '👟 Sneakers', url: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600' },
-                          { label: '🎮 Gaming', url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600' },
-                          { label: '🍕 Gourmet', url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600' },
-                        ].map((preset) => (
-                          <button
-                            key={preset.label}
-                            type="button"
-                            onClick={() => setNewBattleCompPhoto(preset.url)}
-                            className="px-2 py-0.5 rounded text-[10px] bg-surface-700 hover:bg-surface-600 text-gray-300 font-medium"
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {newBattleCompPhoto && (
-                      <div className="aspect-square w-32 rounded-xl overflow-hidden bg-surface-900 border border-surface-700 relative shadow-inner">
-                        <LazyImage src={newBattleCompPhoto} alt="Preview" fill className="object-cover" priority />
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="label text-[11px] text-gray-400 block mb-1 font-semibold">Item Description / Story / Stats</label>
-                      <textarea
-                        rows={3}
-                        placeholder="Describe key features, backstory, specs or stats of this competitor..."
-                        value={newBattleCompDesc}
-                        onChange={(e) => setNewBattleCompDesc(e.target.value)}
-                        className="input text-xs py-2 resize-y"
-                      />
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowAddBattleModal(false)}
-                        className="btn btn-secondary text-xs py-1.5 px-3 font-semibold"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="btn btn-primary text-xs py-1.5 px-4 font-bold"
-                        disabled={addingBattleComp}
-                      >
-                        {addingBattleComp ? 'Adding Competitor...' : 'Add Competitor Now'}
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {/* List of currently added competitors */}
-                {participants.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <h5 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Current Competitors List ({participants.length})</h5>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {participants.map((p, i) => {
-                        const name = p.submission_data?.name || `Competitor ${i + 1}`;
-                        const photo = p.submission_data?.photos?.[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500';
-                        const desc = p.submission_data?.description;
-                        return (
-                          <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-surface-900 border border-surface-700 gap-3">
-                              <div className="w-12 h-12 rounded-lg overflow-hidden border border-surface-700 shrink-0 relative">
-                                <LazyImage src={photo} alt={name} fill className="object-cover" />
-                              <div className="truncate">
-                                <h6 className="font-bold text-white text-xs truncate">{name}</h6>
-                                {desc && <p className="text-[11px] text-gray-400 truncate">{desc}</p>}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteCompetitor(p.id)}
-                              className="text-xs text-red-400 hover:text-red-300 font-semibold px-2 py-1 hover:bg-red-500/10 rounded transition-colors shrink-0"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <div className="text-[11px] text-[#8d998f] mt-0.5">
+                  {isRu ? 'участников' : 'participants'}
+                </div>
+              </div>
+              <div className="w-full h-1 bg-[#232b24] rounded-full overflow-hidden mt-2">
+                <div
+                  className="h-full bg-[#3fc27a] rounded-full transition-all duration-500"
+                  style={{
+                    width: `${
+                      contest.type === 'battle'
+                        ? '100%'
+                        : `${Math.min(
+                            100,
+                            Math.max(4, Math.round((participants.length / (contest.max_participants || 50)) * 100))
+                          )}%`
+                    }`,
+                  }}
+                />
               </div>
             </div>
-          )}
 
-          {/* Standard Participants & Voting */}
-          {true && (
-            <div className="card bg-surface-800 border-surface-600 p-6 space-y-5">
-              <div className="flex justify-between items-center border-b border-surface-700 pb-4">
-                <h3 className="text-xl font-bold text-white">
-                  Contest Entries
-                </h3>
-                <span className="text-xs font-semibold text-gray-400">
-                  {participants.length} total entries · {totalVotes} votes cast
+            {/* Cell 2: Contest format */}
+            <div className="px-3 flex flex-col justify-center">
+              <div className="text-base sm:text-lg font-extrabold text-[#eef2ec]">
+                {contest.type === 'battle'
+                  ? (isRu ? '1v1 Баттл' : '1v1 Battle')
+                  : (isRu ? 'Вечный' : 'Eternal')}
+              </div>
+              <div className="text-[11px] text-[#8d998f] mt-0.5">
+                {isRu ? 'формат' : 'format'}
+              </div>
+            </div>
+
+            {/* Cell 3: Rating mode */}
+            <div className="px-3 flex flex-col justify-center">
+              <div className="text-base sm:text-lg font-extrabold text-[#eef2ec]">
+                Live
+              </div>
+              <div className="text-[11px] text-[#8d998f] mt-0.5">
+                {isRu ? 'рейтинг' : 'rating'}
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Rules: max 3 bullet lines with green check marks */}
+          <div className="space-y-2 py-0.5">
+            {rulesList.map((rule, idx) => (
+              <div key={idx} className="flex items-start gap-2.5 text-xs text-[#eef2ec] leading-snug">
+                <Check size={16} className="text-[#3fc27a] shrink-0 mt-0.5" strokeWidth={2.8} />
+                <span>{rule}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* 5. Primary CTA row */}
+          <div className="flex items-center gap-3 pt-1">
+            {contest.type === 'battle' ? (
+              <button
+                type="button"
+                onClick={() => setShowArenaView(true)}
+                className="flex-1 h-[50px] rounded-[18px] bg-[#e2622a] hover:bg-[#d0541f] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+              >
+                <span className="text-base">⚔️</span>
+                <span>{isRu ? 'Перейти в арену баттла' : 'Enter Battle Arena'}</span>
+              </button>
+            ) : (
+              <Link
+                href={`/apply/${contest.id}`}
+                className="flex-1 h-[50px] rounded-[18px] bg-[#e2622a] hover:bg-[#d0541f] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center transition-all shadow-md"
+              >
+                {isRu ? 'Добавить работу' : 'Add entry'}
+              </Link>
+            )}
+
+            <button
+              type="button"
+              onClick={handleToggleSubscribe}
+              className={`h-[50px] px-6 rounded-[18px] border text-sm font-semibold transition-all shrink-0 ${
+                isSubscribed
+                  ? 'bg-[#3fc27a]/15 border-[#3fc27a]/40 text-[#3fc27a]'
+                  : 'bg-[#161c17] hover:bg-[#1f2720] border-[#232b24] text-[#eef2ec]'
+              }`}
+            >
+              {isSubscribed ? (isRu ? 'Вы подписаны' : 'Subscribed') : (isRu ? 'Подписаться' : 'Subscribe')}
+            </button>
+          </div>
+
+          {/* 6. Live Head-to-Head Duel Statistics Bar (for Battles) */}
+          {contest.type === 'battle' && displayedParticipants.length >= 2 && (
+            <div className="rounded-[18px] bg-[#161c17] border border-[#232b24] p-4 space-y-3">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-[#8d998f] flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#3fc27a] animate-pulse" />
+                  <span>{isRu ? 'Текущий перевес голосов' : 'Live Vote Split'}</span>
+                </span>
+                <span className="text-[11px] text-[#8d998f] tabular-nums font-medium">
+                  {totalVotes > 0
+                    ? (isRu ? `Всего голосов: ${totalVotes}` : `Total votes: ${totalVotes}`)
+                    : (isRu ? 'Прямой эфир' : 'Live duel')}
                 </span>
               </div>
 
-              {userVotedParticipantId && (
-                <div className="p-3 bg-accent-green/10 border border-accent-green/20 text-accent-green rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <span>✓</span> You have voted in this contest. Votes are updated live!
+              {/* Dual percentage split bar */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-[#eef2ec]">
+                  <span className="truncate max-w-[45%] text-[#3fc27a]">
+                    {displayedParticipants[0]?.submission_data?.name || (isRu ? 'Участник 1' : 'Competitor 1')} ({getParticipantVotePercent(displayedParticipants[0]?.id)}%)
+                  </span>
+                  <span className="text-[11px] text-[#8d998f] uppercase font-mono px-1">VS</span>
+                  <span className="truncate max-w-[45%] text-right text-[#eef2ec]">
+                    ({getParticipantVotePercent(displayedParticipants[1]?.id)}%) {displayedParticipants[1]?.submission_data?.name || (isRu ? 'Участник 2' : 'Competitor 2')}
+                  </span>
                 </div>
-              )}
 
-              {participants.length === 0 ? (
-                <div className="p-10 text-center border border-dashed border-surface-600 rounded-xl bg-surface-900/50 space-y-3">
-                  <div className="text-4xl text-surface-400">📷</div>
-                  <p className="text-gray-400 text-sm">No entries submitted yet.</p>
-                  <Link href={`/apply/${contest.id}`} className="btn btn-primary text-xs inline-block py-2 px-4 font-bold">
-                    Be the First to Apply!
-                  </Link>
+                <div className="w-full h-2.5 bg-[#232b24] rounded-full overflow-hidden flex">
+                  <div
+                    className="h-full bg-[#3fc27a] transition-all duration-500 rounded-l-full"
+                    style={{ width: `${getParticipantVotePercent(displayedParticipants[0]?.id)}%` }}
+                  />
+                  <div
+                    className="h-full bg-[#354337] transition-all duration-500 rounded-r-full"
+                    style={{ width: `${getParticipantVotePercent(displayedParticipants[1]?.id)}%` }}
+                  />
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  {participants.map((p) => {
-                    const rawPhoto = p.submission_data.photos?.[0];
-                    const photoUrl = rawPhoto ? resolveImageUrl(rawPhoto, 'submissions') : '';
-                    const name = p.profiles?.display_name || p.profiles?.username || 'Participant';
-                    const isVotedFor = userVotedParticipantId === p.id;
-                    const count = getParticipantVoteCount(p.id);
-                    const percent = getParticipantVotePercent(p.id);
-
-                    return (
-                      <div
-                        key={p.id}
-                        className={`rounded-2xl sm:rounded-3xl bg-[#121215] border p-4 space-y-3 flex flex-col justify-between transition-all duration-300 origin-center ${
-                          isVotedFor
-                            ? 'scale-[0.98] border-emerald-500/80 ring-2 ring-emerald-500/30 shadow-xl shadow-emerald-500/10 z-10'
-                            : 'border-neutral-800/80 hover:border-neutral-700'
-                        }`}
-                      >
-                        {/* Photo Stage: Ambient blur + clean proportional display */}
-                        <div
-                          onClick={() => {
-                            if (photoUrl) {
-                              const submissionPhotos = p.submission_data?.photos && p.submission_data.photos.length > 0
-                                ? p.submission_data.photos.map((ph: string) => resolveImageUrl(ph, 'submissions'))
-                                : [photoUrl];
-                              setLightboxData({
-                                photoUrl,
-                                photos: submissionPhotos,
-                                title: name,
-                                author: p.profiles?.username ? `@${p.profiles.username}` : undefined,
-                                authorAvatar: p.profiles?.avatar_url ? resolveImageUrl(p.profiles.avatar_url, 'avatars') : undefined,
-                                authorBio: p.submission_data?.description,
-                                category: contest.title,
-                                isSelected: isVotedFor,
-                                percentage: percent,
-                                onVote: !userVotedParticipantId ? () => handleCastVote(p.id) : undefined,
-                              });
-                            }
-                          }}
-                          className={`relative w-full h-64 sm:h-72 rounded-xl sm:rounded-2xl overflow-hidden bg-black/60 border border-neutral-800/80 flex items-center justify-center ${
-                            photoUrl ? 'cursor-pointer group' : ''
-                          }`}
-                        >
-                          {photoUrl ? (
-                            <>
-                              {/* Ambient blurred backdrop to eliminate dead black gaps */}
-                              <div
-                                className="absolute inset-0 bg-cover bg-center filter blur-2xl scale-125 opacity-30 pointer-events-none"
-                                style={{ backgroundImage: `url(${photoUrl})` }}
-                              />
-
-                              {/* Natural unclipped photo */}
-                              <div className="relative w-full h-full flex items-center justify-center p-1.5 z-10">
-                                <Image
-                                  src={photoUrl}
-                                  alt={name}
-                                  fill
-                                  unoptimized={shouldBeUnoptimized(photoUrl)}
-                                  sizes="(max-width: 640px) 100vw, 400px"
-                                  className="object-contain transition-transform duration-500 group-hover:scale-[1.02]"
-                                  referrerPolicy="no-referrer"
-                                />
-                              </div>
-
-                              {/* Discreet zoom icon on hover */}
-                              <span className="absolute top-2.5 right-2.5 z-20 w-7 h-7 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-xs transition-opacity duration-200 border border-white/20 opacity-0 group-hover:opacity-100">
-                                <Maximize2 size={13} strokeWidth={2.4} />
-                              </span>
-                            </>
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
-                              No Photo
-                            </div>
-                          )}
-
-                          {isVotedFor && (
-                            <div className="absolute bottom-2.5 left-2.5 bg-emerald-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-lg z-20 border border-emerald-400/40 flex items-center gap-1.5 backdrop-blur-xs">
-                              <span>Your Vote</span>
-                              <span className="font-black border-l border-emerald-400/60 pl-1.5 text-white tabular-nums">{percent}%</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Name & details */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center gap-2">
-                            <span className="font-bold text-white text-sm truncate">{name}</span>
-                            {isCreator ? (
-                              <button
-                                onClick={() => handleDeleteCompetitor(p.id)}
-                                className="text-[11px] text-red-400 hover:text-red-300 font-semibold px-2 py-0.5 hover:bg-red-500/10 rounded transition-colors shrink-0"
-                              >
-                                Remove
-                              </button>
-                            ) : p.profiles?.username ? (
-                              <span className="text-xs text-neutral-400 truncate">@{p.profiles.username}</span>
-                            ) : null}
-                          </div>
-                          {p.submission_data.description && (
-                            <p className="text-xs text-neutral-400 line-clamp-2">
-                              {p.submission_data.description}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Vote Stats & Vote Button (No progress bar - percentages only) */}
-                        <div className="pt-2.5 border-t border-neutral-800/80 space-y-2.5">
-                          <div className="flex justify-between items-center text-xs font-semibold">
-                            <span className="text-neutral-400">{count} {count === 1 ? 'vote' : 'votes'}</span>
-                            <span className={`text-sm font-black tabular-nums ${
-                              isVotedFor ? 'text-emerald-400' : 'text-neutral-200'
-                            }`}>
-                              {percent}%
-                            </span>
-                          </div>
-
-                          {(contest.status === 'active' || (contest.status as string) === 'registration') && (
-                            <button
-                              onClick={() => handleCastVote(p.id)}
-                              disabled={!!userVotedParticipantId || submittingVoteId === p.id}
-                              className={`btn w-full py-2 text-xs font-bold transition-all rounded-xl ${
-                                isVotedFor
-                                  ? 'bg-emerald-600 text-white cursor-default shadow-md shadow-emerald-600/20'
-                                  : userVotedParticipantId
-                                  ? 'btn-secondary opacity-50 cursor-not-allowed'
-                                  : 'btn-primary'
-                              }`}
-                            >
-                              {submittingVoteId === p.id
-                                ? 'Casting Vote...'
-                                : isVotedFor
-                                ? `✓ Selected (${percent}%)`
-                                : 'Vote for Entry'}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              </div>
             </div>
           )}
-        </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <div className="card bg-surface-800 border-surface-600 p-6 space-y-4">
-            <h3 className="font-bold text-white text-base">Rules & Guidelines</h3>
-            <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">
-              {contest.rules || 'No custom rules defined.'}
-            </p>
+          {/* 7. Popular entries / Competitors section */}
+          <div className="pt-2 space-y-3">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-xl font-bold text-[#eef2ec] tracking-tight">
+                {contest.type === 'battle'
+                  ? (isRu ? 'Участники баттла' : 'Battle competitors')
+                  : (isRu ? 'Популярные работы' : 'Popular entries')}
+              </h2>
+              <span className="text-xs text-[#8d998f] font-medium">
+                {isRu ? 'Рейтинг сообщества' : 'Community rating'}
+              </span>
+            </div>
+
+            {/* Inline note if user has voted */}
+            {votedParticipant && (
+              <div className="rounded-[18px] bg-[#122418] border border-[#3fc27a]/30 text-[#3fc27a] p-3.5 text-xs font-medium leading-relaxed animate-fade-in flex items-center justify-between gap-2">
+                <span>
+                  {isRu
+                    ? `Вы проголосовали за «${votedParticipantName}». Нажмите ещё раз, чтобы отменить.`
+                    : `You voted for «${votedParticipantName}». Tap again to undo.`}
+                </span>
+              </div>
+            )}
+
+            {/* Entries empty state */}
+            {participants.length === 0 ? (
+              <div className="p-8 text-center rounded-[18px] bg-[#161c17] border border-[#232b24] space-y-3">
+                <div className="text-3xl">📷</div>
+                <p className="text-xs text-[#8d998f]">
+                  {isRu ? 'В конкурсе пока нет работ' : 'No entries submitted yet.'}
+                </p>
+                <Link
+                  href={`/apply/${contest.id}`}
+                  className="inline-block px-4 py-2 rounded-full bg-[#e2622a] text-white text-xs font-bold shadow"
+                >
+                  {isRu ? 'Добавить первую работу' : 'Submit first entry'}
+                </Link>
+              </div>
+            ) : (
+              /* Compact Ranked List (~80px per row) */
+              <div className="space-y-2.5">
+                {displayedParticipants.map((p, idx) => {
+                  const rank = idx + 1;
+                  const isVoted = userVotedParticipantId === p.id;
+                  const percent = getParticipantVotePercent(p.id);
+                  const rawPhoto = p.submission_data?.photos?.[0];
+                  const photoUrl = rawPhoto
+                    ? resolveImageUrl(rawPhoto, 'submissions')
+                    : 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400';
+                  const name =
+                    p.submission_data?.name ||
+                    p.profiles?.display_name ||
+                    p.profiles?.username ||
+                    (isRu ? `Участник ${rank}` : `Participant ${rank}`);
+                  const desc = p.submission_data?.description || '';
+                  const isExpanded = expandedRowId === p.id;
+
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setExpandedRowId(isExpanded ? null : p.id)}
+                      className={`rounded-[18px] bg-[#161c17] border p-3 flex items-center gap-3 transition-colors cursor-pointer select-none ${
+                        isVoted ? 'border-[#3fc27a]' : 'border-[#232b24] hover:border-[#333d34]'
+                      }`}
+                    >
+                      {/* Rank */}
+                      <div className="w-5 text-center shrink-0">
+                        <span className={`text-sm font-extrabold ${isVoted ? 'text-[#3fc27a]' : 'text-[#8d998f]'}`}>
+                          {rank}
+                        </span>
+                      </div>
+
+                      {/* 64x64 Rounded Thumbnail */}
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const submissionPhotos =
+                            p.submission_data?.photos && p.submission_data.photos.length > 0
+                              ? p.submission_data.photos.map((ph: string) => resolveImageUrl(ph, 'submissions'))
+                              : [photoUrl];
+                          setLightboxData({
+                            photoUrl,
+                            photos: submissionPhotos,
+                            title: name,
+                            author: p.profiles?.username ? `@${p.profiles.username}` : undefined,
+                            authorAvatar: p.profiles?.avatar_url
+                              ? resolveImageUrl(p.profiles.avatar_url, 'avatars')
+                              : undefined,
+                            authorBio: desc,
+                            category: contest.title,
+                            isSelected: isVoted,
+                            percentage: percent,
+                            onVote: () => handleToggleVote(p.id),
+                          });
+                        }}
+                        className="w-16 h-16 rounded-[12px] overflow-hidden shrink-0 relative bg-black/40 border border-[#232b24] hover:opacity-90 transition-opacity"
+                      >
+                        <Image
+                          src={photoUrl}
+                          alt={name}
+                          fill
+                          unoptimized={shouldBeUnoptimized(photoUrl)}
+                          className="object-cover"
+                          sizes="64px"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+
+                      {/* Name / Caption / Thin Progress Bar */}
+                      <div className="flex-1 min-w-0 pr-1">
+                        <div className="text-sm font-bold text-[#eef2ec] truncate">
+                          {name}
+                        </div>
+                        {desc ? (
+                          <p
+                            className={`text-xs text-[#8d998f] mt-0.5 leading-snug transition-all ${
+                              isExpanded ? 'line-clamp-5' : 'line-clamp-1'
+                            }`}
+                          >
+                            {desc}
+                          </p>
+                        ) : null}
+
+                        {/* Thin progress bar */}
+                        <div className="w-full h-1 bg-[#232b24] rounded-full overflow-hidden mt-2">
+                          <div
+                            className="h-full bg-[#3fc27a] rounded-full transition-all duration-300"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Right: Percent + Small Pill Vote Button */}
+                      <div className="shrink-0 flex flex-col items-end gap-1.5 pl-1">
+                        <span className="text-base font-extrabold text-[#eef2ec] tabular-nums leading-none">
+                          {percent}%
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleVote(p.id);
+                          }}
+                          disabled={submittingVoteId === p.id}
+                          className={`text-xs font-bold rounded-full px-3 py-1 transition-all active:scale-95 flex items-center gap-1 ${
+                            isVoted
+                              ? 'bg-[#3fc27a] text-[#0d110e] hover:bg-[#38b06d]'
+                              : 'border border-[#3fc27a]/60 text-[#3fc27a] hover:bg-[#3fc27a]/10'
+                          }`}
+                        >
+                          {submittingVoteId === p.id ? (
+                            '...'
+                          ) : isVoted ? (
+                            <span>{isRu ? '✓ Ваш' : '✓ Yours'}</span>
+                          ) : (
+                            <span>{isRu ? 'Голос' : 'Vote'}</span>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Small per-row "⋯" menu (owner/creator only) */}
+                      {(isCreator || (user && p.user_id === user.id)) && (
+                        <div className="shrink-0 relative">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpenId(menuOpenId === p.id ? null : p.id);
+                            }}
+                            aria-label="Actions"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-[#8d998f] hover:text-[#eef2ec] hover:bg-[#232b24] transition-colors"
+                          >
+                            <MoreHorizontal size={14} />
+                          </button>
+                          {menuOpenId === p.id && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute right-0 top-8 z-30 bg-[#161c17] border border-[#232b24] rounded-xl shadow-xl p-1 min-w-[130px] animate-fade-in"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMenuOpenId(null);
+                                  handleDeleteCompetitor(p.id);
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-2"
+                              >
+                                <Trash2 size={12} />
+                                <span>{isRu ? 'Удалить' : 'Remove'}</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Battle Arena secondary link */}
+            {contest.type === 'battle' && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowArenaView(true)}
+                  className="w-full py-3.5 rounded-[18px] bg-[#161c17] hover:bg-[#1f2720] border border-[#232b24] text-xs font-bold text-[#3fc27a] hover:text-[#4edb8d] transition-colors flex items-center justify-center gap-2"
+                >
+                  <span>⚔️</span>
+                  <span>{isRu ? 'Найти и свайпать другие баттлы в арене →' : 'Browse and swipe battles in Arena →'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Show all / Show fewer button (for eternal/standard contests with many entries) */}
+            {sortedParticipants.length > INITIAL_LIMIT && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllEntries((prev) => !prev)}
+                  className="w-full py-3 rounded-[18px] bg-[#161c17] hover:bg-[#1f2720] border border-[#232b24] text-xs font-bold text-[#eef2ec] transition-colors"
+                >
+                  {showAllEntries
+                    ? (isRu ? 'Свернуть' : 'Show fewer')
+                    : (isRu
+                        ? `Показать все работы (${sortedParticipants.length})`
+                        : `Show all entries (${sortedParticipants.length})`)}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Photo Lightbox (High-Resolution Zoom & Detail Inspection) ── */}
+      {/* ── Status Switching Bottom Sheet (Opened from cover "⋯" button) ── */}
+      {showStatusSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+            onClick={() => setShowStatusSheet(false)}
+          />
+
+          {/* Sheet */}
+          <div className="relative w-full max-w-lg bg-[#161c17] border-t border-[#232b24] rounded-t-[24px] p-6 space-y-4 z-10 animate-fade-in pb-safe">
+            <div className="flex items-center justify-between border-b border-[#232b24] pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-[#eef2ec]">
+                  {isRu ? 'Статус конкурса' : 'Contest status'}
+                </h3>
+                <p className="text-xs text-[#8d998f] mt-0.5">
+                  {isRu ? 'Панель управления организатора' : 'Organizer management controls'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStatusSheet(false)}
+                className="w-8 h-8 rounded-full bg-[#232b24] flex items-center justify-center text-[#8d998f] hover:text-[#eef2ec]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {[
+                {
+                  key: 'active',
+                  labelRu: 'Активно (голосование)',
+                  labelEn: 'Active (Voting)',
+                  descRu: 'Открыто для голосования пользователей',
+                  descEn: 'Open for live user voting',
+                },
+                {
+                  key: 'registration',
+                  labelRu: 'Регистрация открыта',
+                  labelEn: 'Registration open',
+                  descRu: 'Приём заявок участников',
+                  descEn: 'Open for entry submissions',
+                },
+                {
+                  key: 'paused',
+                  labelRu: 'Приостановлен (пауза)',
+                  labelEn: 'Paused',
+                  descRu: 'Временно на паузе',
+                  descEn: 'Temporarily on hold',
+                },
+                {
+                  key: 'blocked',
+                  labelRu: 'На проверке / скрыт',
+                  labelEn: 'Flagged / Caution',
+                  descRu: 'Скрыт из общей ленты с плашкой',
+                  descEn: 'Unlisted with caution badge',
+                },
+                {
+                  key: 'completed',
+                  labelRu: 'Завершён',
+                  labelEn: 'Completed',
+                  descRu: 'Итоги подведены',
+                  descEn: 'Finished and archived',
+                },
+              ].map((opt) => {
+                const isCurrent = contest.status === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => {
+                      handleChangeStatus(opt.key);
+                      setShowStatusSheet(false);
+                    }}
+                    className={`w-full p-3.5 rounded-[18px] border text-left flex items-center justify-between transition-colors ${
+                      isCurrent
+                        ? 'border-[#3fc27a] bg-[#122418]'
+                        : 'border-[#232b24] bg-[#161c17] hover:bg-[#1f2720]'
+                    }`}
+                  >
+                    <div>
+                      <div className={`text-sm font-bold ${isCurrent ? 'text-[#3fc27a]' : 'text-[#eef2ec]'}`}>
+                        {isRu ? opt.labelRu : opt.labelEn}
+                      </div>
+                      <div className="text-[11px] text-[#8d998f] mt-0.5">
+                        {isRu ? opt.descRu : opt.descEn}
+                      </div>
+                    </div>
+                    {isCurrent && (
+                      <span className="w-6 h-6 rounded-full bg-[#3fc27a] text-[#0d110e] flex items-center justify-center shrink-0">
+                        <Check size={14} strokeWidth={3} />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Creator direct add competitor action */}
+            <div className="pt-2 border-t border-[#232b24]">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStatusSheet(false);
+                  setShowAddModal(true);
+                }}
+                className="w-full py-3 rounded-[18px] bg-[#232b24] hover:bg-[#2c372d] text-xs font-bold text-[#eef2ec] transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus size={14} />
+                <span>{isRu ? 'Добавить участника напрямую' : 'Directly add competitor'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Creator Add Competitor Modal ── */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
+          <div className="relative w-full max-w-md bg-[#161c17] border border-[#232b24] rounded-[24px] p-6 space-y-4 z-10 animate-fade-in shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#232b24] pb-3">
+              <h4 className="text-sm font-extrabold text-[#eef2ec]">
+                {isRu ? 'Добавить участника в конкурс' : 'Add competitor to contest'}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="w-7 h-7 rounded-full bg-[#232b24] flex items-center justify-center text-[#8d998f] hover:text-[#eef2ec]"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCompetitor} className="space-y-3.5">
+              <div>
+                <label className="text-[11px] font-semibold text-[#8d998f] block mb-1">
+                  {isRu ? 'Имя участника / название работы *' : 'Name / Title *'}
+                </label>
+                <input
+                  type="text"
+                  placeholder={isRu ? 'например, Участник 1' : 'e.g. Challenger 1'}
+                  value={newCompName}
+                  onChange={(e) => setNewCompName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-[14px] bg-[#0d110e] border border-[#232b24] text-xs text-[#eef2ec] focus:outline-none focus:border-[#3fc27a]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-[#8d998f] block mb-1">
+                  {isRu ? 'Ссылка на фото *' : 'Photo URL *'}
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://images.unsplash.com/..."
+                  value={newCompPhoto}
+                  onChange={(e) => setNewCompPhoto(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-[14px] bg-[#0d110e] border border-[#232b24] text-xs text-[#eef2ec] focus:outline-none focus:border-[#3fc27a]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-[#8d998f] block mb-1">
+                  {isRu ? 'Описание работы (необязательно)' : 'Description / Story (optional)'}
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder={isRu ? 'Пара слов о кадре...' : 'A few words about the photo...'}
+                  value={newCompDesc}
+                  onChange={(e) => setNewCompDesc(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-[14px] bg-[#0d110e] border border-[#232b24] text-xs text-[#eef2ec] focus:outline-none focus:border-[#3fc27a] resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 rounded-[14px] bg-[#232b24] text-xs font-semibold text-[#8d998f] hover:text-[#eef2ec]"
+                >
+                  {isRu ? 'Отмена' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingComp}
+                  className="px-4 py-2 rounded-[14px] bg-[#e2622a] hover:bg-[#d0541f] text-white text-xs font-bold transition-colors"
+                >
+                  {addingComp ? '...' : (isRu ? 'Добавить' : 'Add')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Photo Lightbox ── */}
       {lightboxData && (
         <PhotoLightbox
           isOpen={Boolean(lightboxData)}

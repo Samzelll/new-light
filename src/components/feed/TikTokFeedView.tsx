@@ -374,10 +374,10 @@ export function TikTokFeedView({
                           {isSelected ? (
                             <div
                               className="px-2 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] flex items-center gap-1.5 shadow-md animate-fade-in border border-emerald-400/40 cursor-pointer transition-colors"
-                              title="Нажмите повторно, чтобы отменить выбор"
+                              title="Tap again to deselect"
                             >
                               <Check size={11} strokeWidth={3} />
-                              <span>Выбрано</span>
+                              <span>Selected</span>
                               <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
                                 {sharePct}%
                               </span>
@@ -478,10 +478,10 @@ export function TikTokFeedView({
               ✓
             </div>
             <h3 className="text-lg font-black text-white mb-2">
-              Вы просмотрели все доступные группы
+              You&apos;ve viewed all available groups
             </h3>
             <p className="text-xs text-neutral-400 mb-6 leading-relaxed">
-              Все ваши голоса успешно учтены. Новые группы появляются каждые 24 часа в 06:00 UTC.
+              All your votes are counted live. New groups appear every 24 hours at 06:00 UTC.
             </p>
             <div className="flex flex-col sm:flex-row gap-2.5 w-full">
               <button
@@ -490,7 +490,7 @@ export function TikTokFeedView({
                 className="flex-1 py-3 px-4 rounded-xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-extrabold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-lg shadow-[#ff6a2b]/25 transition-all active:scale-95"
               >
                 <ArrowUp size={14} strokeWidth={2.5} />
-                <span>В начало ленты</span>
+                <span>Back to top</span>
               </button>
               {onResetFilters && (
                 <button
@@ -499,7 +499,7 @@ export function TikTokFeedView({
                   className="py-3 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-extrabold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all active:scale-95 border border-neutral-700/80"
                 >
                   <RotateCcw size={14} strokeWidth={2.5} />
-                  <span>Сбросить</span>
+                  <span>Reset</span>
                 </button>
               )}
             </div>

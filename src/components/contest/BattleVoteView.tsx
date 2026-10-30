@@ -15,9 +15,10 @@ import {
 
 interface BattleVoteViewProps {
   initialContestId?: string;
+  onBack?: () => void;
 }
 
-export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
+export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps) {
   const router = useRouter();
 
   const [battle, setBattle] = useState<BattleContest | null>(null);
@@ -44,6 +45,7 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
       portfolio?: string;
     };
     isSelected?: boolean;
+    percentage?: number | string;
     onVote?: () => void;
   } | null>(null);
 
@@ -279,8 +281,8 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
           {/* Back Button (Seamless) */}
           <button
             type="button"
-            onClick={() => router.push('/')}
-            aria-label="Back to feed"
+            onClick={() => (onBack ? onBack() : router.push('/'))}
+            aria-label="Back"
             className="w-8 h-8 rounded-full bg-transparent hover:bg-white/10 text-white/80 hover:text-white flex items-center justify-center transition-all active:scale-95 border-none shrink-0"
           >
             <ChevronLeft size={20} strokeWidth={2.5} />
@@ -338,11 +340,14 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
             {hasVoted && userVotedCorner === 'red' && (
               <div className="absolute top-3 left-3 z-10 animate-fade-in">
                 <span
-                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md inline-flex items-center gap-1 border border-emerald-400/40 cursor-pointer transition-colors"
-                  title="Нажмите повторно, чтобы отменить выбор"
+                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md inline-flex items-center gap-1.5 border border-emerald-400/40 cursor-pointer transition-colors"
+                  title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
-                  <span>Выбрано</span>
+                  <span>Selected</span>
+                  <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                    {redComp.percentage.toFixed(1)}%
+                  </span>
                 </span>
               </div>
             )}
@@ -372,6 +377,7 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
                       portfolio: `https://${authorTag.replace('@', '')}.design`,
                     } : undefined,
                     isSelected: userVotedCorner === 'red',
+                    percentage: redComp.percentage.toFixed(1),
                     onVote: () => handleVote(redComp),
                   });
                 }}
@@ -419,7 +425,7 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
               </div>
             </div>
 
-            {/* Percentage & Points (Shown after voting, green if picked) */}
+            {/* Percentage & Standing (Shown after voting, green if picked) */}
             {hasVoted && (
               <div className="absolute bottom-3 right-3.5 z-10 pointer-events-none text-right animate-fade-in">
                 <span
@@ -430,7 +436,7 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
                   {redComp.percentage.toFixed(1)}%
                 </span>
                 <span className="block text-[11px] font-bold text-white/80 tracking-wide mt-0.5 drop-shadow">
-                  {redComp.votes} {redComp.votes === 1 ? 'pt' : 'pts'}
+                  {userVotedCorner === 'red' ? 'Your pick' : 'Live standing'}
                 </span>
               </div>
             )}
@@ -474,11 +480,14 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
             {hasVoted && userVotedCorner === 'blue' && (
               <div className="absolute top-3 left-3 z-10 animate-fade-in">
                 <span
-                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md inline-flex items-center gap-1 border border-emerald-400/40 cursor-pointer transition-colors"
-                  title="Нажмите повторно, чтобы отменить выбор"
+                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md inline-flex items-center gap-1.5 border border-emerald-400/40 cursor-pointer transition-colors"
+                  title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
-                  <span>Выбрано</span>
+                  <span>Selected</span>
+                  <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                    {blueComp.percentage.toFixed(1)}%
+                  </span>
                 </span>
               </div>
             )}
@@ -508,6 +517,7 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
                       portfolio: `https://${authorTag.replace('@', '')}.design`,
                     } : undefined,
                     isSelected: userVotedCorner === 'blue',
+                    percentage: blueComp.percentage.toFixed(1),
                     onVote: () => handleVote(blueComp),
                   });
                 }}
@@ -555,7 +565,7 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
               </div>
             </div>
 
-            {/* Percentage & Points (Shown after voting, green if picked) */}
+            {/* Percentage & Standing (Shown after voting, green if picked) */}
             {hasVoted && (
               <div className="absolute bottom-3 right-3.5 z-10 pointer-events-none text-right animate-fade-in">
                 <span
@@ -566,7 +576,7 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
                   {blueComp.percentage.toFixed(1)}%
                 </span>
                 <span className="block text-[11px] font-bold text-white/80 tracking-wide mt-0.5 drop-shadow">
-                  {blueComp.votes} {blueComp.votes === 1 ? 'pt' : 'pts'}
+                  {userVotedCorner === 'blue' ? 'Your pick' : 'Live standing'}
                 </span>
               </div>
             )}
@@ -625,6 +635,7 @@ export function BattleVoteView({ initialContestId }: BattleVoteViewProps) {
           prizePool={lightboxData.prizePool}
           socialLinks={lightboxData.socialLinks}
           isSelected={lightboxData.isSelected}
+          percentage={lightboxData.percentage}
           onVote={lightboxData.onVote}
         />
       )}

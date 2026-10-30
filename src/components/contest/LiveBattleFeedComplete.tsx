@@ -172,12 +172,12 @@ function EmbeddedLightbox({
               className="px-2.5 py-1 rounded-full bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-neutral-200 border border-neutral-700/80 flex items-center gap-1.5 transition-all active:scale-95"
             >
               <Maximize2 size={13} className="text-[#ff6a2b]" />
-              <span className="hidden sm:inline">Оригинал</span>
+              <span className="hidden sm:inline">Original</span>
             </button>
             <button
               type="button"
               onClick={onClose}
-              aria-label="Закрыть"
+              aria-label="Close"
               className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white flex items-center justify-center transition-colors"
             >
               <X size={16} />
@@ -235,7 +235,7 @@ function EmbeddedLightbox({
 
               {authorBio && (
                 <div>
-                  <h4 className="text-xs font-bold text-neutral-400 mb-1">Об авторе</h4>
+                  <h4 className="text-xs font-bold text-neutral-400 mb-1">About Creator</h4>
                   <p className="text-xs text-neutral-300 leading-relaxed">{authorBio}</p>
                 </div>
               )}
@@ -313,10 +313,10 @@ function EmbeddedLightbox({
                 {isSelected ? (
                   <>
                     <X size={16} strokeWidth={2.5} className="text-red-400" />
-                    <span>Отменить голос за эту работу</span>
+                    <span>Cancel vote for this entry</span>
                   </>
                 ) : (
-                  <span>Отдать голос за эту работу</span>
+                  <span>Vote for this entry</span>
                 )}
               </button>
             )}
@@ -443,23 +443,23 @@ function EmbeddedDescriptionSheet({
 
         <div className="space-y-3 text-xs text-neutral-300">
           <div>
-            <h4 className="font-bold text-white mb-1">Формат турнира</h4>
+            <h4 className="font-bold text-white mb-1">Tournament Format</h4>
             <p className="text-neutral-400">
-              {stageInfo || '1v1 Лайв-Батл с моментальным учетом голосов.'}
+              {stageInfo || '1v1 Live Battle with instant vote tallying.'}
             </p>
           </div>
 
           <div>
-            <h4 className="font-bold text-white mb-1">Правила голосования</h4>
+            <h4 className="font-bold text-white mb-1">Voting Rules</h4>
             <p className="text-neutral-400 leading-relaxed">
-              Один голос на одну дуэль. Выберите наиболее качественную и атмосферную
-              работу. Результаты учитывают веса доверия авторов.
+              One vote per duel. Choose the most compelling and atmospheric
+              entry. Votes are weighted by community trust index.
             </p>
           </div>
 
           {contest.description && (
             <div>
-              <h4 className="font-bold text-white mb-1">О конкурсе</h4>
+              <h4 className="font-bold text-white mb-1">About Contest</h4>
               <p className="text-neutral-400 leading-relaxed">{contest.description}</p>
             </div>
           )}
@@ -470,7 +470,7 @@ function EmbeddedDescriptionSheet({
           onClick={onClose}
           className="w-full py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-colors"
         >
-          Понятно
+          Got it
         </button>
       </div>
     </div>
@@ -596,11 +596,14 @@ function BattleSlide({
             <div>
               {userVote === 'red' && (
                 <span
-                  className="px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in transition-colors cursor-pointer"
-                  title="Нажмите повторно, чтобы отменить выбор"
+                  className="px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] flex items-center gap-1.5 shadow-lg border border-emerald-400/40 animate-fade-in transition-colors cursor-pointer"
+                  title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
-                  <span>Выбрано</span>
+                  <span>Selected</span>
+                  <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                    {percentages.red}%
+                  </span>
                 </span>
               )}
             </div>
@@ -752,11 +755,14 @@ function BattleSlide({
             <div>
               {userVote === 'green' && (
                 <span
-                  className="px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-lg border border-emerald-400/40 animate-fade-in transition-colors cursor-pointer"
-                  title="Нажмите повторно, чтобы отменить выбор"
+                  className="px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] flex items-center gap-1.5 shadow-lg border border-emerald-400/40 animate-fade-in transition-colors cursor-pointer"
+                  title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
-                  <span>Выбрано</span>
+                  <span>Selected</span>
+                  <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                    {percentages.green}%
+                  </span>
                 </span>
               )}
             </div>
@@ -1158,10 +1164,10 @@ export function LiveBattleFeedComplete({
           ⚔️
         </div>
         <h3 className="text-base font-bold text-white mb-1.5">
-          Нет активных батлов по текущим фильтрам
+          No active battles match your filters
         </h3>
         <p className="text-xs text-neutral-400 mb-6 max-w-xs">
-          Попробуйте сбросить фильтры или выбрать другие категории.
+          Try resetting filters or selecting different categories.
         </p>
         {onResetFilters && (
           <button
@@ -1169,7 +1175,7 @@ export function LiveBattleFeedComplete({
             onClick={onResetFilters}
             className="px-5 py-2.5 rounded-full bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs shadow-lg shadow-[#ff6a2b]/20 transition-all active:scale-95"
           >
-            Сбросить фильтры
+            Reset Filters
           </button>
         )}
       </div>
@@ -1244,8 +1250,8 @@ export function LiveBattleFeedComplete({
           onClose={() => setIsDescriptionOpen(false)}
           contest={
             contestsMap[battles[activeIndex]?.contestId || ''] || {
-              title: battles[activeIndex]?.title || 'Батл',
-              description: '1v1 Лайв-Батл дуэль между двумя лучшими работами турнира.',
+              title: battles[activeIndex]?.title || 'Battle',
+              description: '1v1 Live Battle duel between two featured tournament entries.',
               category: battles[activeIndex]?.category,
             }
           }

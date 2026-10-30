@@ -250,7 +250,7 @@ export function PhotoLightbox({
                 {isSelected && (
                   <div className="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-full bg-emerald-600/90 backdrop-blur-md text-white font-bold text-xs flex items-center gap-1.5 shadow-lg border border-emerald-400/40 animate-fade-in pointer-events-none">
                     <Check size={13} strokeWidth={3} />
-                    <span>Выбрано</span>
+                    <span>Selected</span>
                     {percentage !== undefined && (
                       <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
                         {percentage}%
@@ -378,7 +378,7 @@ export function PhotoLightbox({
 
                 <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
                   {authorBio ||
-                    `Конкурсная работа, представленная в данном раунде. Оцените композицию, освещение и технику исполнения.`}
+                    `Featured contest entry for this round. Evaluate composition, depth, and technical execution.`}
                 </p>
 
                 {/* Compact Social Channels */}
@@ -427,7 +427,7 @@ export function PhotoLightbox({
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
                     >
                       <Globe size={12} className="text-emerald-400" />
-                      <span>Портфолио</span>
+                      <span>Portfolio</span>
                     </a>
                   )}
                 </div>
@@ -439,11 +439,11 @@ export function PhotoLightbox({
                   <Award size={16} className="text-amber-400 shrink-0" />
                   <div className="min-w-0">
                     <span className="font-semibold text-white truncate block">
-                      {sponsorName || 'Спонсор конкурса'}
+                      {sponsorName || 'Contest Sponsor'}
                     </span>
                     {prizePool && (
                       <span className="text-[11px] text-amber-300/90 block">
-                        Призовой фонд: {prizePool}
+                        Prize pool: {prizePool}
                       </span>
                     )}
                   </div>
@@ -468,10 +468,10 @@ export function PhotoLightbox({
                   {isSelected ? (
                     <>
                       <X size={16} strokeWidth={2.5} className="text-red-400" />
-                      <span>Отменить голос за эту работу</span>
+                      <span>Cancel vote for this entry</span>
                     </>
                   ) : (
-                    <span>Проголосовать за эту работу</span>
+                    <span>Vote for this entry</span>
                   )}
                 </button>
               )}
