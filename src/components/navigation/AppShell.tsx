@@ -50,13 +50,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       {isDesktop && (
         <aside
           aria-label="Desktop navigation"
-          className="desktop-only-nav fixed left-0 top-0 bottom-0 z-30 hidden lg:block"
+          className="desktop-only-nav fixed left-0 top-0 bottom-0 w-[240px] z-30 hidden lg:block"
         >
           <SideNav />
         </aside>
       )}
 
-      <div className="app-shell-main w-full">
+      <div className="app-shell-main w-full min-h-screen">
         {children}
       </div>
     </div>

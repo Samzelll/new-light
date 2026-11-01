@@ -7,7 +7,7 @@ import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService'
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { ChevronRight, ChevronUp, ChevronDown, Check, Maximize2, Sparkles } from 'lucide-react';
 import { DescriptionSheet } from '../feed/DescriptionSheet';
-import { PhotoLightbox } from '../common/PhotoLightbox';
+import { BattleParticipantModal, BattleParticipantModalProps } from '@/components/battle/BattleParticipantModal';
 import { PinchZoomImage } from '../common/PinchZoomImage';
 import { preloadBattleImages } from '@/services/recommendationService';
 import { useDeviceMode } from '@/hooks/useDeviceMode';
@@ -51,26 +51,7 @@ export function TikTokBattleView({
     markPinchTipSeen,
   } = useUiPreferences();
 
-  const [lightboxData, setLightboxData] = useState<{
-    photoUrl: string;
-    photos?: string[];
-    title: string;
-    author?: string;
-    authorAvatar?: string;
-    authorBio?: string;
-    category?: string;
-    sponsorName?: string;
-    sponsorTier?: string;
-    prizePool?: string;
-    socialLinks?: {
-      instagram?: string;
-      telegram?: string;
-      twitter?: string;
-      portfolio?: string;
-    };
-    isSelected?: boolean;
-    onVote?: () => void;
-  } | null>(null);
+  const [lightboxData, setLightboxData] = useState<BattleParticipantModalProps | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isTransitioningRef = useRef(false);
@@ -393,6 +374,8 @@ export function TikTokBattleView({
                   onClick={(e) => {
                     e.stopPropagation();
                     setLightboxData({
+                      isOpen: true,
+                      onClose: () => setLightboxData(null),
                       photoUrl: currentBattle.red.photo,
                       photos: currentBattle.red.photos || [currentBattle.red.photo],
                       title: currentBattle.red.name,
@@ -400,9 +383,15 @@ export function TikTokBattleView({
                       authorAvatar: currentBattle.red.authorAvatar,
                       authorBio: currentBattle.red.authorBio,
                       category: currentBattle.category,
+                      corner: 'red',
+                      opponentName: currentBattle.green.name,
+                      opponentCorner: 'blue',
+                      percentage: currentBattle.red.percent,
+                      opponentPercentage: currentBattle.green.percent,
                       sponsorName: currentBattle.red.sponsorName || currentBattle.sponsorName,
                       sponsorTier: currentBattle.red.sponsorTier,
                       prizePool: currentBattle.red.prizePool,
+                      tags: currentBattle.tags,
                       socialLinks: currentBattle.red.socialLinks,
                       isSelected: userVote === 'red',
                       onVote: () => onVote(currentBattle.id, 'red'),
@@ -577,6 +566,8 @@ export function TikTokBattleView({
                   onClick={(e) => {
                     e.stopPropagation();
                     setLightboxData({
+                      isOpen: true,
+                      onClose: () => setLightboxData(null),
                       photoUrl: currentBattle.green.photo,
                       photos: currentBattle.green.photos || [currentBattle.green.photo],
                       title: currentBattle.green.name,
@@ -584,9 +575,15 @@ export function TikTokBattleView({
                       authorAvatar: currentBattle.green.authorAvatar,
                       authorBio: currentBattle.green.authorBio,
                       category: currentBattle.category,
+                      corner: 'blue',
+                      opponentName: currentBattle.red.name,
+                      opponentCorner: 'red',
+                      percentage: currentBattle.green.percent,
+                      opponentPercentage: currentBattle.red.percent,
                       sponsorName: currentBattle.green.sponsorName || currentBattle.sponsorName,
                       sponsorTier: currentBattle.green.sponsorTier,
                       prizePool: currentBattle.green.prizePool,
+                      tags: currentBattle.tags,
                       socialLinks: currentBattle.green.socialLinks,
                       isSelected: userVote === 'green',
                       onVote: () => onVote(currentBattle.id, 'green'),
@@ -712,24 +709,11 @@ export function TikTokBattleView({
         stageInfo="1v1 Battle Duel"
       />
 
-      {/* ── Photo Lightbox (High-Resolution Zoom & Full Creator/Sponsor Page) ── */}
+      {/* ── Battle Participant Details Modal (with Swipe Carousel) ── */}
       {lightboxData && (
-        <PhotoLightbox
-          isOpen={Boolean(lightboxData)}
+        <BattleParticipantModal
+          {...lightboxData}
           onClose={() => setLightboxData(null)}
-          photoUrl={lightboxData.photoUrl}
-          photos={lightboxData.photos}
-          title={lightboxData.title}
-          author={lightboxData.author}
-          authorAvatar={lightboxData.authorAvatar}
-          authorBio={lightboxData.authorBio}
-          category={lightboxData.category}
-          sponsorName={lightboxData.sponsorName}
-          sponsorTier={lightboxData.sponsorTier}
-          prizePool={lightboxData.prizePool}
-          socialLinks={lightboxData.socialLinks}
-          isSelected={lightboxData.isSelected}
-          onVote={lightboxData.onVote}
         />
       )}
     </div>

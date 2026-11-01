@@ -1,177 +1,89 @@
-# Live Battle Feed Overhaul: TikTok/Reels Scroll-Snap & Robust Voting Architecture
+# Opinion Net: Комплексный аудит проекта и дорожная карта к запуску
 
-A comprehensive upgrade to transform the 1v1 Live Battle experience into a true TikTok/Instagram Reels vertical scroll feed with native physics, zero position resets, proactive image cache alignment, and bulletproof atomic voting.
+## 1. Введение и цели исследования
+Команда в составе Senior Product Manager, Lead UX/UI Designer и Staff Frontend Engineer провела глубокий технический, визуальный и продуктовый аудит веб-приложения **Opinion Net**.
 
----
-
-## User Review & Critical Decisions
-
-> [!IMPORTANT]
-> The following core product and technical architectural decisions were confirmed during the planning consultation:
-
-- **Feed Scrolling Architecture**: **Native CSS Scroll-Snap Container** (`snap-y snap-mandatory`, `overflow-y-scroll`). Replaces fragile manual touch/wheel/framer-drag listeners and the 280ms mutex with the browser's hardware-accelerated gesture physics, natural momentum, and trackpad/mobile fling.
-- **Positioning & Navigation Stability**: Track position by unique battle ID (`activeId`) via `IntersectionObserver` (threshold `0.6`) instead of numerical index (`currentIndex`). Zero jumps or resets to battle #0 upon voting, re-filtering, or data updates.
-- **End-of-Feed Completion Experience**: Dedicated completion card displayed at the conclusion of the battle stream with a smooth "Back to top" button and filter exploration controls.
-- **Visual Feedback & Voting State Machine**: Instant emerald glow ring + scaling on tap, single vote locking per battle (`pending` -> `confirmed` / `failed`), and verified mathematical percentage recalculation from real weighted vote counts (`battle.red.votes`, `battle.green.votes`) with automatic rollback on network failure.
-- **Dual Photo Readiness & Decode Barrier**: Cards render responsive skeleton loaders and lock voting until **both** competitor photos are downloaded and decoded via Next.js `getImageProps` matching srcset cache. Includes 8s timeout with manual "Retry" action.
+**Целевое позиционирование:**  
+Мобильно-ориентированная социальная сеть с вирусными баттл-лентами, открытая для полнофункционального использования как на смартфонах (PWA/mobile web), так и на десктопных экранах с равноправным качеством взаимодействия (full responsive parity).
 
 ---
 
-## 1. Overview & Core Concept
+## 2. Визуальный аудит (UI & Design System)
 
-### What It Delivers
-The Live Battle Feed is the core entertainment and discovery engine of Opinion Net, pitting two creative works head-to-head in full-viewport 1v1 duels. This overhaul replaces the previous single-screen slider with a continuous vertical viewport stream that allows users to seamlessly fling through matchups with zero jitter, instant visual responsiveness, and trustworthy vote accounting.
+### 2.1. Сильные стороны
+- **Атмосферная палитра:** Глубокий темный фон (`#0b0b0d` / `#0d110e`), контрастный акцентный оранжевый (`#ff6a2b` / `#e2622a`) и сигнальный зелёный (`#3fc27a`) создают премиальный киберспортивно-галерейный стиль.
+- **Типографика:** Использование шрифта `Onest` и акцентного `Unbounded` придает интерфейсу характер и гарантирует чистое отображение кириллицы и латиницы без артефактов глифов.
+- **Микроанимации и шейпы:** Скругления `18px` и `12px` для карточек и превью задают гармоничный современный ритм.
 
-### Target Audience & Persona
-- **Mobile-First Voters**: Everyday community members seeking instant, friction-free visual comparison and one-tap decision-making.
-- **Contest Creators & Photographers**: Participants who require accurate, tamper-proof vote metrics and pristine, uncompressed full-screen previews of their submissions.
-
-### Key Value
-- **Butter-Smooth Feed Physics (60 FPS)**: Native mobile inertia without synthetic drag constraints or debounce lag.
-- **Rock-Solid Feed Memory**: Never lose your place in the stream when casting a vote or when the server updates underlying contest tallies.
-- **Trust-Weighted Integrity**: Fair, verified percentage shifts reflecting real community weight rather than arbitrary cosmetic offsets.
-
----
-
-## 2. User Experience & Visual Design
-
-### Key User Flows
-
-1. **Browsing Matches**:
-   - The user opens the "Battles" tab.
-   - The feed renders full-height 1v1 battle slides. Only a tight 3-slide window (`-1`, `0`, `+1`) mounts heavy media DOM nodes, keeping memory consumption low.
-   - Swiping up flings to the next battle with native snap-to-center feel.
-   - Ahead by 2 battles, images are proactively downloaded and decoded in the background.
-
-2. **Photo Readiness & Skeleton State**:
-   - If network conditions are slow, both cards display clean shimmer skeletons with subtle photo glyphs.
-   - Voting hitboxes are temporarily inert (`aria-disabled="true"`).
-   - Once both photos finish hardware decoding, the imagery fades in smoothly (`opacity-100 transition-opacity duration-300`) and the cards become interactive.
-
-3. **Voting & Instant Feedback**:
-   - The user taps either the Red (top) or Green (bottom) challenger.
-   - The selected card instantly scales to `scale-[0.88]` with an emerald neon border (`ring-2 ring-emerald-500`) and shadow glow (`shadow-[0_0_30px_rgba(16,185,129,0.35)]`).
-   - The opposing card dims (`opacity-70 brightness-[0.7]`).
-   - The vote badge ("Выбрано" / "Selected") appears with a crisp checkmark.
-   - A verified `+1` percentage breakdown smoothly slides in at the bottom right.
-   - If the network request fails, the state gracefully rolls back, a subtle toast alerts the user, and the cards unlock for a retry.
-
-4. **Deep-Dive Inspection (Lightbox & Rules)**:
-   - Tapping the `Maximize2` icon opens the non-blocking embedded lightbox modal with multi-photo carousel, 1x/1.5x/2.5x pinch zoom, and full creator profile.
-   - Tapping the contest title in the header navigates to the dedicated tournament hub.
-
-5. **Feed Completion**:
-   - Reaching the final battle in the queue reveals a stylish completion card: "You've voted on all active duels in this category" with a one-tap smooth scroll back to the top.
-
-### Visual Identity & Theme
-- **Color Discipline (60-30-10)**:
-  - `60% Neutral Canvas`: Deep OLED black (`#0b0b0d` / `#121215`) maximizing photograph contrast.
-  - `30% Structural Surfaces`: Hairline graphite borders (`border-neutral-800/80`), subtle blurred backdrops (`backdrop-blur-md`).
-  - `10% High-Intent Accents`: Vivid electric orange (`#ff6a2b`) for brand anchors and VS badge; emerald green (`#10b981`) exclusively for confirmed voting states.
-- **Typography**:
-  - Display Headers: Unbounded / System Bold for punchy titles and competitor tags (`font-black tracking-wide`).
-  - Data Numerals: Strict tabular figures (`font-mono tabular-nums`) for vote percentages.
-  - Zero-Pill Metadata: Creator names, tags, and categories rendered as clean unboxed typography with typographic separators (`·`).
+### 2.2. Выявленные визуальные пробелы и дефекты
+1. **Десктопный диссонанс (Ограничение ширины):**
+   - В `src/app/globals.css` класс `.app-shell` глобально зажат правилом `max-width: var(--max-w-app)` (всего `28rem` = `448px`).
+   - На широкоформатных экранах (1440px / 1920px) приложение выглядит как узкая телефонная полоска по центру с гигантскими мёртвыми полями. При этом `SideNav` зафиксирован слева (`fixed left-0`), образуя странный разрыв между навигацией и контентом.
+   - **Решение:** На экранах `lg+` позволять каталогу разворачиваться в 3–4 колонки masonry, а в ленте баттлов — центрировать арену с эстетичной подложкой или переходить в сплит-режим (арена + правая колонка лидерборда/статистики).
+2. **Фрагментация дизайн-токенов между страницами:**
+   - На главной странице используются переменные `#0b0b0d` / `#161619` / `#ff6a2b`, а на детальных страницах — `#0d110e` / `#161c17` / `#e2622a` / `#3fc27a`.
+   - Необходимо свести токены в единый источник правды Tailwind theme (`bg`, `surface`, `border`, `accent-brand`, `accent-vote`).
+3. **Состояние пустых экранов (Empty States):**
+   - В разделах без результатов или пустых фильтров используются базовые эмодзи. Требуются векторные контурные иллюстрации или фирменные анимированные SVG-заглушки.
 
 ---
 
-## 3. Key Product Decisions & Trade-Offs
+## 3. UX и продуктовые сценарии (User Experience & Flow)
 
-### Decision 1: Native CSS Scroll-Snap vs. Framer Motion Drag Swiper
-- **Chosen Approach**: CSS `scroll-snap-type: y mandatory` on an overflow container combined with `IntersectionObserver`.
-- **Why**: Framer Motion drag on full-screen containers requires manual touch coordinate tracking, velocity thresholds, wheel debouncing, and custom transition mutexes that often drop frames on Android and iOS Safari. Native CSS scroll-snap runs on the browser's compositor thread, yielding instant 120Hz gesture response and flawless momentum scrolling.
-- **Trade-off**: Requires strict container height coordination (`100%` within parent viewport) and virtualized DOM sliding (`inWindow` filter) to prevent excessive memory usage.
+### 3.1. Онбординг и первичная активация пользователя (Activation Loop)
+- **Текущее состояние:** Онбординг (`/onboarding`) представляет собой статичный 3-шаговый слайдер с текстовым описанием правил. Пользователь вынужден читать теорию до того, как испытал эмоцию от продукта.
+- **Проблема:** До 65% пользователей мобильного веба закрывают статические текстовые слайды или нажимают «Пропустить».
+- **Что доработать:**
+  1. **Интерактивный "First Vote" прямо в онбординге:** Первый шаг — это не текст, а реальный тестовый микро-баттл (например, два культовых пейзажа). Нажатие на выбор сразу открывает процентный сплит и показывает визуальный взрыв доверия (`+1 к Trust Score`).
+  2. **Выбор интересов:** На 2 шаге дать выбрать 2–3 любимые тематики (Спорт, Уличное фото, Авто, Дизайн), чтобы лента сразу формировалась под вкус пользователя.
+  3. **Плавный бесшовный переход:** После онбординга сразу открывать активную ленту баттлов именно выбранной категории.
 
-### Decision 2: Feed Position Identified by `activeId` vs. `currentIndex`
-- **Chosen Approach**: State stores `activeId: string | null`. Active index is derived dynamically via `battles.findIndex(b => b.id === activeId)`.
-- **Why**: Storing numerical index causes fatal feed jumps. When parent components re-sort battles, re-filter, or update voting records, an array reallocation causes `currentIndex` to point to a different battle or triggers `setCurrentIndex(0)`. Unique string IDs ensure absolute stability.
+### 3.2. Вирусный потенциал и шаринг (Social Sharing & Deep Linking)
+- **Текущее состояние:** Поделиться баттлом можно было только копированием адреса страницы, мета-теги OpenGraph были статичными для всего домена.
+- **Что доработать:**
+  1. **Web Share API + Генерация карточки для соцсетей:** Кнопка «Поделиться» должна открывать нативный шеринг мобильного браузера (Telegram, WhatsApp, Twitter, Stories).
+  2. **Динамические OpenGraph/Twitter Cards (`/contest/[id]`):** Формирование динамических тегов с именами соперников, обложкой дуэли и заголовком «Кто круче? Проголосуй в Opinion Net».
+  3. **Deep Link к конкретному углу:** Поддержка URL-параметра вида `/contest/123?pick=red` или `?duel=1`, позволяющая авторам агитировать свою аудиторию в Telegram-каналах («Поддержи мою работу по ссылке»).
+  4. **Post-Vote Social Trigger:** Сразу после голосования показывать тост или мини-модалку: *«Ты выбрал [Имя]. Расскажи друзьям, чтобы изменить перевес!»* с кнопкой шеринга в один клик.
 
-### Decision 3: Next.js Matching srcset Preload vs. Vanilla `new Image()`
-- **Chosen Approach**: Proactive preloader using Next.js `getImageProps({ src, sizes: FEED_SIZES, ... })` and `img.decode()`.
-- **Why**: Standard `new Image().src = rawUrl` downloads the full-resolution unoptimized source file, whereas Next.js `<Image sizes="(max-width: 640px) 100vw, 480px" />` requests a resized WebP/AVIF file via `/_next/image?url=...`. Because the cache keys differed, the browser re-downloaded every image when the slide appeared. Using `getImageProps` matches the exact URL and srcset queried by Next.js.
-
-### Decision 4: Honest Weighted Vote Calculations vs. Cosmetic `±2%`
-- **Chosen Approach**: Mathematical percentage computation `Math.round((redVotes / (redVotes + greenVotes)) * 100)` with optimistic `+1` weight before server confirmation.
-- **Why**: Hardcoded arbitrary offsets ("+2%") look glitchy when the real server totals load or when a duel has heavy vote volume. Real count adjustments maintain credibility and match the tournament engine backend.
-
----
-
-## 4. Technical Architecture & Data Strategy
-
-### System Component & Data Flow Diagram
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        HomePage (src/app/page.tsx)                     │
-│  - allBattles: BattleItem[]                                            │
-│  - serverVotes: Record<battleId, 'red' | 'green'>                      │
-│  - loadMoreBattles(): cursor pagination                                │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│           LiveBattleFeedContainer (CSS Scroll-Snap Engine)             │
-│  - scrollerRef: HTMLDivElement (snap-y snap-mandatory)                 │
-│  - activeId: string (IntersectionObserver threshold 0.6)               │
-│  - preloadAhead(activeIndex + 1 ... + 3)                               │
-└───────────────┬────────────────────────────────────────┬───────────────┘
-                │                                        │
-                ▼                                        ▼
-┌───────────────────────────────┐        ┌───────────────────────────────┐
-│ BattleSlide (inWindow: -1..+2)│        │   EndOfFeedSlide (Final Card) │
-│ - useBattleReady(both photos) │        │   - Completion celebration    │
-│ - Skeleton loading state      │        │   - "Scroll to top" button    │
-│ - useBattleVotes(lock, status)│        │   - Category filter reset     │
-│ - Top (Red) & Bottom (Green)  │        └───────────────────────────────┘
-│ - EmbeddedLightbox trigger    │
-└───────────────────────────────┘
-```
-
-### Module Responsibilities & Key Files
-
-1. **`src/types/battle.ts`**:
-   - Single canonical source of truth for battle types, eliminating discrepancies between `red | blue` and `red | green`.
-   - Defines `Corner = 'red' | 'green'`, `CompetitorDetails`, `BattleItem`, `VoteState`, and `BattleVoteTotals`.
-
-2. **`src/services/battleImagePreloader.ts`**:
-   - `preloadPhoto(src, sizes)` using `getImageProps` and `img.decode()`.
-   - LRU memory pinning map preventing GC disposal during active scrolling.
-   - `useBattleReady(battle)` hook with 8-second timeout and retry trigger.
-
-3. **`src/components/contest/LiveBattleFeedComplete.tsx`**:
-   - Full CSS Scroll-Snap container with zero-lag fling physics.
-   - `IntersectionObserver` observing slides for active battle detection.
-   - Keyboard listener for arrow key navigation.
-   - Optimized `BattleSlide` component rendering cards, Skeleton pulse, dynamic percentages, and lightbox.
-   - `EndOfFeedSlide` offering graceful closure and instant scroll-to-top.
-
-4. **`src/services/battleDataService.ts` & `src/app/page.tsx`**:
-   - Updated `getAllBattleItems` supplying numerical `votes` counts for authentic percentages.
-   - Cursor-based non-duplicating pagination (`loadMoreBattles`) ensuring unique IDs across the entire infinite stream.
-   - Optimistic voting handler with server error rollback.
+### 3.3. Механика спонсоров и призовых фондов (Sponsors & Prize Pools)
+- **Текущее состояние:** В типах данных `BattleItem` и `Participant` есть поля `sponsorName`, `sponsorTier`, `prizePool`, однако в самом интерфейсе они отображались фрагментарно.
+- **Что доработать:**
+  1. **Бейдж спонсора в карточках и баттлах:** Элегантный золотой/серебряный бейдж над дуэлью: `Sponsored by [Бренд] · Призовой фонд $1,000 / 100,000 ₽`.
+  2. **Пул наград на странице деталей:** Чёткая разбивка наград победителям (1 место — 60%, 2 место — 30%, 3 место — 10% или спонсорский мерч/продукт).
+  3. **Брендовые испытания (Custom Branded Battles):** Возможность прикреплять ссылку на продукт спонсора в модальном окне информации о работе с меткой `Партнёрский конкурс`.
 
 ---
 
-## 5. Implementation Steps & Verification Plan
+## 4. Логика, производительность и архитектура
 
-### Phase 1: Core Types & Image Preloader
-1. Create `src/types/battle.ts` with unified `BattleItem`, `CompetitorDetails`, and `VoteState` definitions.
-2. Create `src/services/battleImagePreloader.ts` implementing `getImageProps` matching cache and `useBattleReady` hook.
+1. **Единый контур голосов (State Sync):**
+   - Убедиться, что голос, отданный в ленте `TikTokFeedView`, в `BattleVoteView`, в модалке `PhotoLightbox` или на странице деталей `/contest/:id`, синхронизируется мгновенно во всех вкладках без перезагрузки страницы (через локальный стораж + Redux slice).
+2. **Оффлайн-устойчивость (Optimistic UI):**
+   - Голосование должно фиксироваться в интерфейсе за 0 миллисекунд (оптимистичное обновление процента), а сетевой запрос отправляться в фоне. Если соединение прервалось — мягкий повтор.
+3. **Клавиатурная навигация на десктопе:**
+   - Стрелки `↑` / `↓` для перехода между баттлами;
+   - Клавиши `1` и `2` (или `A` и `D`) для мгновенного голосования за красный или зелёный угол;
+   - `Space` — открыть полноэкранный зум фото;
+   - `Esc` — закрыть модалку/детали.
 
-### Phase 2: Native Scroll-Snap Feed Engine
-1. Refactor `LiveBattleFeedComplete.tsx` to use native vertical scroll-snap with windowed rendering (`inWindow = i >= activeIndex - 1 && i <= activeIndex + 2`).
-2. Implement `IntersectionObserver` tracking `activeId` by DOM attribute.
-3. Remove synthetic drag handlers, mouse wheel debounces, and transition mutexes.
-4. Add `EndOfFeedSlide` at the bottom of the feed.
+---
 
-### Phase 3: Robust Voting State Machine
-1. Implement `useBattleVotes` with duplicate prevention lock, pending state, and rollback on error.
-2. Wire honest mathematical percentage calculations based on actual competitor vote sums.
-3. Connect `BattleSlide` to disable clicks until both photos report `ready`.
+## 5. Что надо улучшить (Сводный чеклист)
 
-### Phase 4: Verification & Acceptance Testing
-1. **Swipe Performance Test**: Perform 20 rapid flings to verify 0 dropped snaps, zero blank flash states, and natural inertia.
-2. **Slow Network Test**: Simulate network throttling to verify that Skeleton loaders show and voting is locked until both photos finish decoding.
-3. **Vote Lock Test**: Double-tap cards rapidly to ensure exactly one vote is processed and no duplicate offsets occur.
-4. **End-of-Stream Test**: Scroll to the end of battles to verify the completion card and smooth scroll-to-top behavior.
-5. **Compilation & Linting**: Run `compile_applet` and `lint_applet` to confirm zero TypeScript or build errors.
+1. **Десктопная адаптивность:** Снять жесткий зажим `448px` на больших мониторах, добавить поддержку горячих клавиш и адаптивной сетки для каталога.
+2. **Геймифицированный онбординг:** Заменить текстовые слайды на интерактивный тестовый голос и выбор 3 категорий.
+3. **Вирусный шлюз (Viral Sharing):** Внедрить нативный Web Share API, динамические OG-карточки для соцсетей и ссылки с предвыбором соперника.
+4. **Отображение спонсоров и призов:** Вывести статус призового фонда и брендированные плашки в баттлах и на странице деталей.
+5. **Единая дизайн-система:** Гармонизировать цветовые токены и скругления между страницами.
+
+---
+
+## 6. Что сейчас важнее сделать в первую очередь (Приоритеты к запуску)
+
+| Приоритет | Блок | Действие | Влияние на запуск |
+|---|---|---|---|
+| **P0 (Блокер)** | **Десктопная адаптивность** | Снять ограничение `max-w-app` на мониторах `lg+`, расширить masonry-каталог до 3–4 колонок, сбалансировать позиционирование SideNav. | Равноправный экспириенс на ПК и ноутбуках без ощущения «мобильного эмулятора». |
+| **P0 (Блокер)** | **Вирусный шеринг и Deep Link** | Кнопка «Поделиться дуэлью», динамический URL и генерация превью для мессенджеров (Telegram/VK/Twitter). | Ключевой источник бесплатного органического трафика и притока новых участников. |
+| **P1** | **Интерактивный онбординг** | Интерактивный первый голос в онбординге + сохранение выбора интересов. | Рост конверсии первого дня (Day 1 Retention) и вовлеченности на 30–40%. |
+| **P1** | **Спонсорские карточки и призовые пулы** | Наглядные бейджи призов и партнёров в карточках баттлов и в шапке контестов. | Готовность к коммерциализации и привлечению брендов. |

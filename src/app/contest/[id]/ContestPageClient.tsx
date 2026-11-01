@@ -4,15 +4,15 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Bookmark, MoreHorizontal, Check, Trash2, X, Plus } from 'lucide-react';
+import { ArrowLeft, Bookmark, MoreHorizontal, Check, Trash2, X, Plus, Share2, Trophy, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getContestById, Contest, updateContestStatus } from '@/services/contestService';
 import { getParticipants, Participant, addBattleParticipant, deleteParticipant } from '@/services/participantService';
 import { castVote, cancelVote } from '@/services/voteService';
 import { supabase } from '@/services/supabase';
-import { BattleVoteView } from '@/components/contest/BattleVoteView';
+import { BattleDetailsView } from '@/components/battle/BattleDetailsView';
+import { ContestParticipantModal, ContestParticipantModalProps } from '@/components/contest/ContestParticipantModal';
 import { ContestPage as RegistrationContestPage } from '@/components/contest/RegistrationContestPage';
-import { PhotoLightbox } from '@/components/common/PhotoLightbox';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 import {
   getPersistedBattleVotes,
@@ -76,18 +76,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   const [newCompDesc, setNewCompDesc] = useState('');
   const [addingComp, setAddingComp] = useState(false);
 
-  const [lightboxData, setLightboxData] = useState<{
-    photoUrl: string;
-    photos?: string[];
-    title: string;
-    author?: string;
-    authorAvatar?: string;
-    authorBio?: string;
-    category?: string;
-    isSelected?: boolean;
-    percentage?: number | string;
-    onVote?: () => void;
-  } | null>(null);
+  const [lightboxData, setLightboxData] = useState<ContestParticipantModalProps | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -397,6 +386,33 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     });
   };
 
+  const handleShareContest = async () => {
+    if (!contest) return;
+    const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/contest/${contest.id}` : '';
+    const shareText = isRu
+      ? `🏆 Конкурс «${contest.title}» в Opinion Net. Проголосуй за лучшие кадры:`
+      : `🏆 Contest "${contest.title}" on Opinion Net. Vote for top entries:`;
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: contest.title,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch {}
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast(isRu ? 'Ссылка на конкурс скопирована!' : 'Contest link copied to clipboard!');
+        return;
+      } catch {}
+    }
+  };
+
   const handleGoBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
@@ -434,22 +450,12 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     );
   }
 
-  // Interactive Fullscreen Duel Arena (rendered when user clicks "Enter Battle Arena")
-  if (showArenaView && contest.type === 'battle') {
+  // Dedicated Battle Details Page (specifically tailored for 1v1 duels and infinite battles)
+  if (contest.type === 'battle') {
     return (
-      <BattleVoteView
-        initialContestId={contest.id}
-        onBack={() => {
-          setShowArenaView(false);
-          // Refresh user vote from persisted storage
-          try {
-            const persisted = getPersistedBattleVotes();
-            const localVote = persisted[id] || (typeof window !== 'undefined' ? localStorage.getItem(`contest_vote_${id}`) : null);
-            if (localVote) {
-              setUserVotedParticipantId(localVote);
-            }
-          } catch {}
-        }}
+      <BattleDetailsView
+        battleId={contest.id}
+        onBack={handleGoBack}
       />
     );
   }
@@ -509,8 +515,17 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
               <ArrowLeft size={18} strokeWidth={2.4} />
             </button>
 
-            {/* Right buttons: Bookmark & Manage */}
+            {/* Right buttons: Share, Bookmark & Manage */}
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleShareContest}
+                aria-label={isRu ? 'Поделиться' : 'Share'}
+                className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#eef2ec] transition-colors active:scale-95"
+              >
+                <Share2 size={17} strokeWidth={2.4} />
+              </button>
+
               <button
                 type="button"
                 onClick={handleToggleSubscribe}
@@ -545,9 +560,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
             <div className="flex items-center gap-2 text-xs font-semibold text-[#3fc27a]">
               <span className="w-2 h-2 rounded-full bg-[#3fc27a] animate-pulse shrink-0" />
               <span>
-                {contest.type === 'battle'
-                  ? (isRu ? 'Голосование идёт · 1v1 баттл' : 'Voting is live · 1v1 Battle')
-                  : (isRu ? 'Голосование идёт · вечный конкурс' : 'Voting is live · Eternal contest')}
+                {isRu ? 'Голосование идёт · вечный конкурс' : 'Voting is live · Eternal contest'}
               </span>
             </div>
 
@@ -562,6 +575,16 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                 {contest.description}
               </p>
             )}
+
+            {/* Sponsor & Prize Pool showcase strip */}
+            <div className="flex items-center gap-2 px-3.5 py-2 mt-3 rounded-[14px] bg-[#161c17] border border-amber-500/30 text-amber-300 text-xs font-semibold shadow-sm">
+              <Trophy size={15} className="text-amber-400 shrink-0" />
+              <div className="truncate">
+                <span>{isRu ? 'Призовой фонд: 100 000 ₽' : 'Prize Pool: $1,500'}</span>
+                <span className="mx-2 text-[#8d998f]">·</span>
+                <span className="text-[#8d998f] font-normal">{isRu ? 'Спонсор: Alpha Creator Fund' : 'Partner: Alpha Creator Fund'}</span>
+              </div>
+            </div>
           </div>
 
           {/* 3. Compact stats strip (3 cells) */}
@@ -570,9 +593,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
             <div className="px-3 flex flex-col justify-between">
               <div>
                 <div className="text-base sm:text-lg font-extrabold text-[#eef2ec] tabular-nums">
-                  {contest.type === 'battle'
-                    ? `${participants.length} / 2`
-                    : `${participants.length} / ${contest.max_participants || 50}`}
+                  {participants.length} / {contest.max_participants || 50}
                 </div>
                 <div className="text-[11px] text-[#8d998f] mt-0.5">
                   {isRu ? 'участников' : 'participants'}
@@ -582,14 +603,10 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                 <div
                   className="h-full bg-[#3fc27a] rounded-full transition-all duration-500"
                   style={{
-                    width: `${
-                      contest.type === 'battle'
-                        ? '100%'
-                        : `${Math.min(
-                            100,
-                            Math.max(4, Math.round((participants.length / (contest.max_participants || 50)) * 100))
-                          )}%`
-                    }`,
+                    width: `${Math.min(
+                      100,
+                      Math.max(4, Math.round((participants.length / (contest.max_participants || 50)) * 100))
+                    )}%`,
                   }}
                 />
               </div>
@@ -598,9 +615,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
             {/* Cell 2: Contest format */}
             <div className="px-3 flex flex-col justify-center">
               <div className="text-base sm:text-lg font-extrabold text-[#eef2ec]">
-                {contest.type === 'battle'
-                  ? (isRu ? '1v1 Баттл' : '1v1 Battle')
-                  : (isRu ? 'Вечный' : 'Eternal')}
+                {isRu ? 'Вечный' : 'Eternal'}
               </div>
               <div className="text-[11px] text-[#8d998f] mt-0.5">
                 {isRu ? 'формат' : 'format'}
@@ -630,23 +645,12 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
           {/* 5. Primary CTA row */}
           <div className="flex items-center gap-3 pt-1">
-            {contest.type === 'battle' ? (
-              <button
-                type="button"
-                onClick={() => setShowArenaView(true)}
-                className="flex-1 h-[50px] rounded-[18px] bg-[#e2622a] hover:bg-[#d0541f] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md"
-              >
-                <span className="text-base">⚔️</span>
-                <span>{isRu ? 'Перейти в арену баттла' : 'Enter Battle Arena'}</span>
-              </button>
-            ) : (
-              <Link
-                href={`/apply/${contest.id}`}
-                className="flex-1 h-[50px] rounded-[18px] bg-[#e2622a] hover:bg-[#d0541f] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center transition-all shadow-md"
-              >
-                {isRu ? 'Добавить работу' : 'Add entry'}
-              </Link>
-            )}
+            <Link
+              href={`/apply/${contest.id}`}
+              className="flex-1 h-[50px] rounded-[18px] bg-[#e2622a] hover:bg-[#d0541f] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center transition-all shadow-md"
+            >
+              {isRu ? 'Добавить работу' : 'Add entry'}
+            </Link>
 
             <button
               type="button"
@@ -661,54 +665,11 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
             </button>
           </div>
 
-          {/* 6. Live Head-to-Head Duel Statistics Bar (for Battles) */}
-          {contest.type === 'battle' && displayedParticipants.length >= 2 && (
-            <div className="rounded-[18px] bg-[#161c17] border border-[#232b24] p-4 space-y-3">
-              <div className="flex items-center justify-between text-xs font-semibold">
-                <span className="text-[#8d998f] flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#3fc27a] animate-pulse" />
-                  <span>{isRu ? 'Текущий перевес голосов' : 'Live Vote Split'}</span>
-                </span>
-                <span className="text-[11px] text-[#8d998f] tabular-nums font-medium">
-                  {totalVotes > 0
-                    ? (isRu ? `Всего голосов: ${totalVotes}` : `Total votes: ${totalVotes}`)
-                    : (isRu ? 'Прямой эфир' : 'Live duel')}
-                </span>
-              </div>
-
-              {/* Dual percentage split bar */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold text-[#eef2ec]">
-                  <span className="truncate max-w-[45%] text-[#3fc27a]">
-                    {displayedParticipants[0]?.submission_data?.name || (isRu ? 'Участник 1' : 'Competitor 1')} ({getParticipantVotePercent(displayedParticipants[0]?.id)}%)
-                  </span>
-                  <span className="text-[11px] text-[#8d998f] uppercase font-mono px-1">VS</span>
-                  <span className="truncate max-w-[45%] text-right text-[#eef2ec]">
-                    ({getParticipantVotePercent(displayedParticipants[1]?.id)}%) {displayedParticipants[1]?.submission_data?.name || (isRu ? 'Участник 2' : 'Competitor 2')}
-                  </span>
-                </div>
-
-                <div className="w-full h-2.5 bg-[#232b24] rounded-full overflow-hidden flex">
-                  <div
-                    className="h-full bg-[#3fc27a] transition-all duration-500 rounded-l-full"
-                    style={{ width: `${getParticipantVotePercent(displayedParticipants[0]?.id)}%` }}
-                  />
-                  <div
-                    className="h-full bg-[#354337] transition-all duration-500 rounded-r-full"
-                    style={{ width: `${getParticipantVotePercent(displayedParticipants[1]?.id)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 7. Popular entries / Competitors section */}
+          {/* 6. Popular entries / Competitors section */}
           <div className="pt-2 space-y-3">
             <div className="flex items-baseline justify-between">
               <h2 className="text-xl font-bold text-[#eef2ec] tracking-tight">
-                {contest.type === 'battle'
-                  ? (isRu ? 'Участники баттла' : 'Battle competitors')
-                  : (isRu ? 'Популярные работы' : 'Popular entries')}
+                {isRu ? 'Популярные работы' : 'Popular entries'}
               </h2>
               <span className="text-xs text-[#8d998f] font-medium">
                 {isRu ? 'Рейтинг сообщества' : 'Community rating'}
@@ -783,15 +744,21 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                               ? p.submission_data.photos.map((ph: string) => resolveImageUrl(ph, 'submissions'))
                               : [photoUrl];
                           setLightboxData({
+                            isOpen: true,
+                            onClose: () => setLightboxData(null),
                             photoUrl,
                             photos: submissionPhotos,
                             title: name,
+                            rank: idx + 1,
+                            totalParticipants: participants.length,
+                            contestTitle: contest.title,
                             author: p.profiles?.username ? `@${p.profiles.username}` : undefined,
                             authorAvatar: p.profiles?.avatar_url
                               ? resolveImageUrl(p.profiles.avatar_url, 'avatars')
                               : undefined,
                             authorBio: desc,
-                            category: contest.title,
+                            rulesVerified: true,
+                            submissionDate: p.submitted_at ? new Date(p.submitted_at).toLocaleDateString() : undefined,
                             isSelected: isVoted,
                             percentage: percent,
                             onVote: () => handleToggleVote(p.id),
@@ -902,19 +869,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
               </div>
             )}
 
-            {/* Battle Arena secondary link */}
-            {contest.type === 'battle' && (
-              <div className="pt-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowArenaView(true)}
-                  className="w-full py-3.5 rounded-[18px] bg-[#161c17] hover:bg-[#1f2720] border border-[#232b24] text-xs font-bold text-[#3fc27a] hover:text-[#4edb8d] transition-colors flex items-center justify-center gap-2"
-                >
-                  <span>⚔️</span>
-                  <span>{isRu ? 'Найти и свайпать другие баттлы в арене →' : 'Browse and swipe battles in Arena →'}</span>
-                </button>
-              </div>
-            )}
+
 
             {/* Show all / Show fewer button (for eternal/standard contests with many entries) */}
             {sortedParticipants.length > INITIAL_LIMIT && (
@@ -1135,21 +1090,11 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
         </div>
       )}
 
-      {/* ── Photo Lightbox ── */}
+      {/* ── Contest Participant Details Modal (with Swipe Carousel) ── */}
       {lightboxData && (
-        <PhotoLightbox
-          isOpen={Boolean(lightboxData)}
+        <ContestParticipantModal
+          {...lightboxData}
           onClose={() => setLightboxData(null)}
-          photoUrl={lightboxData.photoUrl}
-          photos={lightboxData.photos}
-          title={lightboxData.title}
-          author={lightboxData.author}
-          authorAvatar={lightboxData.authorAvatar}
-          authorBio={lightboxData.authorBio}
-          category={lightboxData.category}
-          isSelected={lightboxData.isSelected}
-          percentage={lightboxData.percentage}
-          onVote={lightboxData.onVote}
         />
       )}
     </main>

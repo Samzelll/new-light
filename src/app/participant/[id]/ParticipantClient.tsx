@@ -7,7 +7,8 @@ import { useParams } from 'next/navigation';
 import { getParticipantById } from '@/services/participantService';
 import { supabase } from '@/services/supabase';
 import { formatPercentage } from '@/utils/formatters';
-import { PhotoLightbox } from '@/components/common/PhotoLightbox';
+import { SwipeablePhotoGallery } from '@/components/common/SwipeablePhotoGallery';
+import { ContestParticipantModal } from '@/components/contest/ContestParticipantModal';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 import {
   ArrowLeft,
@@ -132,43 +133,14 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
 
       {/* Main Showcase Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Photo Stage: immersive crop, matching the battle-feed treatment */}
+        {/* Photo Stage with Swipe Carousel & Bottom Counter */}
         <div className="lg:col-span-7">
-          <div
-            onClick={() => setIsLightboxOpen(true)}
-            className="relative w-full h-[52vh] sm:h-[62vh] rounded-3xl overflow-hidden bg-[#121216] border border-white/10 shadow-2xl group cursor-zoom-in"
-          >
-            {mainPhoto ? (
-              <Image
-                src={mainPhoto}
-                alt={name}
-                fill
-                priority
-                unoptimized={shouldBeUnoptimized(mainPhoto)}
-                sizes="(max-width: 1024px) 100vw, 700px"
-                className="object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="absolute inset-0 grid place-items-center text-neutral-500 text-xs">No photo uploaded</div>
-            )}
-          </div>
-
-          {/* Photos carousel thumbnails if multiple */}
-          {photos.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto mt-3 py-1 no-scrollbar">
-              {photos.map((ph, idx) => (
-                <button
-                  key={ph + idx}
-                  type="button"
-                  onClick={() => setIsLightboxOpen(true)}
-                  className="relative shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-white/15 opacity-70 hover:opacity-100 transition-opacity"
-                >
-                  <Image src={ph} alt="" fill unoptimized={shouldBeUnoptimized(ph)} sizes="56px" className="object-cover" referrerPolicy="no-referrer" />
-                </button>
-              ))}
-            </div>
-          )}
+          <SwipeablePhotoGallery
+            photos={photos.length > 0 ? photos : [mainPhoto]}
+            title={name}
+            author={name}
+            cornerAccent="emerald"
+          />
         </div>
 
         {/* Details Column */}
@@ -310,17 +282,19 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
         </div>
       </div>
 
-      {/* Lightbox Modal */}
+      {/* Contest Participant Details Modal (with Swipe Carousel) */}
       {isLightboxOpen && (
-        <PhotoLightbox
+        <ContestParticipantModal
           isOpen={isLightboxOpen}
           onClose={() => setIsLightboxOpen(false)}
           photoUrl={mainPhoto}
           photos={photos.length > 0 ? photos : [mainPhoto]}
           title={name}
+          contestTitle="Конкурс"
           author={participant.profiles?.username ? `@${participant.profiles.username}` : name}
           authorAvatar={participant.profiles?.avatar_url}
           authorBio={description}
+          rulesVerified={true}
         />
       )}
     </main>

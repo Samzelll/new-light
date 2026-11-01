@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 import { photoLoader, FEED_SIZES } from '@/perf/imageUrls';
 import { HAPTIC, haptic } from '@/perf/haptics';
+import { SwipeablePhotoGallery } from '@/components/common/SwipeablePhotoGallery';
 import {
   X,
   Camera,
@@ -222,113 +223,12 @@ export function PhotoLightbox({
             {/* PHOTO STAGE: immersive crop with no wasted frame space     */}
             {/* ══════════════════════════════════════════════════════════ */}
             <div className="lg:col-span-8 flex flex-col items-center justify-center">
-              
-              <div
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                onClick={() => {
-                  setIsFullscreenModal(true);
-                  setZoomLevel(1);
-                }}
-                className="relative w-full h-[58vh] sm:h-[68vh] lg:h-[76vh] rounded-2xl sm:rounded-3xl overflow-hidden bg-[#121216] border border-white/5 shadow-2xl group cursor-zoom-in"
-              >
-                <Image
-                  key={currentPhoto}
-                  src={currentPhoto}
-                  alt={title}
-                  fill
-                  priority
-                  loader={photoLoader}
-                  referrerPolicy="no-referrer"
-                  sizes="(max-width: 1024px) 100vw, 850px"
-                  className={`object-cover object-center transition-transform duration-500 ${
-                    isSelected ? 'scale-[1.02] origin-center' : 'group-hover:scale-[1.02]'
-                  }`}
-                />
-
-                {/* 3. Subtle Voted Badge (only shown if selected) */}
-                {isSelected && (
-                  <div className="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-full bg-emerald-600/90 backdrop-blur-md text-white font-bold text-xs flex items-center gap-1.5 shadow-lg border border-emerald-400/40 animate-fade-in pointer-events-none">
-                    <Check size={13} strokeWidth={3} />
-                    <span>Selected</span>
-                    {percentage !== undefined && (
-                      <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
-                        {percentage}%
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* 4. Photo index indicator (minimal pill, only for multiple photos) */}
-                {allPhotos.length > 1 && (
-                  <div className="absolute top-3 right-3 z-20 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-neutral-300 font-semibold text-[11px] tabular-nums border border-white/10 pointer-events-none">
-                    {activeIndex + 1} / {allPhotos.length}
-                  </div>
-                )}
-
-                {/* 5. Minimal sleek carousel arrows (subtle, visible on hover) */}
-                {allPhotos.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        goToPrev();
-                      }}
-                      aria-label="Previous photo"
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-md border border-white/10 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 active:scale-95"
-                    >
-                      <ChevronLeft size={18} strokeWidth={2.5} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        goToNext();
-                      }}
-                      aria-label="Next photo"
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-md border border-white/10 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 active:scale-95"
-                    >
-                      <ChevronRight size={18} strokeWidth={2.5} />
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Minimal Thumbnail strip for multiple photos */}
-              {allPhotos.length > 1 && (
-                <div
-                  ref={thumbnailScrollRef}
-                  className="flex items-center gap-2 overflow-x-auto mt-3 py-1 no-scrollbar max-w-full"
-                >
-                  {allPhotos.map((photo, idx) => {
-                    const isActive = idx === activeIndex;
-                    return (
-                      <button
-                        key={photo + idx}
-                        type="button"
-                        onClick={() => setActiveIndex(idx)}
-                        className={`relative shrink-0 w-12 h-12 rounded-xl overflow-hidden transition-all duration-200 border ${
-                          isActive
-                            ? 'border-[#ff6a2b] ring-2 ring-[#ff6a2b]/30 scale-105 opacity-100'
-                            : 'border-white/10 opacity-50 hover:opacity-90'
-                        }`}
-                      >
-                        <Image
-                          src={photo}
-                          alt=""
-                          fill
-                          unoptimized={shouldBeUnoptimized(photo)}
-                          sizes="48px"
-                          className="object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              <SwipeablePhotoGallery
+                photos={allPhotos}
+                title={title}
+                author={author}
+                cornerAccent={isSelected ? 'emerald' : 'none'}
+              />
             </div>
 
             {/* ══════════════════════════════════════════════════════════ */}

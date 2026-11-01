@@ -1,17 +1,10 @@
 import '../app/globals.css';
 import type { Metadata } from 'next';
-import { Manrope, Unbounded, Onest } from 'next/font/google';
+import { Manrope, Unbounded } from 'next/font/google';
 import { ReduxProvider } from '@/components/providers/ReduxProvider';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { AppShell } from '@/components/navigation/AppShell';
 import { PwaRegister } from '@/components/providers/PwaRegister';
-
-const onest = Onest({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-onest',
-  display: 'swap',
-});
 
 const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
@@ -46,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   return (
-    <html lang="en" className={`${manrope.variable} ${unbounded.variable} ${onest.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${manrope.variable} ${unbounded.variable}`} suppressHydrationWarning>
       <head>
         {supabaseUrl && <link rel="preconnect" href={supabaseUrl} />}
         <link rel="preconnect" href="https://images.unsplash.com" />

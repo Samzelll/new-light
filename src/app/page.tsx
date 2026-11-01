@@ -120,14 +120,28 @@ export default function HomePage() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Responsive columns for desktop PinGrid
+  const [columnsCount, setColumnsCount] = useState(2);
+
   useEffect(() => {
     setMounted(true);
     if (typeof window !== 'undefined') {
+      const updateCols = () => {
+        const w = window.innerWidth;
+        if (w >= 1280) setColumnsCount(4);
+        else if (w >= 768) setColumnsCount(3);
+        else setColumnsCount(2);
+      };
+      updateCols();
+      window.addEventListener('resize', updateCols);
+
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
       if (tabParam === 'feed' || tabParam === 'battles' || tabParam === 'contests') {
         setMainTab(tabParam);
       }
+
+      return () => window.removeEventListener('resize', updateCols);
     }
   }, []);
 
@@ -709,9 +723,9 @@ export default function HomePage() {
       <div
         className={`w-full flex flex-col bg-[#0b0b0d] relative transition-all duration-300 ${
           mainTab === 'contests'
-            ? 'max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl min-h-screen pb-8 md:pb-24'
+            ? 'max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-7xl min-h-screen pb-8 md:pb-24 px-2 sm:px-4 md:px-6'
             : mainTab === 'battles'
-            ? 'max-w-md lg:max-w-lg xl:max-w-xl h-[100dvh] pb-0 overflow-hidden'
+            ? 'max-w-md lg:max-w-xl xl:max-w-2xl h-[100dvh] pb-0 overflow-hidden'
             : 'max-w-md md:max-w-lg lg:max-w-xl h-[100dvh] pb-0 overflow-hidden'
         }`}
       >
@@ -802,7 +816,7 @@ export default function HomePage() {
             ) : (
               <PinGrid
                 pins={contestPins}
-                columns={2}
+                columns={columnsCount}
                 batchSize={8}
                 hasMore={hasMoreContests}
                 onLoadMore={handleLoadMoreContests}

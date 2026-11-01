@@ -42,6 +42,7 @@
 
     --font-display: 'Unbounded', ui-sans-serif, system-ui, sans-serif;
     --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    --font-onest: 'Onest', 'Manrope', ui-sans-serif, system-ui, sans-serif;
 
     --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
@@ -156,6 +157,25 @@
     max-width: var(--max-w-app);
   }
 
+  /* Desktop-wide responsive layout (>= 1024px) */
+  @media (min-width: 1024px) {
+    .app-shell {
+      max-width: 100%;
+      margin: 0;
+      display: flex;
+    }
+
+    .app-shell-main {
+      flex: 1;
+      min-width: 0;
+      margin-left: 240px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: calc(100% - 240px);
+    }
+  }
+
   /* Desktop side navigation (strictly hidden on mobile viewports) */
   @media (max-width: 1023px) {
     .desktop-only-nav,
@@ -170,7 +190,7 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
-    width: 220px;
+    width: 240px;
     background-color: #121215;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
     padding: 1.5rem 1rem;

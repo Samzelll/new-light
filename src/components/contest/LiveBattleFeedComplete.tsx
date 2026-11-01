@@ -37,6 +37,7 @@ import type {
   LiveBattleFeedProps,
   VoteState,
 } from '@/types/battle';
+import { BattleParticipantModal } from '@/components/battle/BattleParticipantModal';
 import {
   ChevronRight,
   Check,
@@ -72,315 +73,23 @@ interface EmbeddedLightboxProps {
   authorAvatar?: string;
   authorBio?: string;
   category?: string;
+  corner?: 'red' | 'blue' | 'green';
+  opponentName?: string;
+  opponentAvatar?: string;
+  opponentCorner?: 'red' | 'blue' | 'green';
+  percentage?: number | string;
+  opponentPercentage?: number | string;
   sponsorName?: string;
   sponsorTier?: string;
   prizePool?: string;
+  tags?: string[];
   socialLinks?: CompetitorDetails['socialLinks'];
   isSelected?: boolean;
   onVote?: () => void;
 }
 
-function EmbeddedLightbox({
-  isOpen,
-  onClose,
-  photoUrl,
-  photos,
-  title,
-  author,
-  authorAvatar,
-  authorBio,
-  category,
-  sponsorName,
-  sponsorTier,
-  prizePool,
-  socialLinks,
-  isSelected,
-  onVote,
-}: EmbeddedLightboxProps) {
-  const allPhotos = photos && photos.length > 0 ? photos : [photoUrl];
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isFullscreenModal, setIsFullscreenModal] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState<1 | 1.5 | 2.5>(1);
-
-  // Сброс индекса при смене фото
-  useEffect(() => {
-    setActiveIndex(0);
-    setZoomLevel(1);
-    setIsFullscreenModal(false);
-  }, [photoUrl]);
-
-  // Закрытие по Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (isFullscreenModal) {
-          setIsFullscreenModal(false);
-        } else {
-          onClose();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isFullscreenModal, onClose]);
-
-  if (!isOpen) return null;
-
-  const currentPhoto = allPhotos[activeIndex] || photoUrl;
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        className="relative z-10 w-full max-w-4xl max-h-[94vh] bg-[#141417] border border-neutral-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Шапка модалки */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-neutral-800/80 bg-[#18181c]">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {authorAvatar && (
-              <div className="relative w-7 h-7 rounded-full overflow-hidden border border-white/20 shrink-0">
-                <Image
-                  src={resolveImageUrl(authorAvatar, 'avatars')}
-                  alt={author || ''}
-                  fill
-                  unoptimized={shouldBeUnoptimized(authorAvatar)}
-                  className="object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            )}
-            <div className="min-w-0">
-              <h3 className="text-xs sm:text-sm font-black text-white truncate">{title}</h3>
-              {author && <p className="text-[11px] text-neutral-400 truncate">{author}</p>}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsFullscreenModal(true);
-                setZoomLevel(1);
-              }}
-              title="Открыть оригинал без обрезки"
-              className="px-2.5 py-1 rounded-full bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-neutral-200 border border-neutral-700/80 flex items-center gap-1.5 transition-all active:scale-95"
-            >
-              <Maximize2 size={13} className="text-[#ff6a2b]" />
-              <span className="hidden sm:inline">Original</span>
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white flex items-center justify-center transition-colors"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* Тело модалки */}
-        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col md:flex-row">
-          {/* Фото */}
-          <div
-            onClick={() => {
-              setIsFullscreenModal(true);
-              setZoomLevel(1);
-            }}
-            className="relative flex-1 min-h-[360px] sm:min-h-[460px] bg-[#101014] flex items-center justify-center cursor-zoom-in group overflow-hidden"
-          >
-            {/* Ambient Glow */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <Image
-                src={currentPhoto}
-                alt=""
-                fill
-                unoptimized={shouldBeUnoptimized(currentPhoto)}
-                sizes="100vw"
-                className="object-cover filter blur-3xl opacity-35 scale-110"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-[#0c0c10]/40 backdrop-blur-xs" />
-            </div>
-
-            {/* Sharp Centered Photo */}
-            <div className="relative w-full h-full p-3 sm:p-5 flex items-center justify-center z-10">
-              <Image
-                src={currentPhoto}
-                alt={title}
-                fill
-                unoptimized={shouldBeUnoptimized(currentPhoto)}
-                className="object-contain group-hover:scale-[1.01] transition-transform duration-300"
-                referrerPolicy="no-referrer"
-                sizes="(max-width: 768px) 100vw, 60vw"
-              />
-            </div>
-          </div>
-
-          {/* Боковая панель */}
-          <div className="w-full md:w-80 p-5 bg-[#141417] border-t md:border-t-0 md:border-l border-neutral-800 flex flex-col justify-between gap-4">
-            <div className="space-y-4">
-              {category && (
-                <div className="text-[11px] font-bold uppercase tracking-wider text-[#ff6a2b] flex items-center gap-1.5">
-                  <Tag size={12} />
-                  <span>{category}</span>
-                </div>
-              )}
-
-              {authorBio && (
-                <div>
-                  <h4 className="text-xs font-bold text-neutral-400 mb-1">About Creator</h4>
-                  <p className="text-xs text-neutral-300 leading-relaxed">{authorBio}</p>
-                </div>
-              )}
-
-              {sponsorName && (
-                <div className="p-3 rounded-xl bg-neutral-900/90 border border-neutral-800 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                    <Award size={14} className="text-[#ff6a2b]" />
-                    <span>{sponsorName}</span>
-                  </div>
-                  {sponsorTier && (
-                    <div className="text-[11px] text-neutral-400">{sponsorTier}</div>
-                  )}
-                  {prizePool && (
-                    <div className="text-xs font-extrabold text-emerald-400">
-                      Призовой фонд: {prizePool}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {socialLinks && Object.values(socialLinks).some(Boolean) && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-neutral-400">Контакты и портфолио</h4>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    {socialLinks.instagram && (
-                      <a
-                        href={socialLinks.instagram}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors"
-                      >
-                        Instagram
-                      </a>
-                    )}
-                    {socialLinks.telegram && (
-                      <a
-                        href={socialLinks.telegram}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors"
-                      >
-                        Telegram
-                      </a>
-                    )}
-                    {socialLinks.portfolio && (
-                      <a
-                        href={socialLinks.portfolio}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors"
-                      >
-                        Портфолио
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Кнопка голосования / отмены голоса внутри модалки */}
-            {onVote && (
-              <button
-                type="button"
-                onClick={() => {
-                  onVote();
-                  onClose();
-                }}
-                className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 transition-all active:scale-98 shadow-lg cursor-pointer ${
-                  isSelected
-                    ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
-                    : 'bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white shadow-[#ff6a2b]/20'
-                }`}
-              >
-                {isSelected ? (
-                  <>
-                    <X size={16} strokeWidth={2.5} className="text-red-400" />
-                    <span>Cancel vote for this entry</span>
-                  </>
-                ) : (
-                  <span>Vote for this entry</span>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Полноэкранный просмотр оригинала */}
-      {isFullscreenModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center p-2 select-none animate-fade-in"
-          onClick={() => setIsFullscreenModal(false)}
-        >
-          <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setZoomLevel((prev) => (prev === 1 ? 1.5 : prev === 1.5 ? 2.5 : 1));
-              }}
-              className="px-3 py-1.5 rounded-full bg-neutral-900/90 text-white text-xs font-bold border border-white/10 flex items-center gap-1.5"
-            >
-              {zoomLevel === 1 ? <ZoomIn size={14} /> : <ZoomOut size={14} />}
-              <span>{zoomLevel}x</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsFullscreenModal(false)}
-              className="w-9 h-9 rounded-full bg-neutral-900/90 text-white flex items-center justify-center border border-white/10"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div
-            className="flex-1 w-full h-full flex items-center justify-center overflow-auto p-2 cursor-zoom-out"
-            onClick={() => setIsFullscreenModal(false)}
-          >
-            <div
-              className="relative w-full h-full max-w-7xl max-h-screen transition-transform duration-200 flex items-center justify-center"
-              style={{ transform: `scale(${zoomLevel})` }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setZoomLevel((prev) => (prev === 1 ? 1.5 : prev === 1.5 ? 2.5 : 1));
-              }}
-            >
-              <Image
-                src={currentPhoto}
-                alt={title}
-                fill
-                priority
-                unoptimized={shouldBeUnoptimized(currentPhoto)}
-                referrerPolicy="no-referrer"
-                className="object-contain"
-                sizes="100vw"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+function EmbeddedLightbox(props: EmbeddedLightboxProps) {
+  return <BattleParticipantModal {...props} />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -622,9 +331,15 @@ function BattleSlide({
                   authorAvatar: battle.red.authorAvatar,
                   authorBio: battle.red.authorBio,
                   category: battle.category,
+                  corner: 'red',
+                  opponentName: battle.green.name,
+                  opponentCorner: 'blue',
+                  percentage: percentages.red,
+                  opponentPercentage: percentages.green,
                   sponsorName: battle.red.sponsorName || battle.sponsorName,
                   sponsorTier: battle.red.sponsorTier,
                   prizePool: battle.red.prizePool,
+                  tags: battle.tags,
                   socialLinks: battle.red.socialLinks,
                   isSelected: userVote === 'red',
                   onVote: isReady ? () => onVote('red') : undefined,
@@ -781,9 +496,15 @@ function BattleSlide({
                   authorAvatar: battle.green.authorAvatar,
                   authorBio: battle.green.authorBio,
                   category: battle.category,
+                  corner: 'blue',
+                  opponentName: battle.red.name,
+                  opponentCorner: 'red',
+                  percentage: percentages.green,
+                  opponentPercentage: percentages.red,
                   sponsorName: battle.green.sponsorName || battle.sponsorName,
                   sponsorTier: battle.green.sponsorTier,
                   prizePool: battle.green.prizePool,
+                  tags: battle.tags,
                   socialLinks: battle.green.socialLinks,
                   isSelected: userVote === 'green',
                   onVote: isReady ? () => onVote('green') : undefined,

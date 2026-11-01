@@ -3,8 +3,20 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Maximize2, Check } from 'lucide-react';
-import { PhotoLightbox } from '@/components/common/PhotoLightbox';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  Check,
+  Share2,
+  Trophy,
+  Copy,
+  Send,
+  Sparkles,
+} from 'lucide-react';
+import { BattleParticipantModal, BattleParticipantModalProps } from '@/components/battle/BattleParticipantModal';
 import {
   BattleContest,
   BattleCompetitor,
@@ -27,27 +39,9 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
   const [userVotedCorner, setUserVotedCorner] = useState<'red' | 'blue' | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [activeTapCorner, setActiveTapCorner] = useState<'red' | 'blue' | null>(null);
-  const [lightboxData, setLightboxData] = useState<{
-    photoUrl: string;
-    photos?: string[];
-    title: string;
-    author?: string;
-    authorAvatar?: string;
-    authorBio?: string;
-    category?: string;
-    sponsorName?: string;
-    sponsorTier?: string;
-    prizePool?: string;
-    socialLinks?: {
-      instagram?: string;
-      telegram?: string;
-      twitter?: string;
-      portfolio?: string;
-    };
-    isSelected?: boolean;
-    percentage?: number | string;
-    onVote?: () => void;
-  } | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [lightboxData, setLightboxData] = useState<BattleParticipantModalProps | null>(null);
 
   // Cached next battle for instant swipe transition
   const nextBattleRef = useRef<BattleContest | null>(null);
@@ -128,7 +122,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
   }, [battle, isTransitioning]);
 
   // Handle card tap to vote or re-tap to cancel/unvote
-  const handleVote = async (competitor: BattleCompetitor) => {
+  const handleVote = useCallback(async (competitor: BattleCompetitor) => {
     if (!battle) return;
 
     // ── СЦЕНАРИЙ 1: Повторный тап на уже выбранный угол -> ОТМЕНА ГОЛОСА ──
@@ -222,7 +216,82 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
     });
 
     await castVote(battle.id, competitor.id);
+  }, [battle, userVotedCorner]);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
   };
+
+  const handleShare = async () => {
+    if (!battle) return;
+    const [red, blue] = battle.competitors;
+    const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/contest/${battle.id}` : '';
+    const shareText = `⚔️ ${battle.title}: ${red.name} vs ${blue.name}! Vote for your favorite in Opinion Net:`;
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${battle.title} · Live Battle`,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch {}
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2400);
+        showToast('Battle link copied to clipboard!');
+        return;
+      } catch {}
+    }
+  };
+
+  // Deep Link handler: ?pick=red or ?pick=blue / ?pick=1 or 2
+  useEffect(() => {
+    if (typeof window === 'undefined' || !battle) return;
+    const params = new URLSearchParams(window.location.search);
+    const pick = params.get('pick');
+    if (pick === 'red' || pick === '1') {
+      if (!userVotedCorner && battle.competitors[0]) {
+        handleVote(battle.competitors[0]);
+        showToast(`Auto-selected ${battle.competitors[0].name} from deep link`);
+      }
+    } else if (pick === 'blue' || pick === 'green' || pick === '2') {
+      if (!userVotedCorner && battle.competitors[1]) {
+        handleVote(battle.competitors[1]);
+        showToast(`Auto-selected ${battle.competitors[1].name} from deep link`);
+      }
+    }
+  }, [battle, handleVote, userVotedCorner]);
+
+  // Desktop keyboard shortcuts: 1/A for Red, 2/D for Blue, ↓/J for Next, Esc to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'j' || e.key === 'J') {
+        e.preventDefault();
+        goToNextBattle();
+      } else if (e.key === '1' || e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        if (battle?.competitors[0]) handleVote(battle.competitors[0]);
+      } else if (e.key === '2' || e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        if (battle?.competitors[1]) handleVote(battle.competitors[1]);
+      } else if (e.key === 'Escape') {
+        if (lightboxData) setLightboxData(null);
+        else if (isDetailsOpen) setIsDetailsOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [battle, goToNextBattle, handleVote, lightboxData, isDetailsOpen]);
 
   // Touch handlers for vertical swipe up gesture
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -276,7 +345,14 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
           isTransitioning ? 'opacity-60 scale-[0.99]' : 'opacity-100 scale-100'
         }`}
       >
-        {/* ── Top Bar: Back Button + Centered Clickable Contest Title (Seamless, no extra info button) ── */}
+        {/* Toast Feedback */}
+        {toastMsg && (
+          <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#161619] border border-emerald-500/50 text-emerald-400 text-xs font-bold shadow-2xl animate-fade-in pointer-events-none whitespace-nowrap">
+            {toastMsg}
+          </div>
+        )}
+
+        {/* ── Top Bar: Back Button + Centered Clickable Contest Title + Share Button ── */}
         <header className="flex items-center justify-between px-1 py-1 relative z-20 shrink-0 bg-transparent border-none">
           {/* Back Button (Seamless) */}
           <button
@@ -304,9 +380,23 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             />
           </button>
 
-          {/* Spacer to balance the Back button on left */}
-          <div className="w-8 shrink-0" />
+          {/* Share Button (Web Share API + Direct Copy) */}
+          <button
+            type="button"
+            onClick={handleShare}
+            aria-label="Share battle"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-white/90 hover:text-white flex items-center justify-center transition-all active:scale-90 border border-white/10 shrink-0"
+            title="Share this battle"
+          >
+            <Share2 size={15} strokeWidth={2.4} />
+          </button>
         </header>
+
+        {/* Sponsor & Prize Pool Strip */}
+        <div className="flex items-center justify-center gap-1.5 py-0.5 px-3 mx-auto my-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[10px] font-bold text-amber-300 shadow-sm animate-fade-in shrink-0">
+          <Trophy size={11} className="text-amber-400" />
+          <span>{(battle as any).sponsorName || 'Alpha Lab & Creator Fund'} · $2,500 Prize Pool</span>
+        </div>
 
         {/* ── Arena: Two vertically stacked photo cards with central VS badge (Maximizes screen space) ── */}
         <div className="flex-1 min-h-0 flex flex-col justify-between relative my-1 gap-1.5 bg-transparent border-0">
@@ -360,6 +450,8 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                   e.stopPropagation();
                   const authorTag = redComp.author || undefined;
                   setLightboxData({
+                    isOpen: true,
+                    onClose: () => setLightboxData(null),
                     photoUrl: redComp.photoUrl,
                     photos: redComp.photos || [redComp.photoUrl],
                     title: redComp.name,
@@ -367,6 +459,11 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                     authorAvatar: redComp.author ? redComp.authorAvatar : undefined,
                     authorBio: redComp.author ? ((redComp as any).authorBio || `Challenger in ${battle.title}.`) : undefined,
                     category: battle.title,
+                    corner: 'red',
+                    opponentName: blueComp.name,
+                    opponentCorner: 'blue',
+                    percentage: redComp.percentage.toFixed(1),
+                    opponentPercentage: blueComp.percentage.toFixed(1),
                     sponsorName: (battle as any).sponsorName || 'Alpha Lab & Creator Fund',
                     sponsorTier: 'Official Contest Sponsor',
                     prizePool: '$2,500 Prize Pool',
@@ -377,7 +474,6 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                       portfolio: `https://${authorTag.replace('@', '')}.design`,
                     } : undefined,
                     isSelected: userVotedCorner === 'red',
-                    percentage: redComp.percentage.toFixed(1),
                     onVote: () => handleVote(redComp),
                   });
                 }}
@@ -500,6 +596,8 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                   e.stopPropagation();
                   const authorTag = blueComp.author || undefined;
                   setLightboxData({
+                    isOpen: true,
+                    onClose: () => setLightboxData(null),
                     photoUrl: blueComp.photoUrl,
                     photos: blueComp.photos || [blueComp.photoUrl],
                     title: blueComp.name,
@@ -507,6 +605,11 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                     authorAvatar: blueComp.author ? blueComp.authorAvatar : undefined,
                     authorBio: blueComp.author ? ((blueComp as any).authorBio || `Challenger in ${battle.title}.`) : undefined,
                     category: battle.title,
+                    corner: 'blue',
+                    opponentName: redComp.name,
+                    opponentCorner: 'red',
+                    percentage: blueComp.percentage.toFixed(1),
+                    opponentPercentage: redComp.percentage.toFixed(1),
                     sponsorName: (battle as any).sponsorName || 'Alpha Lab & Creator Fund',
                     sponsorTier: 'Official Contest Sponsor',
                     prizePool: '$2,500 Prize Pool',
@@ -517,7 +620,6 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                       portfolio: `https://${authorTag.replace('@', '')}.design`,
                     } : undefined,
                     isSelected: userVotedCorner === 'blue',
-                    percentage: blueComp.percentage.toFixed(1),
                     onVote: () => handleVote(blueComp),
                   });
                 }}
@@ -583,34 +685,83 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
           </div>
         </div>
 
-      {/* ── Bottom Section: Desktop-Only Controls ── */}
-      <footer className="shrink-0 pt-0.5 pb-1">
+      {/* ── Bottom Section: Viral Sharing Strip & Navigation Controls ── */}
+      <footer className="shrink-0 pt-1 pb-1 space-y-1">
         {hasVoted ? (
-          <div className="animate-fade-in">
-            {/* Desktop-only Next Battle controls */}
-            <div className="hidden lg:flex items-center justify-end">
+          <div className="flex items-center justify-between gap-2 px-1 py-1 rounded-xl bg-white/5 border border-white/10 animate-fade-in text-xs">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Sparkles size={13} className="text-emerald-400 shrink-0" />
+              <span className="text-[11px] font-bold text-white/90 truncate">
+                Share duel to boost score:
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Telegram */}
+              <a
+                href={`https://t.me/share/url?url=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/contest/${battle.id}` : '')}&text=${encodeURIComponent(`⚔️ Vote in ${battle.title}: ${redComp.name} vs ${blueComp.name}!`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Share to Telegram"
+                className="w-7 h-7 rounded-lg bg-[#229ED9]/20 hover:bg-[#229ED9]/30 text-[#229ED9] flex items-center justify-center transition-colors active:scale-95"
+              >
+                <Send size={13} />
+              </a>
+
+              {/* WhatsApp */}
+              <a
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`⚔️ Vote in ${battle.title}: ${redComp.name} vs ${blueComp.name}! ${typeof window !== 'undefined' ? `${window.location.origin}/contest/${battle.id}` : ''}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Share to WhatsApp"
+                className="w-7 h-7 rounded-lg bg-[#25D366]/20 hover:bg-[#25D366]/30 text-[#25D366] flex items-center justify-center transition-colors active:scale-95"
+              >
+                <Share2 size={13} />
+              </a>
+
+              {/* Copy Link */}
+              <button
+                type="button"
+                onClick={handleShare}
+                title="Copy Link"
+                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors active:scale-95"
+              >
+                {copiedLink ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+              </button>
+
+              {/* Next Battle Button */}
               <button
                 type="button"
                 onClick={goToNextBattle}
                 aria-label="Next battle"
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors active:scale-95"
+                className="px-2.5 h-7 rounded-lg bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-[11px] flex items-center gap-1 transition-all active:scale-95 ml-1"
               >
-                <ChevronDown size={16} />
+                <span>Next</span>
+                <ChevronDown size={14} />
               </button>
             </div>
           </div>
         ) : (
-          <div className="hidden lg:flex items-center justify-end text-xs text-white/40 py-1">
+          <div className="flex items-center justify-between text-xs text-white/40 px-1 py-0.5">
+            <span className="text-[10px] text-neutral-400">Tap a card to vote</span>
             <button
               type="button"
               onClick={goToNextBattle}
-              aria-label="Next battle"
-              className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors active:scale-95"
+              aria-label="Skip to next battle"
+              className="text-[11px] font-semibold text-white/60 hover:text-white flex items-center gap-1 transition-colors"
             >
-              <ChevronDown size={16} />
+              <span>Skip duel</span>
+              <ChevronDown size={14} />
             </button>
           </div>
         )}
+
+        {/* Desktop-only keyboard shortcuts helper */}
+        <div className="hidden lg:flex items-center justify-center gap-3 text-[10px] text-white/40 pt-0.5">
+          <span>Keys: <kbd className="px-1 py-0.5 rounded bg-white/10 text-white/80 font-mono">1/A</kbd> Red</span>
+          <span><kbd className="px-1 py-0.5 rounded bg-white/10 text-white/80 font-mono">2/D</kbd> Blue</span>
+          <span><kbd className="px-1 py-0.5 rounded bg-white/10 text-white/80 font-mono">↓/J</kbd> Next</span>
+        </div>
       </footer>
 
       {/* ── Details Bottom Sheet (State 3: "i" button) ── */}
@@ -618,25 +769,11 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
         <DetailsSheet battle={battle} onClose={() => setIsDetailsOpen(false)} />
       )}
 
-      {/* ── Photo Lightbox (High-Resolution Zoom & Detail Inspection) ── */}
+      {/* ── Battle Participant Details Modal (with Swipe Carousel) ── */}
       {lightboxData && (
-        <PhotoLightbox
-          isOpen={Boolean(lightboxData)}
+        <BattleParticipantModal
+          {...lightboxData}
           onClose={() => setLightboxData(null)}
-          photoUrl={lightboxData.photoUrl}
-          photos={lightboxData.photos}
-          title={lightboxData.title}
-          author={lightboxData.author}
-          authorAvatar={lightboxData.authorAvatar}
-          authorBio={lightboxData.authorBio}
-          category={lightboxData.category}
-          sponsorName={lightboxData.sponsorName}
-          sponsorTier={lightboxData.sponsorTier}
-          prizePool={lightboxData.prizePool}
-          socialLinks={lightboxData.socialLinks}
-          isSelected={lightboxData.isSelected}
-          percentage={lightboxData.percentage}
-          onVote={lightboxData.onVote}
         />
       )}
       </div>
