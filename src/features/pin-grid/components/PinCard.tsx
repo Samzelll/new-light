@@ -156,14 +156,10 @@ export const PinCard = memo(function PinCard({
     </article>
   );
 
-  // If pin has an href and no custom onClick, wrap in Link with prefetch enabled
+  // If pin has an href and no custom onClick, wrap in Link
   if (pin.href && !onClick) {
     return (
-      <Link
-        href={pin.href}
-        prefetch={true}
-        className="block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] rounded-2xl active:opacity-80 transition-opacity"
-      >
+      <Link href={pin.href} className="block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] rounded-2xl">
         {cardContent}
       </Link>
     );

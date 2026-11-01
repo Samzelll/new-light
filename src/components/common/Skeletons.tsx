@@ -203,7 +203,7 @@ export function ProfilePageSkeleton() {
  */
 export function ContestDetailSkeleton() {
   return (
-    <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-24 animate-pulse min-h-screen bg-[#0b0b0d] text-white">
+    <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pb-24 animate-pulse bg-[#000000]">
       {/* Top back button skeleton */}
       <div className="flex items-center justify-between pb-1">
         <div className="h-8 w-28 rounded-xl bg-neutral-900 border border-neutral-800" />
@@ -244,67 +244,3 @@ export function ContestDetailSkeleton() {
   );
 }
 
-
-
-/**
- * BattleDetailsSkeleton matching the exact layout of BattleDetailsView
- * with 1v1 Red & Blue cards, shimmers, and voltage bar.
- */
-export function BattleDetailsSkeleton() {
-  return (
-    <main className="min-h-screen bg-[#0b0b0d] text-white font-['Onest',sans-serif] pb-28 animate-pulse">
-      <div className="max-w-2xl mx-auto px-3 sm:px-6 pt-4 space-y-5">
-        {/* Top bar */}
-        <div className="flex items-center justify-between">
-          <div className="w-10 h-10 rounded-full bg-neutral-900 border border-white/10" />
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-neutral-900 border border-white/10" />
-            <div className="w-10 h-10 rounded-full bg-neutral-900 border border-white/10" />
-          </div>
-        </div>
-
-        {/* Battle Header */}
-        <div className="space-y-2">
-          <div className="h-4 w-44 rounded-md bg-neutral-800" />
-          <div className="h-8 w-3/4 rounded-xl bg-neutral-800" />
-          <div className="h-4 w-full rounded-md bg-neutral-800/60" />
-          <div className="h-9 w-full rounded-xl bg-neutral-900 border border-neutral-800" />
-        </div>
-
-        {/* Duel Subtitle */}
-        <div className="flex items-center justify-between px-1">
-          <div className="h-4 w-36 rounded bg-neutral-800" />
-          <div className="h-4 w-24 rounded bg-neutral-800" />
-        </div>
-
-        {/* 1v1 Red & Blue Duel Cards Skeleton */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          {/* Red Skeleton */}
-          <div className="rounded-2xl sm:rounded-3xl p-3 sm:p-4 bg-[#141418] border border-neutral-800 space-y-3">
-            <div className="w-full aspect-[4/5] rounded-xl sm:rounded-2xl bg-neutral-900 relative overflow-hidden">
-              <div className="absolute inset-0 -translate-x-full pin-shimmer-beam bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
-            </div>
-            <div className="h-3 w-16 rounded bg-neutral-800" />
-            <div className="h-4 w-28 rounded bg-neutral-700" />
-            <div className="h-2 w-full rounded-full bg-neutral-800" />
-            <div className="h-9 w-full rounded-xl bg-neutral-800" />
-          </div>
-
-          {/* Blue Skeleton */}
-          <div className="rounded-2xl sm:rounded-3xl p-3 sm:p-4 bg-[#141418] border border-neutral-800 space-y-3">
-            <div className="w-full aspect-[4/5] rounded-xl sm:rounded-2xl bg-neutral-900 relative overflow-hidden">
-              <div className="absolute inset-0 -translate-x-full pin-shimmer-beam bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
-            </div>
-            <div className="h-3 w-16 rounded bg-neutral-800" />
-            <div className="h-4 w-28 rounded bg-neutral-700" />
-            <div className="h-2 w-full rounded-full bg-neutral-800" />
-            <div className="h-9 w-full rounded-xl bg-neutral-800" />
-          </div>
-        </div>
-
-        {/* Dynamic Voltage Bar Skeleton */}
-        <div className="h-20 rounded-2xl bg-[#141418] border border-neutral-800" />
-      </div>
-    </main>
-  );
-}

@@ -80,11 +80,25 @@ const nextConfig = {
     ],
   },
 
+  // Transpile Redux Toolkit & React-Redux so vendor-chunk caching does not conflict with server runtime
+  transpilePackages: ['@reduxjs/toolkit', 'react-redux'],
+
   // Compiler options for smaller production bundles
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production'
       ? { exclude: ['error', 'warn'] }
       : false,
+  },
+
+  webpack: (config, { dev }) => {
+    // In dev / cloud container environments, using memory cache avoids ENOENT
+    // race conditions in Webpack's PackFileCacheStrategy for transient vendor chunks.
+    if (dev) {
+      config.cache = {
+        type: 'memory',
+      };
+    }
+    return config;
   },
 };
 
