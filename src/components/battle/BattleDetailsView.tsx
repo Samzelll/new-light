@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { BattleParticipantModal } from '@/components/battle/BattleParticipantModal';
 import { BattleVoteView } from '@/components/contest/BattleVoteView';
+import { BattleDetailsSkeleton } from '@/components/common/Skeletons';
 import {
   BattleContest,
   BattleCompetitor,
@@ -31,31 +32,37 @@ import { HAPTIC, haptic } from '@/perf/haptics';
 
 export interface BattleDetailsViewProps {
   battleId: string;
+  initialBattle?: BattleContest | null;
   onBack?: () => void;
 }
 
-export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) {
+export function BattleDetailsView({ battleId, initialBattle, onBack }: BattleDetailsViewProps) {
   const router = useRouter();
 
-  const [battle, setBattle] = useState<BattleContest | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [battle, setBattle] = useState<BattleContest | null>(initialBattle || null);
+  const [loading, setLoading] = useState(!initialBattle);
   const [userVote, setUserVote] = useState<'red' | 'blue' | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [showArenaView, setShowArenaView] = useState(false);
   const [inspectModalData, setInspectModalData] = useState<any | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Pinterest-style Atomic Synchronized Image Preparation
+  const [imagesReady, setImagesReady] = useState(false);
+
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   }, []);
 
-  // Load Battle data
+  // Load Battle data (if not already supplied via initialBattle)
   useEffect(() => {
     let mounted = true;
     async function load() {
-      setLoading(true);
-      const data = await getBattle(battleId);
+      if (!initialBattle) {
+        setLoading(true);
+      }
+      const data = initialBattle || (await getBattle(battleId));
       if (mounted && data) {
         setBattle(data);
         // Check persisted local vote
@@ -72,10 +79,44 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
     return () => {
       mounted = false;
     };
-  }, [battleId]);
+  }, [battleId, initialBattle]);
 
   const redComp = battle?.competitors.find((c) => c.corner === 'red') || battle?.competitors[0];
   const blueComp = battle?.competitors.find((c) => c.corner === 'blue') || battle?.competitors[1];
+
+  // Atomic synchronized image loading: both photos appear together once loaded
+  useEffect(() => {
+    if (!redComp?.photoUrl || !blueComp?.photoUrl) return;
+    let active = true;
+    setImagesReady(false);
+
+    const checkImage = (url: string) =>
+      new Promise<boolean>((resolve) => {
+        if (typeof window === 'undefined') return resolve(true);
+        const img = new window.Image();
+        img.src = url;
+        if (img.complete) {
+          resolve(true);
+        } else {
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(true); // Don't block indefinitely on 404
+        }
+      });
+
+    // Max 1.2s timeout so slow networks don't freeze indefinitely
+    const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 1200));
+
+    Promise.race([
+      Promise.all([checkImage(redComp.photoUrl), checkImage(blueComp.photoUrl)]),
+      timeout,
+    ]).then(() => {
+      if (active) setImagesReady(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [redComp?.photoUrl, blueComp?.photoUrl]);
 
   const handleVote = useCallback(
     async (corner: 'red' | 'blue') => {
@@ -133,18 +174,14 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
     );
   }
 
+  // Instant Pinterest-style skeleton matching the exact duel layout
   if (loading) {
-    return (
-      <main className="min-h-screen bg-[#0b0b0d] text-white p-4 flex flex-col items-center justify-center">
-        <div className="w-12 h-12 rounded-full border-2 border-[#ff6a2b] border-t-transparent animate-spin mb-3" />
-        <p className="text-xs text-neutral-400">Загрузка баттла...</p>
-      </main>
-    );
+    return <BattleDetailsSkeleton />;
   }
 
   if (!battle || !redComp || !blueComp) {
     return (
-      <main className="min-h-screen bg-[#0b0b0d] text-white p-6 flex flex-col items-center justify-center space-y-4">
+      <main className="min-h-screen bg-[#0b0b0d] text-white p-6 flex flex-col items-center justify-center space-y-4 font-['Onest',sans-serif]">
         <p className="text-sm text-neutral-400">Баттл не найден или завершён.</p>
         <button
           onClick={onBack || (() => router.push('/?tab=battles'))}
@@ -263,14 +300,23 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
                   : 'bg-[#141418] border-neutral-800 hover:border-neutral-700'
               }`}
             >
-              {/* Photo Box: Instagram 4:5 standard crop (object-cover, no black bars) */}
-              <div className="relative w-full aspect-[4/5] rounded-xl sm:rounded-2xl overflow-hidden bg-black/40 mb-3 border border-white/10">
+              {/* Photo Box: Instagram 4:5 standard crop with Pinterest atomic shimmer */}
+              <div className="relative w-full aspect-[4/5] rounded-xl sm:rounded-2xl overflow-hidden bg-[#161619] mb-3 border border-white/10">
+                {/* Pinterest shimmer placeholder until images are ready */}
+                {!imagesReady && (
+                  <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden bg-[#161619]">
+                    <div className="absolute inset-0 -translate-x-full pin-shimmer-beam bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+                  </div>
+                )}
+
                 <Image
                   src={redComp.photoUrl}
                   alt={redComp.name}
                   fill
                   unoptimized={shouldBeUnoptimized(redComp.photoUrl)}
-                  className="object-cover object-center group-hover:scale-[1.02] transition-transform duration-300"
+                  className={`object-cover object-center group-hover:scale-[1.02] transition-all duration-300 ${
+                    imagesReady ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.02]'
+                  }`}
                   sizes="(max-width: 640px) 45vw, 300px"
                   referrerPolicy="no-referrer"
                 />
@@ -369,14 +415,23 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
                   : 'bg-[#141418] border-neutral-800 hover:border-neutral-700'
               }`}
             >
-              {/* Photo Box: Instagram 4:5 standard crop (object-cover, no black bars) */}
-              <div className="relative w-full aspect-[4/5] rounded-xl sm:rounded-2xl overflow-hidden bg-black/40 mb-3 border border-white/10">
+              {/* Photo Box: Instagram 4:5 standard crop with Pinterest atomic shimmer */}
+              <div className="relative w-full aspect-[4/5] rounded-xl sm:rounded-2xl overflow-hidden bg-[#161619] mb-3 border border-white/10">
+                {/* Pinterest shimmer placeholder until images are ready */}
+                {!imagesReady && (
+                  <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden bg-[#161619]">
+                    <div className="absolute inset-0 -translate-x-full pin-shimmer-beam bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+                  </div>
+                )}
+
                 <Image
                   src={blueComp.photoUrl}
                   alt={blueComp.name}
                   fill
                   unoptimized={shouldBeUnoptimized(blueComp.photoUrl)}
-                  className="object-cover object-center group-hover:scale-[1.02] transition-transform duration-300"
+                  className={`object-cover object-center group-hover:scale-[1.02] transition-all duration-300 ${
+                    imagesReady ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.02]'
+                  }`}
                   sizes="(max-width: 640px) 45vw, 300px"
                   referrerPolicy="no-referrer"
                 />

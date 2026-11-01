@@ -1,10 +1,13 @@
 import '../app/globals.css';
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Manrope, Unbounded } from 'next/font/google';
 import { ReduxProvider } from '@/components/providers/ReduxProvider';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { AppShell } from '@/components/navigation/AppShell';
 import { PwaRegister } from '@/components/providers/PwaRegister';
+import { TopLoader } from '@/components/common/TopLoader';
+import { PerfInit } from '@/perf/PerfInit';
 
 const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
@@ -33,8 +36,6 @@ export const metadata: Metadata = {
   },
 };
 
-import { PerfInit } from '@/perf/PerfInit';
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -45,6 +46,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://images.unsplash.com" />
       </head>
       <body className="bg-bg text-ink font-sans min-h-screen">
+        <Suspense fallback={null}>
+          <TopLoader />
+        </Suspense>
         <PerfInit />
         <ReduxProvider>
           <AuthProvider>

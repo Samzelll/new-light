@@ -11,6 +11,7 @@ import { getParticipants, Participant, addBattleParticipant, deleteParticipant }
 import { castVote, cancelVote } from '@/services/voteService';
 import { supabase } from '@/services/supabase';
 import { BattleDetailsView } from '@/components/battle/BattleDetailsView';
+import { BattleDetailsSkeleton } from '@/components/common/Skeletons';
 import { ContestParticipantModal, ContestParticipantModalProps } from '@/components/contest/ContestParticipantModal';
 import { ContestPage as RegistrationContestPage } from '@/components/contest/RegistrationContestPage';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
@@ -55,6 +56,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   const { user, isAuthenticated } = useAuth();
 
   const [contest, setContest] = useState<Contest | null>(null);
+  const [cachedBattle, setCachedBattle] = useState<any | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [votes, setVotes] = useState<{ id: string; participant_id: string; voter_id: string }[]>([]);
   const [userVotedParticipantId, setUserVotedParticipantId] = useState<string | null>(null);
@@ -172,6 +174,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
         try {
           const battleData = await getBattle(id);
           if (battleData) {
+            setCachedBattle(battleData);
             if (battleData.userVotedId) {
               setUserVotedParticipantId(battleData.userVotedId);
             }
@@ -422,13 +425,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   };
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-[#0d110e] text-[#eef2ec] max-w-lg mx-auto p-4 space-y-4 animate-fade-in font-['Onest',sans-serif]">
-        <div className="w-full h-[280px] bg-[#161c17] rounded-[18px] animate-pulse" />
-        <div className="h-8 w-3/4 bg-[#161c17] rounded-[14px] animate-pulse" />
-        <div className="h-20 bg-[#161c17] rounded-[18px] animate-pulse" />
-      </main>
-    );
+    return <BattleDetailsSkeleton />;
   }
 
   if (error || !contest) {
@@ -455,6 +452,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
     return (
       <BattleDetailsView
         battleId={contest.id}
+        initialBattle={cachedBattle}
         onBack={handleGoBack}
       />
     );
