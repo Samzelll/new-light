@@ -112,12 +112,12 @@ export function AppHeader({
         <div className="tab-indicator !bg-accent !h-[2px]" aria-hidden="true" />
       </nav>
 
-      {/* Avatar button (right): 40px, bg-surface-2, ring-2 ring-accent */}
+      {/* Avatar profile button (right): 40px, bg-surface-2, harmonized border/ring in brass accent */}
       <button
         type="button"
         onClick={onOpenDrawer}
         aria-label="Open profile menu"
-        className="w-10 h-10 rounded-full bg-surface-2 ring-2 ring-accent overflow-hidden relative flex-none shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent hover:opacity-90 transition-opacity"
+        className="w-10 h-10 rounded-full bg-surface-2 border border-accent/50 ring-1 ring-accent/30 overflow-hidden relative flex-none shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent hover:border-accent hover:ring-accent/50 transition-all cursor-pointer shadow-sm"
       >
         {mounted && validAvatarUrl ? (
           <Image
@@ -129,8 +129,8 @@ export function AppHeader({
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-surface-2 text-accent">
-            <User size={20} strokeWidth={2.2} />
+          <div className="w-full h-full flex items-center justify-center bg-surface-2 text-accent font-display font-bold text-sm select-none">
+            {username ? username.charAt(0).toUpperCase() : <User size={18} strokeWidth={2.2} />}
           </div>
         )}
       </button>

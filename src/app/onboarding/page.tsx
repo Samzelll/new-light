@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Flame,
   ShieldCheck,
   Zap,
   ArrowRight,
@@ -83,22 +82,22 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0b0d] text-white flex flex-col items-center justify-between p-4 selection:bg-[#ff6a2b]/30 font-sans">
+    <div className="min-h-screen bg-bg text-ink flex flex-col items-center justify-between p-4 selection:bg-accent/30 font-sans">
       {/* Top Header */}
       <header className="w-full max-w-md flex items-center justify-between pt-3 pb-2">
         <button
           type="button"
           onClick={handleExit}
-          className="text-xs font-black uppercase tracking-tight text-white flex items-center gap-1.5 hover:text-[#ff6a2b] transition-colors"
+          className="text-xs font-bold uppercase tracking-tight text-ink flex items-center gap-1.5 hover:text-accent transition-colors font-display"
         >
-          <span className="w-2 h-2 rounded-full bg-[#ff6a2b] animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
           <span>Opinion Net</span>
         </button>
 
         <button
           type="button"
           onClick={handleExit}
-          className="text-xs font-bold text-neutral-400 hover:text-white px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-1"
+          className="text-xs font-semibold text-muted hover:text-ink px-3 py-1 rounded-full bg-surface hover:bg-surface-2 border border-line transition-colors flex items-center gap-1"
         >
           <span>Skip</span>
           <XIcon size={14} />
@@ -116,21 +115,21 @@ export default function OnboardingPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.22 }}
-              className="bg-[#161619] border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden"
+              className="bg-surface border border-line rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-0.5 rounded-full bg-[#ff6a2b]/15 text-[#ff8a4d] text-[10px] font-extrabold uppercase tracking-wider">
+                <span className="px-2.5 py-0.5 rounded-full bg-accent/15 text-accent-soft text-[10px] font-bold uppercase tracking-wider">
                   Step 1 · First Experience
                 </span>
-                <span className="text-xs font-semibold text-neutral-400">
+                <span className="text-xs font-medium text-muted">
                   Tap your pick below
                 </span>
               </div>
 
-              <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight leading-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-ink uppercase tracking-tight leading-tight font-display">
                 Cast Your First Vote
               </h1>
-              <p className="text-xs text-neutral-400 mt-1 mb-4">
+              <p className="text-xs text-muted mt-1 mb-4">
                 No bots or fake spikes. One tap decides who leads the arena.
               </p>
 
@@ -144,12 +143,12 @@ export default function OnboardingPage() {
                       role="button"
                       tabIndex={0}
                       onClick={() => setVotedChoice(entry.id)}
-                      className={`relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 border ${
+                      className={`relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer transition-all duration-300 border ${
                         isSelected
-                          ? 'border-emerald-500 ring-2 ring-emerald-500/40 scale-[0.98] shadow-lg shadow-emerald-500/20'
+                          ? 'border-emerald-500 ring-2 ring-emerald-500/30 scale-[0.98] shadow-lg shadow-emerald-500/10'
                           : votedChoice
-                          ? 'border-neutral-800 opacity-60'
-                          : 'border-neutral-700 hover:border-neutral-500 active:scale-95'
+                          ? 'border-line opacity-60'
+                          : 'border-line hover:border-line-strong active:scale-95'
                       }`}
                     >
                       <Image
@@ -162,21 +161,21 @@ export default function OnboardingPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
 
                       {isSelected && (
-                        <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-emerald-600 text-[10px] font-black text-white flex items-center gap-1 shadow-md">
+                        <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-emerald-600 text-[10px] font-bold text-white flex items-center gap-1 shadow-md">
                           <Check size={11} strokeWidth={3} />
                           <span>Voted</span>
                         </div>
                       )}
 
                       <div className="absolute bottom-2 inset-x-2 z-10">
-                        <div className="text-[11px] font-extrabold text-white truncate">
+                        <div className="text-[11px] font-bold text-ink truncate">
                           {entry.name}
                         </div>
-                        <div className="text-[10px] text-neutral-400 truncate">
+                        <div className="text-[10px] text-muted truncate">
                           {entry.author}
                         </div>
                         {votedChoice && (
-                          <div className="mt-1 text-xs font-black text-emerald-400 tabular-nums">
+                          <div className="mt-1 text-xs font-bold text-emerald-400 tabular-nums">
                             {entry.percent}%
                           </div>
                         )}
@@ -188,19 +187,19 @@ export default function OnboardingPage() {
 
               {/* Reward Feedback on First Vote */}
               {votedChoice ? (
-                <div className="p-3 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 flex items-center gap-2.5 animate-fade-in text-emerald-300 text-xs">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-600/30 flex items-center justify-center shrink-0">
-                    <Sparkles size={16} className="text-emerald-400" />
+                <div className="p-3 rounded-xl bg-surface-2 border border-accent/30 flex items-center gap-2.5 animate-fade-in text-accent-soft text-xs">
+                  <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
+                    <Sparkles size={16} className="text-accent" />
                   </div>
                   <div>
-                    <div className="font-black text-white">+1.0 Trust Weight Unlocked!</div>
-                    <div className="text-[11px] text-emerald-300/80">
+                    <div className="font-bold text-ink">+1.0 Trust Weight Unlocked!</div>
+                    <div className="text-[11px] text-muted">
                       Your vote just shaped the real-time tournament standings.
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-2.5 rounded-2xl bg-neutral-900 border border-neutral-800 text-center text-xs text-neutral-400">
+                <div className="p-2.5 rounded-xl bg-surface-2 border border-line text-center text-xs text-muted">
                   Tap either photo above to preview live split results.
                 </div>
               )}
@@ -215,25 +214,25 @@ export default function OnboardingPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.22 }}
-              className="bg-[#161619] border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden"
+              className="bg-surface border border-line rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-[10px] font-extrabold uppercase tracking-wider">
+                <span className="px-2.5 py-0.5 rounded-full bg-accent/15 text-accent-soft text-[10px] font-bold uppercase tracking-wider">
                   Step 2 · Personalization
                 </span>
-                <span className="text-xs font-semibold text-neutral-400">
+                <span className="text-xs font-medium text-muted">
                   {selectedInterests.length} selected
                 </span>
               </div>
 
-              <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight leading-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-ink uppercase tracking-tight leading-tight font-display">
                 Pick Your Interests
               </h1>
-              <p className="text-xs text-neutral-400 mt-1 mb-4">
+              <p className="text-xs text-muted mt-1 mb-4">
                 We will curate your battles and contest feed based on what you love.
               </p>
 
-              <div className="space-y-2.5 mb-4">
+              <div className="space-y-2 mb-4">
                 {CATEGORIES.map((cat) => {
                   const isChecked = selectedInterests.includes(cat.id);
                   return (
@@ -241,17 +240,17 @@ export default function OnboardingPage() {
                       key={cat.id}
                       type="button"
                       onClick={() => toggleInterest(cat.id)}
-                      className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                      className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
                         isChecked
-                          ? 'bg-[#ff6a2b]/15 border-[#ff6a2b]/60 text-white shadow-sm'
-                          : 'bg-[#222226] border-neutral-700/60 text-neutral-300 hover:border-neutral-500'
+                          ? 'bg-surface-2 border-accent text-ink shadow-sm'
+                          : 'bg-surface border-line text-muted hover:border-line-strong'
                       }`}
                     >
                       <div>
-                        <div className="text-xs sm:text-sm font-bold flex items-center gap-1.5">
+                        <div className="text-xs sm:text-sm font-semibold flex items-center gap-1.5 text-ink">
                           <span>{cat.label}</span>
                         </div>
-                        <div className="text-[11px] text-neutral-400 mt-0.5">
+                        <div className="text-[11px] text-muted mt-0.5">
                           {cat.desc}
                         </div>
                       </div>
@@ -259,8 +258,8 @@ export default function OnboardingPage() {
                       <div
                         className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
                           isChecked
-                            ? 'bg-[#ff6a2b] border-[#ff6a2b] text-white'
-                            : 'border-neutral-600 bg-neutral-800'
+                            ? 'bg-accent border-accent text-on-accent'
+                            : 'border-line-strong bg-surface-2'
                         }`}
                       >
                         {isChecked && <Check size={12} strokeWidth={3} />}
@@ -280,36 +279,36 @@ export default function OnboardingPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.22 }}
-              className="bg-[#161619] border border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden text-center"
+              className="bg-surface border border-line rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden text-center"
             >
-              <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#ff6a2b] to-[#c9430b] flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#ff6a2b]/30">
-                <Trophy size={30} className="text-white" />
+              <div className="w-14 h-14 rounded-2xl bg-accent-solid flex items-center justify-center mx-auto mb-4 shadow-md">
+                <Trophy size={28} className="text-white" />
               </div>
 
-              <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold uppercase tracking-wider mb-2">
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-accent/15 text-accent-soft text-[10px] font-bold uppercase tracking-wider mb-2">
                 Ready to compete & vote
               </span>
 
-              <h1 className="text-2xl font-black text-white uppercase tracking-tight leading-tight">
+              <h1 className="text-2xl font-bold text-ink uppercase tracking-tight leading-tight font-display">
                 Welcome to Opinion Net
               </h1>
 
-              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed mt-2 max-w-xs mx-auto">
+              <p className="text-xs sm:text-sm text-muted leading-relaxed mt-2 max-w-xs mx-auto">
                 Your personalized battle arena is ready. Vote on daily duels, support creator entries, or enter your own work to win prize pools!
               </p>
 
-              <div className="mt-5 p-3.5 rounded-2xl bg-[#222226] border border-neutral-700/60 text-left space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-white">
+              <div className="mt-5 p-3.5 rounded-xl bg-surface-2 border border-line text-left space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-ink">
                   <span>Initial Status:</span>
-                  <span className="text-emerald-400 font-extrabold">Verified Member</span>
+                  <span className="text-accent font-bold">Verified Member</span>
                 </div>
-                <div className="flex items-center justify-between text-xs font-bold text-white">
+                <div className="flex items-center justify-between text-xs font-semibold text-ink">
                   <span>Trust Score:</span>
-                  <span className="text-neutral-200 tabular-nums">1.0 Reputation</span>
+                  <span className="text-muted tabular-nums">1.0 Reputation</span>
                 </div>
-                <div className="flex items-center justify-between text-xs font-bold text-white">
+                <div className="flex items-center justify-between text-xs font-semibold text-ink">
                   <span>Curated Interests:</span>
-                  <span className="text-[#ff8a4d]">{selectedInterests.length} Categories</span>
+                  <span className="text-accent-soft">{selectedInterests.length} Categories</span>
                 </div>
               </div>
             </motion.div>
@@ -322,7 +321,7 @@ export default function OnboardingPage() {
             <div
               key={idx}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                idx === currentStep ? 'w-6 bg-[#ff6a2b]' : 'w-2 bg-neutral-700'
+                idx === currentStep ? 'w-6 bg-accent' : 'w-2 bg-line-strong'
               }`}
             />
           ))}
@@ -335,7 +334,7 @@ export default function OnboardingPage() {
           <button
             type="button"
             onClick={handlePrev}
-            className="py-3.5 px-4 rounded-2xl bg-[#222226] hover:bg-[#2c2c32] text-neutral-300 hover:text-white font-bold text-xs flex items-center justify-center transition-colors"
+            className="py-3 px-4 rounded-full bg-surface-2 hover:bg-line text-muted hover:text-ink font-semibold text-xs flex items-center justify-center transition-colors border border-line"
           >
             <ArrowLeft size={16} />
           </button>
@@ -343,7 +342,7 @@ export default function OnboardingPage() {
         <button
           type="button"
           onClick={handleNext}
-          className="flex-1 py-3.5 px-6 rounded-2xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-[#ff6a2b]/25 transition-all active:scale-[0.99]"
+          className="flex-1 py-3 px-6 rounded-full bg-accent-solid hover:bg-accent-hover text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.99]"
         >
           <span>
             {currentStep === 2

@@ -104,11 +104,11 @@ export function PinGrid({
       className={`w-full flex flex-col ${className}`}
     >
       {/* ── Flex Columns Layout ── */}
-      <div className="w-full flex gap-2 sm:gap-2.5 items-start">
+      <div className="w-full flex gap-1.5 sm:gap-2.5 items-start">
         {columnAssignment.columns.map((columnPins, colIdx) => (
           <div
             key={`col-${colIdx}`}
-            className="flex-1 flex flex-col gap-2 sm:gap-2.5 min-w-0"
+            className="flex-1 flex flex-col gap-1.5 sm:gap-2.5 min-w-0"
           >
             {columnPins.map((pin) => (
               <PinCard

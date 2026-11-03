@@ -57,10 +57,10 @@ export function LazyScrollTrigger({
 
   if (!hasMore) {
     return (
-      <div className={`py-6 flex items-center justify-center gap-2 text-xs font-semibold text-neutral-500 ${className}`}>
-        <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
+      <div className={`py-6 flex items-center justify-center gap-2 text-xs font-semibold text-faint ${className}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-line-strong" />
         <span>You’ve viewed all contests</span>
-        <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
+        <span className="w-1.5 h-1.5 rounded-full bg-line-strong" />
       </div>
     );
   }
@@ -68,15 +68,15 @@ export function LazyScrollTrigger({
   return (
     <div ref={triggerRef} className={`py-4 flex flex-col items-center justify-center gap-2 ${className}`}>
       {isLoading ? (
-        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#161619] border border-neutral-800 text-xs font-bold text-neutral-300 shadow-sm animate-fade-in">
-          <Loader2 size={15} className="animate-spin text-[#ff6a2b]" />
+        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-surface border border-line text-xs font-bold text-muted shadow-sm animate-fade-in">
+          <Loader2 size={15} className="animate-spin text-accent" />
           <span>Loading more contests…</span>
         </div>
       ) : showButtonFallback ? (
         <button
           type="button"
           onClick={onLoadMore}
-          className="px-5 py-2 rounded-full text-xs font-bold bg-[#1a1a1f] hover:bg-[#222228] text-neutral-300 hover:text-white border border-neutral-800 transition-colors shadow-sm active:scale-95"
+          className="px-5 py-2 rounded-full text-xs font-bold bg-surface hover:bg-surface-2 text-ink border border-line transition-colors shadow-sm active:scale-95"
         >
           Show more
         </button>
@@ -84,3 +84,5 @@ export function LazyScrollTrigger({
     </div>
   );
 }
+
+export default LazyScrollTrigger;

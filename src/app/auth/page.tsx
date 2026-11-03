@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Mail, KeyRound, CheckCircle2, Flame, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Mail, KeyRound, Flame } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDispatch } from 'react-redux';
 import { setAuth } from '@/features/auth/authSlice';
@@ -86,12 +86,12 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0b0d] text-white flex flex-col items-center justify-center p-4 selection:bg-[#ff6a2b]/30">
-      <div className="w-full max-w-sm mx-auto bg-[#161619] border border-neutral-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative">
+    <div className="min-h-screen bg-bg text-ink flex flex-col items-center justify-center p-4 selection:bg-accent/30 font-sans">
+      <div className="w-full max-w-sm mx-auto bg-surface border border-line rounded-2xl p-6 sm:p-8 shadow-xl relative">
         {/* Back Link */}
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white mb-6 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-ink mb-6 transition-colors"
         >
           <ArrowLeft size={14} />
           <span>Back to Home</span>
@@ -99,13 +99,13 @@ export default function AuthPage() {
 
         {/* Brand header */}
         <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#ff6a2b] to-[#ff944d] flex items-center justify-center mx-auto mb-3 shadow-lg shadow-[#ff6a2b]/30">
+          <div className="w-12 h-12 rounded-xl bg-accent-solid flex items-center justify-center mx-auto mb-3 shadow-md">
             <Flame size={24} className="text-white" />
           </div>
-          <h1 className="text-xl font-black uppercase tracking-tight text-white">
-            Opinion <span className="text-[#ff6a2b]">Net</span>
+          <h1 className="text-xl font-bold uppercase tracking-tight text-ink font-display">
+            Opinion <span className="text-accent">Net</span>
           </h1>
-          <p className="text-xs text-neutral-400 mt-1">
+          <p className="text-xs text-muted mt-1">
             {step === 'email'
               ? 'Sign in with a one-time email code'
               : `Code sent to ${email}`}
@@ -113,7 +113,7 @@ export default function AuthPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-950/60 border border-red-800/80 text-xs text-red-200 text-center animate-fade-in">
+          <div className="mb-4 p-3 rounded-xl bg-surface-2 border border-danger/40 text-xs text-danger text-center animate-fade-in font-medium">
             {error}
           </div>
         )}
@@ -121,7 +121,7 @@ export default function AuthPage() {
         {step === 'email' ? (
           <form onSubmit={handleSendCode} className="space-y-4">
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-neutral-400">
+              <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-muted">
                 Your email address
               </label>
               <div className="relative">
@@ -132,21 +132,21 @@ export default function AuthPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-[#222226] border border-neutral-700/80 text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-[#ff6a2b] transition-colors"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-2 border border-line text-ink placeholder-faint text-sm focus:outline-none focus:border-accent transition-colors"
                 />
-                <Mail size={16} className="absolute left-3.5 top-3.5 text-neutral-400" />
+                <Mail size={16} className="absolute left-3.5 top-3.5 text-muted" />
               </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading || !email}
-              className="w-full py-3.5 rounded-2xl bg-[#ff6a2b] hover:bg-[#ff7a3d] disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#ff6a2b]/25 transition-all active:scale-[0.99]"
+              className="w-full py-3.5 rounded-full bg-accent-solid hover:bg-accent-hover disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all active:scale-[0.99]"
             >
               {isLoading ? 'Sending...' : 'Get verification code'}
             </button>
 
-            <p className="text-[11px] text-neutral-500 text-center leading-relaxed">
+            <p className="text-[11px] text-faint text-center leading-relaxed">
               We will send a 6-digit code. No passwords required.
             </p>
           </form>
@@ -154,10 +154,10 @@ export default function AuthPage() {
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label htmlFor="otp" className="block text-xs font-bold uppercase tracking-wider text-neutral-400">
+                <label htmlFor="otp" className="block text-xs font-bold uppercase tracking-wider text-muted">
                   6-digit code
                 </label>
-                <span className="text-[11px] font-bold text-neutral-400 tabular-nums">
+                <span className="text-[11px] font-bold text-muted tabular-nums">
                   Expires in: {formatTimer(timer)}
                 </span>
               </div>
@@ -170,20 +170,20 @@ export default function AuthPage() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                   placeholder="000000"
-                  className="w-full text-center tracking-[0.35em] text-lg font-bold py-3 rounded-2xl bg-[#222226] border border-neutral-700/80 text-white placeholder-neutral-600 focus:outline-none focus:border-[#ff6a2b] transition-colors"
+                  className="w-full text-center tracking-[0.35em] text-lg font-bold py-3 rounded-xl bg-surface-2 border border-line text-ink placeholder-faint focus:outline-none focus:border-accent transition-colors"
                 />
-                <KeyRound size={16} className="absolute left-3.5 top-3.5 text-neutral-400" />
+                <KeyRound size={16} className="absolute left-3.5 top-3.5 text-muted" />
               </div>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-[#202026] border border-neutral-800 text-[11px] text-neutral-400 text-center">
-              💡 For quick testing enter <span className="text-[#ff6a2b] font-bold">000000</span>
+            <div className="p-2.5 rounded-xl bg-surface-2 border border-line text-[11px] text-muted text-center">
+              💡 For quick testing enter <span className="text-accent font-bold">000000</span>
             </div>
 
             <button
               type="submit"
               disabled={isLoading || otp.length < 6}
-              className="w-full py-3.5 rounded-2xl bg-[#ff6a2b] hover:bg-[#ff7a3d] disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#ff6a2b]/25 transition-all active:scale-[0.99]"
+              className="w-full py-3.5 rounded-full bg-accent-solid hover:bg-accent-hover disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all active:scale-[0.99]"
             >
               {isLoading ? 'Verifying...' : 'Sign In'}
             </button>
@@ -194,7 +194,7 @@ export default function AuthPage() {
                 setStep('email');
                 setOtp('');
               }}
-              className="w-full text-center text-xs text-neutral-400 hover:text-white transition-colors"
+              className="w-full text-center text-xs text-muted hover:text-ink transition-colors"
             >
               Use a different email
             </button>

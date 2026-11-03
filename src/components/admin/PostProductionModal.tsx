@@ -333,7 +333,7 @@ export function PostProductionModal({
         {/* ── Modal Top Header ── */}
         <header className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-neutral-800 shrink-0 bg-[#16161a]">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-[#ff6a2b]/20 text-[#ff6a2b] flex items-center justify-center font-bold text-xs shrink-0 border border-[#ff6a2b]/30">
+            <div className="w-8 h-8 rounded-xl bg-accent-solid/20 text-accent flex items-center justify-center font-bold text-xs shrink-0 border border-accent/30">
               ⚙️
             </div>
             <div className="min-w-0">
@@ -378,7 +378,7 @@ export function PostProductionModal({
             type="button"
             onClick={() => setActiveTab('general')}
             className={`py-3 px-3 sm:px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
-              activeTab === 'general' ? 'border-[#ff6a2b] text-white' : 'border-transparent text-neutral-400 hover:text-white'
+              activeTab === 'general' ? 'border-accent text-white' : 'border-transparent text-neutral-400 hover:text-white'
             }`}
           >
             <Edit3 size={14} />
@@ -389,7 +389,7 @@ export function PostProductionModal({
             type="button"
             onClick={() => setActiveTab('lifecycle')}
             className={`py-3 px-3 sm:px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
-              activeTab === 'lifecycle' ? 'border-[#ff6a2b] text-white' : 'border-transparent text-neutral-400 hover:text-white'
+              activeTab === 'lifecycle' ? 'border-accent text-white' : 'border-transparent text-neutral-400 hover:text-white'
             }`}
           >
             <Clock size={14} />
@@ -400,7 +400,7 @@ export function PostProductionModal({
             type="button"
             onClick={() => setActiveTab('participants')}
             className={`py-3 px-3 sm:px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
-              activeTab === 'participants' ? 'border-[#ff6a2b] text-white' : 'border-transparent text-neutral-400 hover:text-white'
+              activeTab === 'participants' ? 'border-accent text-white' : 'border-transparent text-neutral-400 hover:text-white'
             }`}
           >
             <Users size={14} />
@@ -412,7 +412,7 @@ export function PostProductionModal({
               type="button"
               onClick={() => setActiveTab('raw')}
               className={`py-3 px-3 sm:px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'raw' ? 'border-[#ff6a2b] text-white' : 'border-transparent text-neutral-400 hover:text-white'
+                activeTab === 'raw' ? 'border-accent text-white' : 'border-transparent text-neutral-400 hover:text-white'
               }`}
             >
               <ShieldAlert size={14} />
@@ -439,7 +439,7 @@ export function PostProductionModal({
                     required
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6a2b]"
+                    className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accent"
                   />
                 </div>
 
@@ -451,7 +451,7 @@ export function PostProductionModal({
                   <select
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6a2b]"
+                    className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accent"
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -470,7 +470,7 @@ export function PostProductionModal({
                     disabled={!isSuperAdmin}
                     value={contestType}
                     onChange={(e) => setContestType(e.target.value)}
-                    className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6a2b] disabled:opacity-60"
+                    className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accent disabled:opacity-60"
                   >
                     <option value="battle">1v1 Battle (Head-to-head)</option>
                     <option value="race">Live Race (Sprint Leaderboard)</option>
@@ -489,7 +489,7 @@ export function PostProductionModal({
                     value={prize}
                     onChange={(e) => setPrize(e.target.value)}
                     placeholder="e.g. $1,500 + Sony Alpha A7 IV"
-                    className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6a2b]"
+                    className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accent"
                   />
                 </div>
               </div>
@@ -505,7 +505,7 @@ export function PostProductionModal({
                     value={coverUrl}
                     onChange={(e) => setCoverUrl(e.target.value)}
                     placeholder="https://images.unsplash.com/..."
-                    className="flex-1 bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6a2b]"
+                    className="flex-1 bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accent"
                   />
                   {coverUrl && (
                     <div className="relative w-12 h-10 rounded-lg overflow-hidden border border-neutral-700 shrink-0">
@@ -530,7 +530,7 @@ export function PostProductionModal({
                       key={preset.label}
                       type="button"
                       onClick={() => setCoverUrl(preset.url)}
-                      className="text-[11px] text-[#ff6a2b] hover:underline"
+                      className="text-[11px] text-accent hover:underline"
                     >
                       {preset.label}
                     </button>
@@ -547,7 +547,7 @@ export function PostProductionModal({
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6a2b]"
+                  className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accent"
                   placeholder="Explain the theme, guidelines, and vision of this contest..."
                 />
               </div>
@@ -561,7 +561,7 @@ export function PostProductionModal({
                   rows={3}
                   value={rules}
                   onChange={(e) => setRules(e.target.value)}
-                  className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6a2b]"
+                  className="w-full bg-[#18181c] border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accent"
                   placeholder="Only original photos, no heavy AI manipulation, EXIF preserved..."
                 />
               </div>
@@ -570,7 +570,7 @@ export function PostProductionModal({
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-6 py-2.5 rounded-xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-[#ff6a2b]/25 transition-all"
+                  className="px-6 py-2.5 rounded-xl bg-accent-solid hover:bg-accent-hover text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-md transition-all"
                 >
                   <Save size={16} />
                   <span>{saving ? 'Saving...' : 'Save General Changes'}</span>
@@ -587,7 +587,7 @@ export function PostProductionModal({
               {/* Post-Production Action Center */}
               <div className="p-4 rounded-2xl bg-[#18181c] border border-neutral-800 space-y-4">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Sparkles size={16} className="text-[#ff6a2b]" />
+                  <Sparkles size={16} className="text-accent" />
                   <span>Post-Production Controls</span>
                 </h3>
 
@@ -657,7 +657,7 @@ export function PostProductionModal({
               {/* Deadline & Extensions */}
               <div className="p-4 rounded-2xl bg-[#18181c] border border-neutral-800 space-y-3">
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Clock size={15} className="text-[#ff6a2b]" />
+                  <Clock size={15} className="text-accent" />
                   <span>Voting Deadline Extension</span>
                 </h4>
                 <p className="text-xs text-neutral-400">
@@ -720,7 +720,7 @@ export function PostProductionModal({
                         onClick={() => handleForceStatus(st.id)}
                         className={`py-2 px-3 rounded-xl text-xs font-bold transition-colors border ${
                           status === st.id
-                            ? 'bg-[#ff6a2b] text-white border-[#ff6a2b]'
+                            ? 'bg-accent-solid text-white border-accent'
                             : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700'
                         }`}
                       >
@@ -749,7 +749,7 @@ export function PostProductionModal({
                 <button
                   type="button"
                   onClick={() => setIsAddingCompetitor(!isAddingCompetitor)}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
+                  className="px-3.5 py-1.5 rounded-xl bg-accent-solid hover:bg-accent-hover text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
                 >
                   <Plus size={14} />
                   <span>Add Competitor</span>
@@ -760,9 +760,9 @@ export function PostProductionModal({
               {isAddingCompetitor && (
                 <form
                   onSubmit={handleAddCompetitor}
-                  className="p-4 rounded-2xl bg-[#18181c] border border-[#ff6a2b]/40 space-y-3 animate-fade-in"
+                  className="p-4 rounded-2xl bg-[#18181c] border border-accent/40 space-y-3 animate-fade-in"
                 >
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider text-[#ff6a2b]">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider text-accent">
                     New Competitor / Photo Entry
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -816,7 +816,7 @@ export function PostProductionModal({
                     <button
                       type="submit"
                       disabled={saving}
-                      className="px-4 py-1.5 rounded-lg bg-[#ff6a2b] hover:bg-[#ff7a3d] text-xs font-bold text-white"
+                      className="px-4 py-1.5 rounded-lg bg-accent-solid hover:bg-accent-hover text-xs font-bold text-white"
                     >
                       Save Competitor
                     </button>

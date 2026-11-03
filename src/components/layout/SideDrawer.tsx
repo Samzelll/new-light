@@ -15,6 +15,11 @@ import {
   Shield,
   FastForward,
   Users,
+  Search,
+  Swords,
+  Flame,
+  CheckCircle2,
+  Bookmark,
 } from 'lucide-react';
 import type { Profile, UserRole } from '@/services/types';
 import { timeService } from '@/services/mock/timeService';
@@ -195,6 +200,64 @@ export function SideDrawer({
               <Vote size={18} className="text-accent" strokeWidth={2.2} />
               <span>Explore Contests</span>
             </Link>
+
+            <Link
+              href="/search"
+              onClick={onClose}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
+            >
+              <Search size={18} className="text-muted" strokeWidth={2} />
+              <span>Search & Discover</span>
+            </Link>
+
+            <Link
+              href="/?tab=battles"
+              onClick={onClose}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
+            >
+              <Swords size={18} className="text-muted" strokeWidth={2} />
+              <span>Live Battles</span>
+            </Link>
+
+            <Link
+              href="/?tab=feed"
+              onClick={onClose}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
+            >
+              <Flame size={18} className="text-muted" strokeWidth={2} />
+              <span>Media Feed</span>
+            </Link>
+
+            {activeProfile && (
+              <>
+                <Link
+                  href="/profile"
+                  onClick={onClose}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
+                >
+                  <User size={18} className="text-muted" strokeWidth={2} />
+                  <span>My Profile</span>
+                </Link>
+
+                <Link
+                  href="/profile?tab=votes"
+                  onClick={onClose}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
+                >
+                  <CheckCircle2 size={18} className="text-muted" strokeWidth={2} />
+                  <span>My Votes</span>
+                </Link>
+
+                <Link
+                  href="/profile?tab=favorites"
+                  onClick={onClose}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
+                >
+                  <Bookmark size={18} className="text-muted" strokeWidth={2} />
+                  <span>Favorites & Saved</span>
+                </Link>
+              </>
+            )}
 
             <Link
               href="/rules"

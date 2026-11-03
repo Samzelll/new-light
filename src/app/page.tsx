@@ -411,7 +411,8 @@ export default function HomePage() {
           : contest.type === 'eternal'
           ? 'Hall of Fame'
           : 'Contest',
-        tag: isSubscribed ? '★ Following' : isNew ? 'NEW' : undefined,
+        isSubscribed: isSubscribed,
+        tag: isNew ? 'NEW' : undefined,
         href: `/contest/${contest.id}`,
         raw: contest,
       };
@@ -723,7 +724,7 @@ export default function HomePage() {
       <div
         className={`w-full flex flex-col bg-bg relative transition-all duration-300 ${
           mainTab === 'contests'
-            ? 'max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-7xl min-h-screen pb-8 md:pb-24 px-2 sm:px-4 md:px-6'
+            ? 'w-full max-w-full md:max-w-4xl lg:max-w-6xl xl:max-w-7xl min-h-screen pb-8 md:pb-24 px-1 sm:px-2 md:px-4'
             : mainTab === 'battles'
             ? 'max-w-md lg:max-w-xl xl:max-w-2xl h-[100dvh] pb-0 overflow-hidden'
             : 'max-w-md md:max-w-lg lg:max-w-xl h-[100dvh] pb-0 overflow-hidden'

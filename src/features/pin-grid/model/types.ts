@@ -14,6 +14,7 @@ export interface PinItem {
   badge?: string;
   badgeColor?: 'accent' | 'muted' | 'danger' | 'surface';
   isLive?: boolean;
+  isSubscribed?: boolean;
   href?: string;
   onClick?: () => void;
   raw?: any;

@@ -56,12 +56,25 @@
     text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
   }
 
   body {
     min-height: 100vh;
     background-color: rgb(var(--c-bg));
     color: rgb(var(--c-ink));
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
   button, [role='button'] {
@@ -152,7 +165,7 @@
     margin-right: auto;
     min-height: 100vh;
     width: 100%;
-    max-width: var(--max-w-app);
+    max-width: 100%;
   }
 
   /* Desktop-wide responsive layout (>= 1024px) */
@@ -1022,4 +1035,32 @@ img {
     transition-duration: 120ms !important;
     transform: none !important;
   }
+}
+
+/* Battle photo expand button intro blink animation */
+@keyframes expandBlink {
+  0% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  25% {
+    opacity: 0.25;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
+  75% {
+    opacity: 0.35;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 0.22;
+    transform: scale(1);
+  }
+}
+
+.animate-expand-blink {
+  animation: expandBlink 2.5s ease-in-out forwards;
 }

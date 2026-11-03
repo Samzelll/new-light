@@ -18,7 +18,6 @@ import {
   ExternalLink,
   Camera,
   Send,
-  Share2,
   Globe,
 } from 'lucide-react';
 
@@ -71,8 +70,8 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
   if (loading) {
     return (
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-4">
-        <div className="h-64 sm:h-96 rounded-3xl bg-neutral-900 animate-pulse" />
-        <div className="h-40 rounded-3xl bg-neutral-900 animate-pulse" />
+        <div className="h-64 sm:h-96 rounded-2xl bg-surface animate-pulse border border-line" />
+        <div className="h-40 rounded-2xl bg-surface animate-pulse border border-line" />
       </main>
     );
   }
@@ -80,12 +79,12 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
   if (error || !participant) {
     return (
       <main className="max-w-lg mx-auto px-4 py-20 text-center space-y-4">
-        <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+        <div className="p-4 rounded-xl bg-surface-2 border border-danger/40 text-danger text-sm font-medium">
           {error || 'Participant not found.'}
         </div>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-surface-2 hover:bg-line text-ink font-bold text-xs transition-colors border border-line"
         >
           <ArrowLeft size={14} />
           <span>Return to feed</span>
@@ -108,12 +107,12 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
   const sponsor = participant.submission_data?.sponsor || null;
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-6 animate-fade-in text-white select-none">
+    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-6 animate-fade-in text-ink select-none font-sans">
       {/* Sleek Minimal Navigation */}
       <div className="flex items-center justify-between">
         <Link
           href={participant.contest_id ? `/contest/${participant.contest_id}` : '/'}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-white transition-colors py-1"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors py-1"
         >
           <ArrowLeft size={15} />
           <span>Back to contest</span>
@@ -123,7 +122,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
           <button
             type="button"
             onClick={() => setIsLightboxOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-medium border border-white/10 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface hover:bg-surface-2 text-muted hover:text-ink text-xs font-medium border border-line transition-colors"
           >
             <Maximize2 size={13} />
             <span>View fullscreen</span>
@@ -146,9 +145,9 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
         {/* Details Column */}
         <div className="lg:col-span-5 space-y-4">
           {/* Creator Profile */}
-          <div className="p-5 rounded-3xl bg-[#141418] border border-white/5 space-y-3 shadow-lg">
+          <div className="p-5 rounded-2xl bg-surface border border-line space-y-3 shadow-lg">
             <div className="flex items-center gap-3">
-              <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-800 border border-white/10 shrink-0">
+              <div className="relative w-12 h-12 rounded-full overflow-hidden bg-surface-2 border border-line shrink-0 ring-1 ring-accent/30">
                 {(() => {
                   const resolvedAvatar = participant.profiles?.avatar_url
                     ? resolveImageUrl(participant.profiles.avatar_url, 'avatars')
@@ -164,7 +163,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center font-bold text-base text-white bg-neutral-700">
+                    <div className="w-full h-full flex items-center justify-center font-bold text-base text-accent bg-surface-2 font-display">
                       {name[0]?.toUpperCase() || 'U'}
                     </div>
                   );
@@ -173,32 +172,32 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <h1 className="text-base sm:text-lg font-bold text-white truncate">{name}</h1>
-                  <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
+                  <h1 className="text-base sm:text-lg font-bold text-ink truncate font-display">{name}</h1>
+                  <ShieldCheck size={16} className="text-accent shrink-0" />
                 </div>
                 {participant.profiles?.username && (
-                  <p className="text-xs text-neutral-400 truncate">@{participant.profiles.username}</p>
+                  <p className="text-xs text-muted truncate">@{participant.profiles.username}</p>
                 )}
               </div>
             </div>
 
             {description && (
-              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed pt-2 border-t border-white/5">
+              <p className="text-xs sm:text-sm text-muted leading-relaxed pt-2 border-t border-line">
                 {description}
               </p>
             )}
 
             {/* Social Links */}
             {Object.keys(socialLinks).length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/5">
+              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-line">
                 {socialLinks.instagram && (
                   <a
                     href={`https://instagram.com/${socialLinks.instagram.replace('@', '')}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink text-xs transition-colors border border-line"
                   >
-                    <Camera size={12} className="text-pink-400" />
+                    <Camera size={12} className="text-accent" />
                     <span>Instagram</span>
                   </a>
                 )}
@@ -207,9 +206,9 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
                     href={`https://t.me/${socialLinks.telegram.replace('@', '')}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink text-xs transition-colors border border-line"
                   >
-                    <Send size={12} className="text-sky-400" />
+                    <Send size={12} className="text-accent" />
                     <span>Telegram</span>
                   </a>
                 )}
@@ -218,9 +217,9 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
                     href={socialLinks.website}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink text-xs transition-colors border border-line"
                   >
-                    <Globe size={12} className="text-emerald-400" />
+                    <Globe size={12} className="text-accent" />
                     <span>Website</span>
                   </a>
                 )}
@@ -230,15 +229,15 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
 
           {/* Sponsor card if available */}
           {sponsor && (
-            <div className="p-4 rounded-3xl bg-[#141418] border border-white/5 flex items-center gap-3 shadow-lg">
-              <Award size={18} className="text-amber-400 shrink-0" />
+            <div className="p-4 rounded-2xl bg-surface border border-line flex items-center gap-3 shadow-lg">
+              <Award size={18} className="text-accent shrink-0" />
               <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/90 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-accent-soft block">
                   Submission sponsor
                 </span>
-                <h4 className="text-xs font-bold text-white truncate">{sponsor.name}</h4>
+                <h4 className="text-xs font-bold text-ink truncate font-display">{sponsor.name}</h4>
                 {sponsor.product_name && (
-                  <p className="text-[11px] text-neutral-400 truncate">{sponsor.product_name}</p>
+                  <p className="text-[11px] text-muted truncate">{sponsor.product_name}</p>
                 )}
               </div>
             </div>
@@ -246,33 +245,33 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
 
           {/* Results history */}
           {results.length > 0 && (
-            <div className="p-4 rounded-3xl bg-[#141418] border border-white/5 space-y-2 shadow-lg">
-              <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+            <div className="p-4 rounded-2xl bg-surface border border-line space-y-2 shadow-lg">
+              <h3 className="text-xs font-bold text-muted uppercase tracking-wider font-display">
                 Round history
               </h3>
               <div className="space-y-1.5">
                 {results.map((res) => (
                   <div
                     key={res.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 text-xs"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-surface-2 border border-line text-xs"
                   >
                     <div>
-                      <span className="font-semibold text-white block">
+                      <span className="font-semibold text-ink block">
                         {res.contest_stages?.title || `Stage ${res.contest_stages?.stage_number}`}
                       </span>
                       <span
                         className={`text-[10px] font-bold uppercase ${
-                          res.passed ? 'text-emerald-400' : 'text-neutral-500'
+                          res.passed ? 'text-accent' : 'text-faint'
                         }`}
                       >
                         {res.passed ? '✓ Advanced' : '✗ Eliminated'}
                       </span>
                     </div>
                     <div className="text-right tabular-nums">
-                      <span className="font-bold text-white block">
+                      <span className="font-bold text-ink block">
                         {formatPercentage(res.vote_percentage)}
                       </span>
-                      <span className="text-[10px] text-neutral-400">Rank #{res.rank_in_group}</span>
+                      <span className="text-[10px] text-muted">Rank #{res.rank_in_group}</span>
                     </div>
                   </div>
                 ))}
