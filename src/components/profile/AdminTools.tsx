@@ -20,26 +20,26 @@ export function AdminTools({ role }: AdminToolsProps) {
 
   return (
     <div className="flex items-center gap-2.5 my-3.5 w-full" role="region" aria-label="Admin tools">
-      {/* Primary orange button "Create Contest" (about 44px high) */}
+      {/* Primary button "Create Contest" */}
       {canCreate && (
         <Link
           href="/create"
           aria-label="Create contest"
-          className="h-11 flex-1 bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-sm rounded-2xl px-4 flex items-center justify-center gap-2 shadow-md shadow-[#ff6a2b]/25 active:scale-[0.98] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="flex-1 bg-accent-solid hover:bg-accent-hover text-white rounded-full font-bold px-5 py-2.5 shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent text-sm"
         >
           <Plus size={18} strokeWidth={2.5} />
           <span>Create Contest</span>
         </Link>
       )}
 
-      {/* Secondary button "Moderation" (admins/mods only, about 44px high) */}
+      {/* Secondary button "Moderation" */}
       {canModerate && (
         <Link
           href="/admin"
           aria-label="Moderation dashboard"
-          className="h-11 flex-1 bg-[#18181c] border border-neutral-800 hover:border-neutral-700 hover:bg-[#202026] text-white font-bold text-sm rounded-2xl px-4 flex items-center justify-center gap-2 active:scale-[0.98] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b]"
+          className="flex-1 bg-surface border border-line-strong text-ink hover:bg-surface-2 rounded-full font-bold px-5 py-2.5 flex items-center justify-center gap-2 active:scale-[0.98] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent text-sm"
         >
-          <Shield size={18} strokeWidth={2.2} className="text-[#ff6a2b]" />
+          <Shield size={18} strokeWidth={2.2} className="text-accent" />
           <span>Moderation</span>
         </Link>
       )}

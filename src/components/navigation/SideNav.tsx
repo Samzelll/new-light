@@ -32,10 +32,10 @@ export function SideNav() {
       {/* Logo */}
       <div className="sidenav-logo">
         <div className="sidenav-logo-icon flex items-center justify-center">
-          <Flame size={20} color="#F9F9F9" strokeWidth={2.5} />
+          <Flame size={20} className="text-accent" strokeWidth={2.5} />
         </div>
         <div>
-          <div className="sidenav-logo-title">Opinion Net</div>
+          <div className="sidenav-logo-title font-display">Opinion Net</div>
           <div className="sidenav-logo-sub">Contest Platform</div>
         </div>
       </div>
@@ -56,8 +56,8 @@ export function SideNav() {
                   strokeWidth={active ? 2.5 : 2}
                   className={`transition-all duration-200 ${
                     active
-                      ? 'text-[#E85102] drop-shadow-[0_0_8px_rgba(232,81,2,0.6)]'
-                      : 'text-[#646464] hover:text-[#F9F9F9]'
+                      ? 'text-accent drop-shadow-[0_0_8px_rgba(196,165,116,0.6)]'
+                      : 'text-faint hover:text-ink'
                   }`}
                 />
               </span>

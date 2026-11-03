@@ -11,7 +11,7 @@ import { getMyApplications, type Participant } from '@/services/participantServi
 import { getMyVoteHistory, type Vote } from '@/services/voteService';
 import { getMySubscriptions, getContestById } from '@/services/contestService';
 import { uploadAvatar, getPublicUrl } from '@/services/storageService';
-import { formatDate } from '@/utils/formatters';
+import { formatDate, formatPlace } from '@/utils/formatters';
 
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { StatsRow } from '@/components/profile/StatsRow';
@@ -71,10 +71,10 @@ export default function ProfilePage() {
             contestId: item.contest_id,
             contestTitle,
             votesCount: idx === 0 ? 1240 : idx === 1 ? 5302 : 450,
-            rankText: isWinner ? '1st Place' : `${idx + 2}th Place`,
+            rankText: isWinner ? '1st Place' : formatPlace(idx + 2),
             status: isWinner ? 'winner' : isVoting ? 'voting' : item.status,
             photoUrl: item.submission_data?.photos?.[0] || null,
-            placeholderColor: idx % 2 === 0 ? 'bg-gradient-to-br from-pink-500 to-rose-600' : 'bg-gradient-to-br from-neutral-800 to-neutral-700',
+            placeholderColor: 'bg-surface-2',
           };
         });
       }
@@ -90,7 +90,7 @@ export default function ProfilePage() {
             rankText: '4th Place',
             status: 'voting',
             photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
-            placeholderColor: 'bg-gradient-to-br from-pink-500 to-rose-600',
+            placeholderColor: 'bg-surface-2',
           },
           {
             id: 'mock-app-02',
@@ -100,7 +100,7 @@ export default function ProfilePage() {
             rankText: '1st Place',
             status: 'winner',
             photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
-            placeholderColor: 'bg-gradient-to-br from-neutral-800 to-neutral-700',
+            placeholderColor: 'bg-surface-2',
           },
         ];
       }
@@ -254,7 +254,7 @@ export default function ProfilePage() {
   /* ── 1. Loading State ── */
   if (loading || (isInitialized && isAuthenticated && trustLoading)) {
     return (
-      <main className="min-h-screen bg-[#0b0b0d] text-white flex justify-center">
+      <main className="min-h-screen bg-bg text-ink flex justify-center">
         <ProfilePageSkeleton />
       </main>
     );
@@ -263,31 +263,31 @@ export default function ProfilePage() {
   /* ── 2. Not Authenticated State ── */
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen bg-[#0b0b0d] text-white flex flex-col items-center p-4">
+      <main className="min-h-screen bg-bg text-ink flex flex-col items-center p-4">
         <div className="w-full max-w-md flex flex-col min-h-screen">
           <header className="flex items-center py-3">
             <Link
               href="/"
               aria-label="Back to Home"
-              className="w-10 h-10 -ml-2 rounded-full text-[#ff6a2b] hover:text-[#ff854d] flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b]"
+              className="w-10 h-10 -ml-2 rounded-full text-accent hover:text-accent-soft flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ChevronLeft size={28} strokeWidth={2.5} />
             </Link>
           </header>
 
           <div className="flex-1 flex flex-col items-center justify-center text-center px-4 -mt-12">
-            <div className="w-16 h-16 rounded-3xl bg-[#ff6a2b]/15 border border-[#ff6a2b]/30 flex items-center justify-center text-3xl mb-4">
+            <div className="w-16 h-16 rounded-3xl bg-accent/15 border border-accent/30 flex items-center justify-center text-3xl mb-4">
               🔐
             </div>
-            <h1 className="text-xl font-bold text-white mb-2">
+            <h1 className="text-xl font-bold text-ink mb-2">
               Authentication Required
             </h1>
-            <p className="text-sm text-neutral-400 max-w-xs mb-6 leading-relaxed">
+            <p className="text-sm text-muted max-w-xs mb-6 leading-relaxed">
               Please sign in to view your profile, trust index, and entries.
             </p>
             <Link
               href="/auth"
-              className="w-full max-w-xs py-3.5 px-6 rounded-full font-bold text-sm bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white shadow-lg shadow-[#ff6a2b]/25 transition-all text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="w-full max-w-xs py-3.5 px-6 rounded-full font-bold text-sm bg-accent-solid hover:bg-accent-hover text-white shadow-lg transition-all text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Sign In
             </Link>
@@ -313,9 +313,9 @@ export default function ProfilePage() {
   const winsCount = 2;
 
   return (
-    <div className="min-h-screen bg-[#0b0b0d] text-white flex flex-col items-center selection:bg-[#ff6a2b]/30">
+    <div className="min-h-screen bg-bg text-ink flex flex-col items-center selection:bg-accent-solid/50">
       {/* Mobile-first max-w-md Frame */}
-      <main className="w-full max-w-md min-h-screen flex flex-col px-5 py-2 pb-24 bg-[#0b0b0d]">
+      <main className="w-full max-w-md min-h-screen flex flex-col px-5 py-2 pb-24 bg-bg">
         {/* ── Component 1: ProfileHeader ── */}
         <ProfileHeader
           displayName={profile?.display_name || user?.email?.split('@')[0] || 'Alexander'}

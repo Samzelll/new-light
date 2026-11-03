@@ -133,8 +133,8 @@ export function PinGrid({
           aria-live="polite"
           className="w-full py-6 flex items-center justify-center animate-fade-in"
         >
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/90 border border-neutral-800 text-neutral-300 text-xs font-semibold shadow-lg">
-            <Loader2 size={13} className="animate-spin text-[#ff6a2b]" />
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-2/90 border border-line text-muted text-xs font-semibold shadow-lg">
+            <Loader2 size={13} className="animate-spin text-accent" />
             <span>Loading batch...</span>
           </div>
         </div>

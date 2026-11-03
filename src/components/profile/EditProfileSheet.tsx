@@ -113,29 +113,29 @@ export function EditProfileSheet({
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-profile-title"
-      className="fixed inset-0 z-50 bg-[#0b0b0d] text-white flex flex-col items-center overflow-y-auto animate-fade-in"
+      className="fixed inset-0 z-50 bg-bg text-ink flex flex-col items-center overflow-y-auto animate-fade-in"
     >
       {/* Mobile-first max-w-md container */}
       <div className="w-full max-w-md min-h-screen flex flex-col px-5 py-4 justify-between relative">
         {/* ── Top Header ── */}
         <div>
-          <div className="flex items-center gap-3 py-2 border-b border-neutral-800/80 mb-6">
+          <div className="flex items-center gap-3 py-2 border-b border-line mb-6">
             <button
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="w-10 h-10 -ml-2 rounded-full text-[#ff6a2b] hover:text-[#ff854d] flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b]"
+              className="w-10 h-10 -ml-2 rounded-full text-accent hover:opacity-80 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <X size={26} strokeWidth={2.5} />
             </button>
-            <h1 id="edit-profile-title" className="text-xl font-bold tracking-tight text-white">
+            <h1 id="edit-profile-title" className="font-display text-xl font-bold tracking-tight text-ink">
               Edit Profile
             </h1>
           </div>
 
           {/* ── Avatar Block ── */}
           <div className="flex flex-col items-center mb-6">
-            <div className="relative w-20 h-20 rounded-full ring-2 ring-[#ff6a2b] ring-offset-2 ring-offset-[#0b0b0d] overflow-hidden bg-[#241712] flex items-center justify-center shadow-lg">
+            <div className="relative w-20 h-20 rounded-full ring-2 ring-accent ring-offset-2 ring-offset-bg overflow-hidden bg-surface-2 flex items-center justify-center shadow-md">
               {(() => {
                 const resolved = initialData.avatarUrl ? resolveImageUrl(initialData.avatarUrl, 'avatars') : null;
                 const isValid = resolved && (resolved.startsWith('http://') || resolved.startsWith('https://') || resolved.startsWith('data:') || resolved.startsWith('/'));
@@ -149,15 +149,15 @@ export function EditProfileSheet({
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-[#ff824c] to-[#ff6a2b] text-white">
-                    <User size={44} strokeWidth={2} className="text-[#0b0b0d] fill-current translate-y-1" />
+                  <div className="w-full h-full flex items-center justify-center bg-surface-2 text-accent">
+                    <User size={44} strokeWidth={2} className="translate-y-1" />
                   </div>
                 );
               })()}
 
               {/* Uploading indicator */}
               {isUploading && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center text-xs font-bold text-white">
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center text-xs font-bold text-ink">
                   ...
                 </div>
               )}
@@ -168,7 +168,7 @@ export function EditProfileSheet({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="text-[#ff6a2b] hover:text-[#ff854d] font-bold text-sm mt-2.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] rounded px-2 py-0.5 cursor-pointer"
+              className="text-accent hover:opacity-80 font-bold text-sm mt-2.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-2 py-0.5 cursor-pointer"
             >
               {isUploading ? 'Uploading...' : 'Change photo'}
             </button>
@@ -186,7 +186,7 @@ export function EditProfileSheet({
           <form id="edit-profile-form" onSubmit={handleSubmit} className="space-y-4">
             {/* Field "Name" */}
             <div>
-              <label htmlFor="field-display-name" className="block text-xs font-semibold text-neutral-400 mb-1.5">
+              <label htmlFor="field-display-name" className="block text-faint uppercase text-[11px] font-semibold tracking-wide mb-1.5">
                 Name
               </label>
               <input
@@ -196,17 +196,17 @@ export function EditProfileSheet({
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
                 required
-                className="w-full bg-[#141418] border border-neutral-800 rounded-2xl px-4 py-3 text-white text-sm font-medium focus:border-[#ff6a2b] focus:outline-none transition-colors"
+                className="w-full bg-surface border border-line rounded-xl px-4 py-3 text-ink text-sm font-medium focus:border-accent focus:outline-none transition-colors"
               />
             </div>
 
             {/* Field "Bio" with 120-character counter */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="field-bio" className="text-xs font-semibold text-neutral-400">
+                <label htmlFor="field-bio" className="text-faint uppercase text-[11px] font-semibold tracking-wide">
                   Bio
                 </label>
-                <span className="text-xs font-semibold text-neutral-400 tabular-nums">
+                <span className="text-xs font-semibold text-muted tabular-nums">
                   {bio.length} / 120
                 </span>
               </div>
@@ -217,20 +217,20 @@ export function EditProfileSheet({
                 maxLength={120}
                 rows={3}
                 placeholder="Tell about yourself..."
-                className="w-full bg-[#141418] border border-neutral-800 rounded-2xl px-4 py-3 text-white text-sm font-medium focus:border-[#ff6a2b] focus:outline-none transition-colors resize-none leading-relaxed"
+                className="w-full bg-surface border border-line rounded-xl px-4 py-3 text-ink text-sm font-medium focus:border-accent focus:outline-none transition-colors resize-none leading-relaxed"
               />
             </div>
 
             {/* Toggle "Show participations" with switch */}
             <div
-              className="bg-[#141418] border border-neutral-800 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-colors hover:border-neutral-700/80"
+              className="bg-surface border border-line rounded-xl p-4 flex items-center justify-between cursor-pointer transition-colors hover:border-line-strong"
               onClick={() => setShowParticipations((prev) => !prev)}
             >
               <div className="pr-3">
-                <div className="text-sm font-bold text-white">
+                <div className="text-sm font-bold text-ink">
                   Show participations
                 </div>
-                <div className="text-xs text-neutral-400 mt-0.5 leading-snug">
+                <div className="text-xs text-muted mt-0.5 leading-snug">
                   Your contest entries are visible on your public profile
                 </div>
               </div>
@@ -245,12 +245,12 @@ export function EditProfileSheet({
                   e.stopPropagation();
                   setShowParticipations((prev) => !prev);
                 }}
-                className={`w-12 h-7 rounded-full p-1 transition-colors relative shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
-                  showParticipations ? 'bg-[#ff6a2b]' : 'bg-[#2a2a32]'
+                className={`w-12 h-7 rounded-full p-1 transition-colors relative shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                  showParticipations ? 'bg-accent' : 'bg-surface-2 border border-line'
                 }`}
               >
                 <div
-                  className={`w-5 h-5 rounded-full bg-white transition-transform shadow-md ${
+                  className={`w-5 h-5 rounded-full bg-ink transition-transform shadow-md ${
                     showParticipations ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
@@ -266,10 +266,10 @@ export function EditProfileSheet({
             type="submit"
             form="edit-profile-form"
             disabled={!hasChanged || isSaving}
-            className={`w-full py-3.5 px-6 rounded-full font-bold text-base transition-all text-center tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+            className={`w-full py-3.5 px-6 rounded-full font-bold text-base transition-all text-center tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
               hasChanged && !isSaving
-                ? 'bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white shadow-lg shadow-[#ff6a2b]/25 active:scale-[0.99] cursor-pointer'
-                : 'bg-[#18181e] text-neutral-500 cursor-not-allowed border border-neutral-800/80 shadow-none'
+                ? 'bg-accent-solid hover:bg-accent-hover text-white shadow-md active:scale-[0.99] cursor-pointer'
+                : 'bg-surface-2 text-faint cursor-not-allowed border border-line shadow-none'
             }`}
           >
             {isSaving ? 'Saving...' : 'Save'}
@@ -279,7 +279,7 @@ export function EditProfileSheet({
           <button
             type="button"
             onClick={() => setShowLogoutConfirm(true)}
-            className="text-neutral-400 hover:text-red-400 text-sm font-semibold py-2 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] rounded px-3"
+            className="text-muted hover:text-danger text-sm font-semibold py-2 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded px-3"
           >
             Sign Out
           </button>
@@ -288,22 +288,22 @@ export function EditProfileSheet({
 
       {/* ── Confirmation Dialog for Logout ── */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
           <div
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="logout-confirm-title"
             aria-describedby="logout-confirm-desc"
-            className="bg-[#141418] border border-neutral-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4 animate-scale-up"
+            className="bg-surface border border-line rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4 animate-scale-up"
           >
-            <div className="w-12 h-12 rounded-full bg-red-950/60 border border-red-800/50 text-red-400 flex items-center justify-center mx-auto text-xl">
+            <div className="w-12 h-12 rounded-full bg-danger/15 border border-danger/30 text-danger flex items-center justify-center mx-auto text-xl">
               ⚠️
             </div>
             <div>
-              <h2 id="logout-confirm-title" className="text-lg font-bold text-white">
+              <h2 id="logout-confirm-title" className="text-lg font-bold text-ink">
                 Sign out of your account?
               </h2>
-              <p id="logout-confirm-desc" className="text-xs text-neutral-400 mt-1">
+              <p id="logout-confirm-desc" className="text-xs text-muted mt-1">
                 You will need to sign in again to submit entries and vote.
               </p>
             </div>
@@ -311,14 +311,14 @@ export function EditProfileSheet({
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 py-3 px-4 rounded-2xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="flex-1 py-3 px-4 rounded-xl bg-surface-2 hover:bg-line text-muted hover:text-ink text-sm font-bold border border-line transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmLogout}
-                className="flex-1 py-3 px-4 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-lg shadow-red-600/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                className="flex-1 py-3 px-4 rounded-xl bg-danger hover:opacity-90 text-white text-sm font-bold shadow-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
               >
                 Sign Out
               </button>

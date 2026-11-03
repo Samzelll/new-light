@@ -44,7 +44,7 @@ export const pinsApi = createApi({
             height: h,
             badge: idx % 2 === 0 ? 'Battle' : 'Race',
             isLive: idx % 3 === 0,
-            dominantColor: '#17171c',
+            dominantColor: '#1c1917',
             href: `/contest/c-${idx}`,
           };
         });
@@ -95,7 +95,7 @@ export function RtkQueryPinGridContainer() {
   if (isLoading && pins.length === 0) {
     return (
       <div className="w-full py-16 flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-[#ff6a2b] border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
       </div>
     );
   }

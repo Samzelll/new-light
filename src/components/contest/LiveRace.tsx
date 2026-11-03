@@ -87,12 +87,12 @@ export function LiveRace({ contestId, participants, userTrustScore }: LiveRacePr
   return (
     <div className="space-y-6 relative">
       {voteToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#ff6a2b] text-white text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-accent-solid text-white text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
           {voteToast}
         </div>
       )}
-      <h3 className="text-xl font-bold text-white mb-2">Live Race Standings</h3>
-      <p className="text-gray-400 text-sm">
+      <h3 className="text-xl font-bold text-ink font-display mb-2">Live Race Standings</h3>
+      <p className="text-muted text-sm">
         Click on any participant row to cast your vote. Leaderboard updates instantly in real time.
       </p>
 
@@ -106,19 +106,19 @@ export function LiveRace({ contestId, participants, userTrustScore }: LiveRacePr
             <div 
               key={p.id}
               onClick={() => handleVote(p.id)}
-              className={`card bg-surface-800 border-surface-700 flex flex-col p-4 space-y-3 relative overflow-hidden transition-all duration-200 select-none ${
-                !votedId && isAuthenticated ? 'cursor-pointer hover:border-brand-500 hover:shadow-lg' : ''
-              } ${isVotedFor ? 'border-brand-500 ring-2 ring-brand-500/30' : ''}`}
+              className={`rounded-2xl bg-surface border border-line flex flex-col p-4 space-y-3 relative overflow-hidden transition-all duration-200 select-none ${
+                !votedId && isAuthenticated ? 'cursor-pointer hover:border-accent hover:shadow-lg' : ''
+              } ${isVotedFor ? 'border-accent ring-2 ring-accent/30' : ''}`}
             >
               <div className="flex justify-between items-center z-10">
                 <div className="flex items-center gap-3">
                   {/* Position number */}
-                  <span className="font-black text-white text-base w-6 text-center">
+                  <span className="font-black text-accent text-base w-6 text-center tabular-nums">
                     #{index + 1}
                   </span>
 
                   {avatarUrl ? (
-                    <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border border-surface-600">
+                    <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border border-line">
                       <LazyImage 
                         src={avatarUrl} 
                         alt={name} 
@@ -128,27 +128,27 @@ export function LiveRace({ contestId, participants, userTrustScore }: LiveRacePr
                       />
                     </div>
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-surface-600 flex items-center justify-center font-bold text-white text-sm">
+                    <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center font-bold text-ink text-sm">
                       {name.charAt(0).toUpperCase()}
                     </div>
                   )}
 
                   <div>
-                    <h4 className="font-bold text-white text-sm">{name}</h4>
+                    <h4 className="font-bold text-ink text-sm">{name}</h4>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className={`text-lg font-black ${isVotedFor ? 'text-accent-green' : 'text-white'}`}>
+                  <span className={`text-lg font-black ${isVotedFor ? 'text-accent' : 'text-ink'}`}>
                     {formatPercentage(p.percentage)}
                   </span>
                 </div>
               </div>
 
               {isVotedFor && (
-                <div className="absolute top-2 right-2 bg-accent-green text-surface-900 font-extrabold text-[9px] uppercase px-2 py-0.5 rounded shadow flex items-center gap-1">
+                <div className="absolute top-2 right-2 bg-accent text-on-accent font-extrabold text-[9px] uppercase px-2 py-0.5 rounded shadow flex items-center gap-1">
                   <span>✓ Voted</span>
-                  <span className="border-l border-surface-900/40 pl-1">{formatPercentage(p.percentage)}</span>
+                  <span className="border-l border-on-accent/30 pl-1">{formatPercentage(p.percentage)}</span>
                 </div>
               )}
             </div>

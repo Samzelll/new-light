@@ -251,20 +251,20 @@ export function TikTokFeedView({
   if (groups.length === 0) {
     return (
       <div className="flex-1 px-4 py-16 flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-2xl mb-4">
+        <div className="w-16 h-16 rounded-full bg-surface border border-line flex items-center justify-center text-2xl mb-4">
           🔍
         </div>
-        <h3 className="text-base font-bold text-white mb-1.5">
+        <h3 className="text-base font-bold text-ink font-display mb-1.5">
           No groups match your current filters
         </h3>
-        <p className="text-xs text-neutral-400 mb-6 max-w-xs">
+        <p className="text-xs text-muted mb-6 max-w-xs">
           Try resetting tags or search parameters to view all active voting groups.
         </p>
         {onResetFilters && (
           <button
             type="button"
             onClick={onResetFilters}
-            className="px-5 py-2.5 rounded-full bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs shadow-lg shadow-[#ff6a2b]/20 transition-all active:scale-95"
+            className="px-5 py-2.5 rounded-full bg-accent-solid hover:bg-accent-hover text-white font-bold text-xs shadow-lg shadow-black/20 transition-all active:scale-95"
           >
             Reset Filters
           </button>
@@ -307,12 +307,12 @@ export function TikTokFeedView({
                   className="group inline-flex items-center justify-center gap-1.5 max-w-[92%] text-center cursor-pointer transition-all active:scale-95"
                   title="Open contest details & rules"
                 >
-                  <span className="text-sm sm:text-base font-black tracking-wide text-white group-hover:text-[#ff6a2b] transition-colors truncate drop-shadow-md">
+                  <span className="text-sm sm:text-base font-black tracking-wide text-ink group-hover:text-accent font-display transition-colors truncate drop-shadow-md">
                     {currentContest?.title || shortTitle}
                   </span>
                   <ChevronRight
                     size={16}
-                    className="text-neutral-500 group-hover:text-[#ff6a2b] group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
+                    className="text-faint group-hover:text-accent group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
                   />
                 </Link>
               </header>
@@ -334,16 +334,16 @@ export function TikTokFeedView({
                         e.preventDefault();
                         handleMemberTap(group.id, member.participantId);
                       }}
-                      className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer bg-[#141418] border transition-all duration-300 origin-center flex flex-col min-h-0 h-full ${
+                      className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer bg-surface border transition-all duration-300 origin-center flex flex-col min-h-0 h-full ${
                         isSelected
-                          ? 'scale-[0.88] border-emerald-500 ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                          ? 'scale-[0.88] border-accent ring-2 ring-accent shadow-[0_0_30px_rgba(196,165,116,0.35)] z-10'
                           : currentVoteId
-                          ? 'border-neutral-800/80 opacity-65 brightness-[0.7] hover:opacity-85'
-                          : 'border-neutral-800/80 hover:border-neutral-700 hover:brightness-105 active:scale-[0.98]'
+                          ? 'border-line opacity-65 brightness-[0.7] hover:opacity-85'
+                          : 'border-line hover:border-line-strong hover:brightness-105 active:scale-[0.98]'
                       }`}
                     >
                       {/* Фото участника */}
-                      <div className="relative w-full h-full min-h-0 overflow-hidden bg-neutral-900">
+                      <div className="relative w-full h-full min-h-0 overflow-hidden bg-surface-2">
                         {member.photo ? (() => {
                           const resolvedPhoto = resolveImageUrl(member.photo, 'submissions');
                           return (
@@ -361,29 +361,29 @@ export function TikTokFeedView({
                             />
                           );
                         })() : (
-                          <div className="w-full h-full flex items-center justify-center text-neutral-600 text-xs">
+                          <div className="w-full h-full flex items-center justify-center text-faint text-xs">
                             Photo
                           </div>
                         )}
 
                         {/* Затемнение */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-bg/85 pointer-events-none" />
 
                         {/* Верхняя плашка: Бейдж выбора / процент + Кнопка зума */}
                         <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between">
                           {isSelected ? (
                             <div
-                              className="px-2 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] flex items-center gap-1.5 shadow-md animate-fade-in border border-emerald-400/40 cursor-pointer transition-colors"
+                              className="px-2 py-0.5 rounded-full bg-accent text-on-accent font-extrabold text-[10px] flex items-center gap-1.5 shadow-md animate-fade-in border border-accent-soft/40 cursor-pointer transition-colors"
                               title="Tap again to deselect"
                             >
                               <Check size={11} strokeWidth={3} />
                               <span>Selected</span>
-                              <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                              <span className="font-black border-l border-on-accent/30 pl-1.5 text-on-accent tabular-nums">
                                 {sharePct}%
                               </span>
                             </div>
                           ) : currentVoteId ? (
-                            <div className="px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-xs font-black text-[11px] text-white border border-neutral-700/80 tabular-nums">
+                            <div className="px-2 py-0.5 rounded-full bg-scrim backdrop-blur-xs font-black text-[11px] text-ink border border-line tabular-nums">
                               {sharePct}%
                             </div>
                           ) : (
@@ -422,7 +422,7 @@ export function TikTokFeedView({
                                 });
                               }}
                               aria-label={`Inspect ${member.title} full photo`}
-                              className="w-7 h-7 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
+                              className="w-7 h-7 rounded-full bg-scrim hover:bg-surface-2 text-ink flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-line shadow-md ml-auto"
                             >
                               <Maximize2 size={13} strokeWidth={2.4} />
                             </button>
@@ -438,7 +438,7 @@ export function TikTokFeedView({
                                 'avatars'
                               );
                               return (
-                                <div className="relative w-5 h-5 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                                <div className="relative w-5 h-5 rounded-full overflow-hidden border border-line-strong shadow-sm shrink-0">
                                   <Image
                                     src={resolvedAvatar}
                                     alt=""
@@ -451,11 +451,11 @@ export function TikTokFeedView({
                               );
                             })()}
                             <div className="min-w-0">
-                              <span className="text-[11px] sm:text-xs font-black text-white drop-shadow-md truncate block leading-tight">
+                              <span className="text-[11px] sm:text-xs font-black text-ink font-display drop-shadow-md truncate block leading-tight">
                                 {(member as any).author || member.title}
                               </span>
                               {member.title && (member as any).author && (
-                                <span className="text-[10px] text-white/80 font-medium drop-shadow truncate block mt-0.5 leading-tight">
+                                <span className="text-[10px] text-muted font-medium drop-shadow truncate block mt-0.5 leading-tight">
                                   {member.title}
                                 </span>
                               )}
@@ -472,22 +472,22 @@ export function TikTokFeedView({
         })}
 
         {/* ── Финальный экран завершения очереди ── */}
-        <section className="h-full w-full snap-start snap-always relative overflow-hidden shrink-0 flex items-center justify-center p-6 text-center select-none bg-[#0e0e12]">
+        <section className="h-full w-full snap-start snap-always relative overflow-hidden shrink-0 flex items-center justify-center p-6 text-center select-none bg-bg">
           <div className="max-w-sm flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl mb-4 shadow-lg shadow-emerald-950/50">
+            <div className="w-16 h-16 rounded-full bg-surface border border-accent/40 text-accent flex items-center justify-center text-2xl mb-4 shadow-lg shadow-black/40">
               ✓
             </div>
-            <h3 className="text-lg font-black text-white mb-2">
+            <h3 className="text-lg font-black text-ink font-display mb-2">
               You&apos;ve viewed all available groups
             </h3>
-            <p className="text-xs text-neutral-400 mb-6 leading-relaxed">
+            <p className="text-xs text-muted mb-6 leading-relaxed">
               All your votes are counted live. New groups appear every 24 hours at 06:00 UTC.
             </p>
             <div className="flex flex-col sm:flex-row gap-2.5 w-full">
               <button
                 type="button"
                 onClick={handleScrollToTop}
-                className="flex-1 py-3 px-4 rounded-xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-extrabold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-lg shadow-[#ff6a2b]/25 transition-all active:scale-95"
+                className="flex-1 py-3 px-4 rounded-xl bg-accent-solid hover:bg-accent-hover text-white font-extrabold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-lg shadow-black/25 transition-all active:scale-95"
               >
                 <ArrowUp size={14} strokeWidth={2.5} />
                 <span>Back to top</span>
@@ -496,7 +496,7 @@ export function TikTokFeedView({
                 <button
                   type="button"
                   onClick={onResetFilters}
-                  className="py-3 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-extrabold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all active:scale-95 border border-neutral-700/80"
+                  className="py-3 px-4 rounded-xl bg-surface-2 hover:bg-line text-ink font-extrabold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all active:scale-95 border border-line-strong"
                 >
                   <RotateCcw size={14} strokeWidth={2.5} />
                   <span>Reset</span>

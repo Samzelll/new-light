@@ -311,21 +311,21 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
 
   if (loading || !battle) {
     return (
-      <main className="fixed inset-0 z-30 bg-[#0b0b0d] text-white flex items-center justify-center overflow-hidden font-sans">
+      <main className="fixed inset-0 z-30 bg-bg text-ink flex items-center justify-center overflow-hidden font-sans">
         <div className="w-full max-w-md h-full flex flex-col justify-between p-3.5 sm:p-4 animate-pulse select-none">
           <div className="flex items-center justify-between py-1">
-            <div className="w-9 h-9 rounded-full bg-white/10" />
+            <div className="w-9 h-9 rounded-full bg-surface-2" />
             <div className="space-y-1 text-center flex-1 px-4">
-              <div className="h-4 w-28 bg-white/10 rounded mx-auto" />
-              <div className="h-3 w-36 bg-white/10 rounded mx-auto" />
+              <div className="h-4 w-28 bg-surface-2 rounded mx-auto" />
+              <div className="h-3 w-36 bg-surface-2 rounded mx-auto" />
             </div>
-            <div className="w-9 h-9 rounded-full bg-white/10" />
+            <div className="w-9 h-9 rounded-full bg-surface-2" />
           </div>
           <div className="flex-1 my-2 flex flex-col gap-2.5">
-            <div className="flex-1 bg-white/10 rounded-3xl" />
-            <div className="flex-1 bg-white/10 rounded-3xl" />
+            <div className="flex-1 bg-surface-2 rounded-3xl" />
+            <div className="flex-1 bg-surface-2 rounded-3xl" />
           </div>
-          <div className="h-4 w-36 bg-white/10 rounded mx-auto my-2" />
+          <div className="h-4 w-36 bg-surface-2 rounded mx-auto my-2" />
         </div>
       </main>
     );
@@ -338,7 +338,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
     <main
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className="fixed inset-0 z-30 bg-[#0b0b0d] text-white flex items-center justify-center overflow-hidden font-sans"
+      className="fixed inset-0 z-30 bg-bg text-ink flex items-center justify-center overflow-hidden font-sans"
     >
       <div
         className={`w-full max-w-md h-full flex flex-col justify-between px-1.5 sm:px-2 pt-1 pb-1 select-none relative overflow-hidden transition-all duration-200 ${
@@ -347,7 +347,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
       >
         {/* Toast Feedback */}
         {toastMsg && (
-          <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#161619] border border-emerald-500/50 text-emerald-400 text-xs font-bold shadow-2xl animate-fade-in pointer-events-none whitespace-nowrap">
+          <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-surface-2 border border-accent/50 text-accent text-xs font-bold shadow-2xl animate-fade-in pointer-events-none whitespace-nowrap">
             {toastMsg}
           </div>
         )}
@@ -359,7 +359,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             type="button"
             onClick={() => (onBack ? onBack() : router.push('/'))}
             aria-label="Back"
-            className="w-8 h-8 rounded-full bg-transparent hover:bg-white/10 text-white/80 hover:text-white flex items-center justify-center transition-all active:scale-95 border-none shrink-0"
+            className="w-8 h-8 rounded-full bg-transparent hover:bg-surface-2 text-ink/80 hover:text-ink flex items-center justify-center transition-all active:scale-95 border-none shrink-0"
           >
             <ChevronLeft size={20} strokeWidth={2.5} />
           </button>
@@ -371,12 +371,12 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             className="group inline-flex items-center justify-center gap-1.5 px-2 flex-1 min-w-0 transition-all cursor-pointer text-center active:scale-95"
             title="Open contest details & rules"
           >
-            <span className="text-sm sm:text-base font-black tracking-wider text-white uppercase truncate drop-shadow-sm group-hover:text-[#ff6a2b] transition-colors">
+            <span className="text-sm sm:text-base font-bold tracking-wider text-ink uppercase truncate drop-shadow-sm group-hover:text-accent transition-colors font-display">
               {battle.title}
             </span>
             <ChevronRight
               size={15}
-              className="text-neutral-500 group-hover:text-[#ff6a2b] group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
+              className="text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
             />
           </button>
 
@@ -385,7 +385,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             type="button"
             onClick={handleShare}
             aria-label="Share battle"
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-white/90 hover:text-white flex items-center justify-center transition-all active:scale-90 border border-white/10 shrink-0"
+            className="w-8 h-8 rounded-full bg-surface hover:bg-surface-2 text-ink flex items-center justify-center transition-all active:scale-90 border border-line shrink-0"
             title="Share this battle"
           >
             <Share2 size={15} strokeWidth={2.4} />
@@ -393,8 +393,8 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
         </header>
 
         {/* Sponsor & Prize Pool Strip */}
-        <div className="flex items-center justify-center gap-1.5 py-0.5 px-3 mx-auto my-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[10px] font-bold text-amber-300 shadow-sm animate-fade-in shrink-0">
-          <Trophy size={11} className="text-amber-400" />
+        <div className="flex items-center justify-center gap-1.5 py-0.5 px-3 mx-auto my-0.5 rounded-full bg-accent/10 border border-accent/25 text-[10px] font-bold text-accent-soft shadow-sm animate-fade-in shrink-0">
+          <Trophy size={11} className="text-accent" />
           <span>{(battle as any).sponsorName || 'Alpha Lab & Creator Fund'} · $2,500 Prize Pool</span>
         </div>
 
@@ -416,10 +416,10 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
               }
             }}
             aria-label={`Vote for: ${redComp.name}`}
-            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-300 origin-center border border-neutral-800/80 bg-[#121215] ${
+            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-side-a transition-all duration-300 origin-center border border-line bg-surface ${
               hasVoted
                 ? userVotedCorner === 'red'
-                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  ? 'scale-[0.88] ring-2 ring-side-a shadow-[0_0_30px_rgba(196,165,116,0.35)] z-10'
                   : 'opacity-70 brightness-[0.7] hover:opacity-85'
                 : activeTapCorner === 'red'
                 ? 'scale-[0.98]'
@@ -430,12 +430,12 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             {hasVoted && userVotedCorner === 'red' && (
               <div className="absolute top-3 left-3 z-10 animate-fade-in">
                 <span
-                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md inline-flex items-center gap-1.5 border border-emerald-400/40 cursor-pointer transition-colors"
+                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-on-accent bg-accent hover:bg-accent-soft shadow-md inline-flex items-center gap-1.5 border border-accent/40 cursor-pointer transition-colors"
                   title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
                   <span>Selected</span>
-                  <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                  <span className="font-black border-l border-on-accent/30 pl-1.5 text-on-accent tabular-nums">
                     {redComp.percentage.toFixed(1)}%
                   </span>
                 </span>
@@ -521,17 +521,17 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
               </div>
             </div>
 
-            {/* Percentage & Standing (Shown after voting, green if picked) */}
+            {/* Percentage & Standing (Shown after voting) */}
             {hasVoted && (
               <div className="absolute bottom-3 right-3.5 z-10 pointer-events-none text-right animate-fade-in">
                 <span
-                  className={`font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md ${
-                    userVotedCorner === 'red' ? 'text-emerald-400' : 'text-neutral-300'
+                  className={`font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md font-display ${
+                    userVotedCorner === 'red' ? 'text-side-a' : 'text-muted'
                   }`}
                 >
                   {redComp.percentage.toFixed(1)}%
                 </span>
-                <span className="block text-[11px] font-bold text-white/80 tracking-wide mt-0.5 drop-shadow">
+                <span className="block text-[11px] font-bold text-ink/80 tracking-wide mt-0.5 drop-shadow">
                   {userVotedCorner === 'red' ? 'Your pick' : 'Live standing'}
                 </span>
               </div>
@@ -541,7 +541,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
           {/* 2. Circular "VS" Badge (Centered on the gap between cards) */}
           <div
             aria-hidden="true"
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] text-white font-black text-xs flex items-center justify-center shadow-2xl border-2 border-[#0b0b0d] select-none pointer-events-none ring-2 ring-white/20 animate-pulse"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-accent text-on-accent font-black text-xs flex items-center justify-center shadow-2xl border-2 border-bg select-none pointer-events-none ring-2 ring-line-strong animate-pulse font-display"
           >
             VS
           </div>
@@ -562,10 +562,10 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
               }
             }}
             aria-label={`Vote for: ${blueComp.name}`}
-            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-300 origin-center border border-neutral-800/80 bg-[#121215] ${
+            className={`relative flex-1 min-h-0 w-full rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-side-b transition-all duration-300 origin-center border border-line bg-surface ${
               hasVoted
                 ? userVotedCorner === 'blue'
-                  ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10'
+                  ? 'scale-[0.88] ring-2 ring-side-b shadow-[0_0_30px_rgba(138,160,196,0.35)] z-10'
                   : 'opacity-70 brightness-[0.7] hover:opacity-85'
                 : activeTapCorner === 'blue'
                 ? 'scale-[0.98]'
@@ -576,12 +576,12 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             {hasVoted && userVotedCorner === 'blue' && (
               <div className="absolute top-3 left-3 z-10 animate-fade-in">
                 <span
-                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md inline-flex items-center gap-1.5 border border-emerald-400/40 cursor-pointer transition-colors"
+                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-on-side-b bg-side-b hover:brightness-110 shadow-md inline-flex items-center gap-1.5 border border-side-b/40 cursor-pointer transition-colors"
                   title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
                   <span>Selected</span>
-                  <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                  <span className="font-black border-l border-on-side-b/30 pl-1.5 text-on-side-b tabular-nums">
                     {blueComp.percentage.toFixed(1)}%
                   </span>
                 </span>
@@ -624,7 +624,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                   });
                 }}
                 aria-label={`Inspect ${blueComp.name} photo`}
-                className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white/90 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md"
+                className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-ink/90 hover:text-ink flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-line shadow-md"
               >
                 <Maximize2 size={14} strokeWidth={2.4} />
               </button>
@@ -645,7 +645,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             <div className="absolute bottom-3 left-3.5 right-24 z-10 pointer-events-none">
               <div className="flex items-center gap-2">
                 {blueComp.author && blueComp.authorAvatar && (
-                  <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                  <div className="relative w-6 h-6 rounded-full overflow-hidden border border-line shadow-sm shrink-0 ring-1 ring-side-b/40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={blueComp.authorAvatar}
@@ -656,28 +656,28 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                 )}
                 <div className="min-w-0">
                   {blueComp.author && (
-                    <span className="text-xs sm:text-sm font-black text-white drop-shadow-md truncate block leading-tight">
+                    <span className="text-xs sm:text-sm font-bold text-ink drop-shadow-md truncate block leading-tight font-display">
                       {blueComp.author}
                     </span>
                   )}
-                  <span className={`${blueComp.author ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5' : 'text-sm sm:text-base font-black text-white'} drop-shadow-md truncate block leading-tight tracking-wide`}>
+                  <span className={`${blueComp.author ? 'text-[10px] sm:text-[11px] text-muted font-medium mt-0.5' : 'text-sm sm:text-base font-bold text-ink'} drop-shadow-md truncate block leading-tight tracking-wide`}>
                     {blueComp.name}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Percentage & Standing (Shown after voting, green if picked) */}
+            {/* Percentage & Standing (Shown after voting) */}
             {hasVoted && (
               <div className="absolute bottom-3 right-3.5 z-10 pointer-events-none text-right animate-fade-in">
                 <span
-                  className={`font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md ${
-                    userVotedCorner === 'blue' ? 'text-emerald-400' : 'text-neutral-300'
+                  className={`font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md font-display ${
+                    userVotedCorner === 'blue' ? 'text-side-b' : 'text-muted'
                   }`}
                 >
                   {blueComp.percentage.toFixed(1)}%
                 </span>
-                <span className="block text-[11px] font-bold text-white/80 tracking-wide mt-0.5 drop-shadow">
+                <span className="block text-[11px] font-bold text-ink/80 tracking-wide mt-0.5 drop-shadow">
                   {userVotedCorner === 'blue' ? 'Your pick' : 'Live standing'}
                 </span>
               </div>
@@ -688,10 +688,10 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
       {/* ── Bottom Section: Viral Sharing Strip & Navigation Controls ── */}
       <footer className="shrink-0 pt-1 pb-1 space-y-1">
         {hasVoted ? (
-          <div className="flex items-center justify-between gap-2 px-1 py-1 rounded-xl bg-white/5 border border-white/10 animate-fade-in text-xs">
+          <div className="flex items-center justify-between gap-2 px-1 py-1 rounded-xl bg-surface border border-line animate-fade-in text-xs">
             <div className="flex items-center gap-1.5 min-w-0">
-              <Sparkles size={13} className="text-emerald-400 shrink-0" />
-              <span className="text-[11px] font-bold text-white/90 truncate">
+              <Sparkles size={13} className="text-accent shrink-0" />
+              <span className="text-[11px] font-bold text-ink truncate">
                 Share duel to boost score:
               </span>
             </div>
@@ -703,7 +703,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Share to Telegram"
-                className="w-7 h-7 rounded-lg bg-[#229ED9]/20 hover:bg-[#229ED9]/30 text-[#229ED9] flex items-center justify-center transition-colors active:scale-95"
+                className="w-7 h-7 rounded-lg bg-surface-2 hover:bg-surface text-accent flex items-center justify-center transition-colors active:scale-95 border border-line"
               >
                 <Send size={13} />
               </a>
@@ -714,7 +714,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Share to WhatsApp"
-                className="w-7 h-7 rounded-lg bg-[#25D366]/20 hover:bg-[#25D366]/30 text-[#25D366] flex items-center justify-center transition-colors active:scale-95"
+                className="w-7 h-7 rounded-lg bg-surface-2 hover:bg-surface text-accent flex items-center justify-center transition-colors active:scale-95 border border-line"
               >
                 <Share2 size={13} />
               </a>
@@ -724,9 +724,9 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                 type="button"
                 onClick={handleShare}
                 title="Copy Link"
-                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors active:scale-95"
+                className="w-7 h-7 rounded-lg bg-surface-2 hover:bg-surface text-ink flex items-center justify-center transition-colors active:scale-95 border border-line"
               >
-                {copiedLink ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                {copiedLink ? <Check size={13} className="text-accent" /> : <Copy size={13} />}
               </button>
 
               {/* Next Battle Button */}
@@ -734,7 +734,7 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                 type="button"
                 onClick={goToNextBattle}
                 aria-label="Next battle"
-                className="px-2.5 h-7 rounded-lg bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-[11px] flex items-center gap-1 transition-all active:scale-95 ml-1"
+                className="px-2.5 h-7 rounded-lg bg-accent-solid hover:bg-accent-hover text-white font-bold text-[11px] flex items-center gap-1 transition-all active:scale-95 ml-1"
               >
                 <span>Next</span>
                 <ChevronDown size={14} />
@@ -742,13 +742,13 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between text-xs text-white/40 px-1 py-0.5">
-            <span className="text-[10px] text-neutral-400">Tap a card to vote</span>
+          <div className="flex items-center justify-between text-xs text-muted px-1 py-0.5">
+            <span className="text-[10px] text-faint">Tap a card to vote</span>
             <button
               type="button"
               onClick={goToNextBattle}
               aria-label="Skip to next battle"
-              className="text-[11px] font-semibold text-white/60 hover:text-white flex items-center gap-1 transition-colors"
+              className="text-[11px] font-semibold text-muted hover:text-ink flex items-center gap-1 transition-colors"
             >
               <span>Skip duel</span>
               <ChevronDown size={14} />
@@ -757,10 +757,10 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
         )}
 
         {/* Desktop-only keyboard shortcuts helper */}
-        <div className="hidden lg:flex items-center justify-center gap-3 text-[10px] text-white/40 pt-0.5">
-          <span>Keys: <kbd className="px-1 py-0.5 rounded bg-white/10 text-white/80 font-mono">1/A</kbd> Red</span>
-          <span><kbd className="px-1 py-0.5 rounded bg-white/10 text-white/80 font-mono">2/D</kbd> Blue</span>
-          <span><kbd className="px-1 py-0.5 rounded bg-white/10 text-white/80 font-mono">↓/J</kbd> Next</span>
+        <div className="hidden lg:flex items-center justify-center gap-3 text-[10px] text-faint pt-0.5">
+          <span>Keys: <kbd className="px-1 py-0.5 rounded bg-surface-2 text-ink font-mono border border-line">1/A</kbd> Side A</span>
+          <span><kbd className="px-1 py-0.5 rounded bg-surface-2 text-ink font-mono border border-line">2/D</kbd> Side B</span>
+          <span><kbd className="px-1 py-0.5 rounded bg-surface-2 text-ink font-mono border border-line">↓/J</kbd> Next</span>
         </div>
       </footer>
 
@@ -795,53 +795,53 @@ export function DetailsSheet({ battle, onClose }: DetailsSheetProps) {
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm animate-fade-in flex items-end justify-center"
+      className="fixed inset-0 z-50 bg-scrim backdrop-blur-xs animate-fade-in flex items-end justify-center"
       role="dialog"
       aria-modal="true"
       aria-label="Contest Details"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-[#161618] rounded-t-3xl border-t border-white/10 p-5 space-y-4 shadow-2xl z-50 animate-slide-up text-white"
+        className="w-full max-w-md bg-surface-2 rounded-t-3xl border-t border-line p-5 space-y-4 shadow-2xl z-50 animate-slide-up text-ink"
       >
         {/* Drag Handle */}
-        <div className="w-10 h-1 rounded-full bg-white/25 mx-auto mb-2" />
+        <div className="w-10 h-1 rounded-full bg-line-strong mx-auto mb-2" />
 
         {/* Title */}
-        <h2 className="text-xl font-extrabold text-white tracking-tight uppercase">
+        <h2 className="text-xl font-bold text-ink tracking-tight uppercase font-display">
           {battle.title}
         </h2>
 
         {/* Description */}
-        <p className="text-xs sm:text-sm text-white/70 leading-relaxed font-normal">
+        <p className="text-xs sm:text-sm text-muted leading-relaxed font-normal">
           {battle.description}
         </p>
 
         {/* Key-Value Rows */}
-        <div className="space-y-3 pt-2 border-t border-white/10 text-xs">
+        <div className="space-y-3 pt-2 border-t border-line text-xs">
           <div className="flex items-center justify-between py-1">
-            <span className="text-white/50 font-medium">Format</span>
-            <span className="text-white font-semibold">{battle.format}</span>
+            <span className="text-faint font-medium">Format</span>
+            <span className="text-ink font-semibold">{battle.format}</span>
           </div>
 
-          <div className="flex items-center justify-between py-1 border-t border-white/5">
-            <span className="text-white/50 font-medium">Votes / Points</span>
-            <span className="text-white font-bold">{battle.totalVotes} pts</span>
+          <div className="flex items-center justify-between py-1 border-t border-line">
+            <span className="text-faint font-medium">Votes / Points</span>
+            <span className="text-accent font-bold">{battle.totalVotes} pts</span>
           </div>
 
-          <div className="flex items-center justify-between py-1 border-t border-white/5">
-            <span className="text-white/50 font-medium">Rules</span>
+          <div className="flex items-center justify-between py-1 border-t border-line">
+            <span className="text-faint font-medium">Rules</span>
             <button
               type="button"
               onClick={() => setShowFullRules(!showFullRules)}
-              className="text-[#ff6a2b] font-bold hover:underline flex items-center gap-1 focus:outline-none"
+              className="text-accent font-bold hover:underline flex items-center gap-1 focus:outline-none"
             >
               <span>{showFullRules ? 'Hide rules' : 'Read →'}</span>
             </button>
           </div>
 
           {showFullRules && (
-            <div className="p-3 bg-black/40 rounded-xl text-xs text-white/70 leading-relaxed border border-white/5 animate-fade-in">
+            <div className="p-3 bg-surface rounded-xl text-xs text-muted leading-relaxed border border-line animate-fade-in">
               {battle.rules}
             </div>
           )}
@@ -850,7 +850,7 @@ export function DetailsSheet({ battle, onClose }: DetailsSheetProps) {
         {/* Primary Action Button: Join this contest */}
         <Link
           href={`/apply/${battle.id}`}
-          className="w-full block py-3.5 rounded-2xl bg-[#ff6a2b] hover:bg-[#ff7b42] text-white font-extrabold text-sm text-center shadow-lg transition-transform active:scale-[0.98] mt-4"
+          className="w-full block py-3.5 rounded-2xl bg-accent-solid hover:bg-accent-hover text-white font-bold text-sm text-center shadow-lg transition-transform active:scale-[0.98] mt-4"
         >
           Join this contest
         </Link>
@@ -859,7 +859,7 @@ export function DetailsSheet({ battle, onClose }: DetailsSheetProps) {
         <button
           type="button"
           onClick={onClose}
-          className="w-full py-2 text-xs text-white/60 hover:text-white transition-colors font-medium text-center focus:outline-none"
+          className="w-full py-2 text-xs text-muted hover:text-ink transition-colors font-medium text-center focus:outline-none"
         >
           Back to battle
         </button>

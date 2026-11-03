@@ -42,21 +42,23 @@ export function AppHeader({
       : null;
 
   return (
-    <header className="app-header justify-between select-none">
-      {/* Search / Filter button (left) with data-dot="true" when filters are active */}
+    <header className="sticky top-0 z-40 flex items-center justify-between px-3 h-14 bg-bg/95 backdrop-blur-md border-b border-line select-none">
+      {/* Search / Filter button (left) with indicator dot when filters are active */}
       <button
         type="button"
         onClick={onOpenFilters}
         aria-label="Search and filters"
-        data-dot={hasActiveFilters ? 'true' : 'false'}
-        className="icon-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="w-11 h-11 rounded-full flex items-center justify-center text-accent hover:bg-surface-2 transition-colors relative focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <SlidersHorizontal size={20} strokeWidth={2.2} />
+        {hasActiveFilters && (
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-accent ring-2 ring-bg" />
+        )}
       </button>
 
       {/* Header Tabs (center): Contests, Feed, Battles */}
       <nav
-        className="tabs flex-1 max-w-[270px] mx-1"
+        className="tabs flex-1 max-w-[280px] mx-2 relative flex items-center justify-center"
         role="tablist"
         aria-label="Main navigation"
         style={{
@@ -71,8 +73,8 @@ export function AppHeader({
           aria-selected={activeTab === 'contests'}
           aria-controls="panel-contests"
           onClick={() => onTabChange('contests')}
-          className={`tab focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded text-[12px] sm:text-[13px] px-1 transition-all ${
-            activeTab === 'contests' ? 'font-bold text-white' : 'text-neutral-400 hover:text-neutral-200'
+          className={`tab focus:outline-none focus-visible:ring-1 focus-visible:ring-accent text-[14px] font-semibold py-2 px-2 transition-colors relative ${
+            activeTab === 'contests' ? 'text-ink' : 'text-faint hover:text-ink'
           }`}
         >
           Contests
@@ -85,8 +87,8 @@ export function AppHeader({
           aria-selected={activeTab === 'feed'}
           aria-controls="panel-feed"
           onClick={() => onTabChange('feed')}
-          className={`tab focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded text-[12px] sm:text-[13px] px-1 transition-all ${
-            activeTab === 'feed' ? 'font-bold text-white' : 'text-neutral-400 hover:text-neutral-200'
+          className={`tab focus:outline-none focus-visible:ring-1 focus-visible:ring-accent text-[14px] font-semibold py-2 px-2 transition-colors relative ${
+            activeTab === 'feed' ? 'text-ink' : 'text-faint hover:text-ink'
           }`}
         >
           Feed
@@ -99,23 +101,23 @@ export function AppHeader({
           aria-selected={activeTab === 'battles'}
           aria-controls="panel-battles"
           onClick={() => onTabChange('battles')}
-          className={`tab focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded text-[12px] sm:text-[13px] px-1 transition-all ${
-            activeTab === 'battles' ? 'font-bold text-white' : 'text-neutral-400 hover:text-neutral-200'
+          className={`tab focus:outline-none focus-visible:ring-1 focus-visible:ring-accent text-[14px] font-semibold py-2 px-2 transition-colors relative ${
+            activeTab === 'battles' ? 'text-ink' : 'text-faint hover:text-ink'
           }`}
         >
           Battles
         </button>
 
-        {/* Sliding Tab Indicator */}
-        <div className="tab-indicator" aria-hidden="true" />
+        {/* Sliding 2px Accent Tab Underline */}
+        <div className="tab-indicator !bg-accent !h-[2px]" aria-hidden="true" />
       </nav>
 
-      {/* Avatar button (right) that opens the side drawer */}
+      {/* Avatar button (right): 40px, bg-surface-2, ring-2 ring-accent */}
       <button
         type="button"
         onClick={onOpenDrawer}
         aria-label="Open profile menu"
-        className="avatar h-10 w-10 flex-none shrink-0 p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent hover:border-accent-solid transition-colors"
+        className="w-10 h-10 rounded-full bg-surface-2 ring-2 ring-accent overflow-hidden relative flex-none shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent hover:opacity-90 transition-opacity"
       >
         {mounted && validAvatarUrl ? (
           <Image
@@ -127,7 +129,7 @@ export function AppHeader({
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-accent-solid to-accent text-ink">
+          <div className="w-full h-full flex items-center justify-center bg-surface-2 text-accent">
             <User size={20} strokeWidth={2.2} />
           </div>
         )}

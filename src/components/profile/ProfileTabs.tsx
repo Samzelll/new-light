@@ -55,44 +55,44 @@ export function ProfileTabs({
       case 'voting':
       case 'active':
         return (
-          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-[#ff6a2b] text-white shadow-sm">
+          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-accent-solid text-white shadow-xs">
             Voting
           </span>
         );
       case 'winner':
       case 'victory':
         return (
-          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-black bg-white text-black shadow-sm">
+          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-black bg-accent text-on-accent shadow-xs">
             Winner
           </span>
         );
       case 'approved':
         return (
-          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/35">
+          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-accent/15 text-accent-soft border border-accent/30">
             Approved
           </span>
         );
       case 'pending':
         return (
-          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/35">
+          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-surface-2 text-muted border border-line">
             Pending
           </span>
         );
       case 'completed':
         return (
-          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-neutral-800 text-neutral-300 border border-neutral-700">
+          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-surface-2 text-muted border border-line">
             Completed
           </span>
         );
       case 'registration':
         return (
-          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-[#ff6a2b]/20 text-[#ff6a2b] border border-[#ff6a2b]/40">
+          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-accent/15 text-accent-soft border border-accent/30">
             Registration
           </span>
         );
       default:
         return (
-          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-neutral-800 text-neutral-300">
+          <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-surface-2 text-muted border border-line">
             {status}
           </span>
         );
@@ -103,17 +103,17 @@ export function ProfileTabs({
     <div className="w-full flex flex-col mt-2">
       {/* ── Tabs Navigation Bar ── */}
       {/* Three tabs: Entries, Votes (n), Following (n) */}
-      <div className="flex border-b border-neutral-800/80 mb-3" role="tablist">
+      <div className="flex border-b border-line mb-3" role="tablist">
         {/* Tab 1: Entries */}
         <button
           type="button"
           role="tab"
           aria-selected={activeTab === 'applications'}
           onClick={() => onTabChange('applications')}
-          className={`flex-1 text-center py-2.5 font-bold text-sm sm:text-base transition-colors border-b-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
+          className={`flex-1 text-center py-2.5 font-bold text-sm sm:text-base transition-colors border-b-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             activeTab === 'applications'
-              ? 'border-[#ff6a2b] text-white'
-              : 'border-transparent text-neutral-400 hover:text-neutral-200'
+              ? 'border-accent text-ink'
+              : 'border-transparent text-faint hover:text-ink'
           }`}
         >
           Entries
@@ -125,10 +125,10 @@ export function ProfileTabs({
           role="tab"
           aria-selected={activeTab === 'votes'}
           onClick={() => onTabChange('votes')}
-          className={`flex-1 text-center py-2.5 font-bold text-sm sm:text-base transition-colors border-b-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
+          className={`flex-1 text-center py-2.5 font-bold text-sm sm:text-base transition-colors border-b-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             activeTab === 'votes'
-              ? 'border-[#ff6a2b] text-white'
-              : 'border-transparent text-neutral-400 hover:text-neutral-200'
+              ? 'border-accent text-ink'
+              : 'border-transparent text-faint hover:text-ink'
           }`}
         >
           Votes ({votes.length})
@@ -140,10 +140,10 @@ export function ProfileTabs({
           role="tab"
           aria-selected={activeTab === 'subscriptions'}
           onClick={() => onTabChange('subscriptions')}
-          className={`flex-1 text-center py-2.5 font-bold text-sm sm:text-base transition-colors border-b-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] ${
+          className={`flex-1 text-center py-2.5 font-bold text-sm sm:text-base transition-colors border-b-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             activeTab === 'subscriptions'
-              ? 'border-[#ff6a2b] text-white'
-              : 'border-transparent text-neutral-400 hover:text-neutral-200'
+              ? 'border-accent text-ink'
+              : 'border-transparent text-faint hover:text-ink'
           }`}
         >
           Following ({subscriptions.length})
@@ -155,14 +155,14 @@ export function ProfileTabs({
         {/* ── 1. Entries List ── */}
         {activeTab === 'applications' && (
           applications.length === 0 ? (
-            <div className="bg-[#141418] border border-neutral-800/80 rounded-2xl p-8 text-center my-2">
+            <div className="bg-surface border border-line rounded-lg p-8 text-center my-2">
               <span className="text-3xl block mb-2" role="img" aria-label="Inbox">📝</span>
-              <p className="text-sm text-neutral-400 font-medium">
+              <p className="text-sm text-muted font-medium">
                 No entries yet. Submit an application in open contests.
               </p>
               <Link
                 href="/"
-                className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#ff6a2b] hover:text-[#ff854d]"
+                className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-accent hover:opacity-80"
               >
                 Browse contests →
               </Link>
@@ -172,10 +172,10 @@ export function ProfileTabs({
               <Link
                 key={item.id}
                 href={`/contest/${item.contestId}`}
-                className="bg-[#141418] border border-neutral-800/80 hover:border-neutral-700/80 rounded-2xl p-3 flex items-center justify-between gap-3 transition-all active:scale-[0.99] group"
+                className="bg-surface border border-line hover:border-line-strong rounded-lg p-3 flex items-center justify-between gap-3 transition-all active:scale-[0.99] group"
               >
                 {/* 40px Thumbnail */}
-                <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-neutral-800/80 bg-neutral-900 flex items-center justify-center">
+                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-line bg-surface-2 flex items-center justify-center">
                   <LazyImage
                     src={item.photoUrl}
                     alt={item.contestTitle}
@@ -187,10 +187,10 @@ export function ProfileTabs({
 
                 {/* Uppercase Title + One-line Meta */}
                 <div className="flex-1 min-w-0 pr-1">
-                  <h2 className="text-sm font-bold text-white uppercase tracking-tight truncate leading-tight">
+                  <h2 className="text-sm font-bold text-ink uppercase tracking-tight truncate leading-tight">
                     {item.contestTitle}
                   </h2>
-                  <p className="text-xs text-neutral-400 truncate mt-0.5 leading-snug">
+                  <p className="text-xs text-muted truncate mt-0.5 leading-snug">
                     {item.votesCount !== undefined ? `${item.votesCount.toLocaleString('en-US')} votes` : ''}
                     {item.votesCount !== undefined && item.rankText ? ' · ' : ''}
                     {item.rankText || ''}
@@ -207,14 +207,14 @@ export function ProfileTabs({
         {/* ── 2. Votes List ── */}
         {activeTab === 'votes' && (
           votes.length === 0 ? (
-            <div className="bg-[#141418] border border-neutral-800/80 rounded-2xl p-8 text-center my-2">
+            <div className="bg-surface border border-line rounded-lg p-8 text-center my-2">
               <span className="text-3xl block mb-2" role="img" aria-label="Ballot">🗳️</span>
-              <p className="text-sm text-neutral-400 font-medium">
+              <p className="text-sm text-muted font-medium">
                 No votes cast yet. Vote in battles to build reputation.
               </p>
               <Link
                 href="/"
-                className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#ff6a2b] hover:text-[#ff854d]"
+                className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-accent hover:opacity-80"
               >
                 Vote in battles →
               </Link>
@@ -224,10 +224,10 @@ export function ProfileTabs({
               <Link
                 key={vote.id}
                 href={`/contest/${vote.contestId}`}
-                className="bg-[#141418] border border-neutral-800/80 hover:border-neutral-700/80 rounded-2xl p-3 flex items-center justify-between gap-3 transition-all active:scale-[0.99] group"
+                className="bg-surface border border-line hover:border-line-strong rounded-lg p-3 flex items-center justify-between gap-3 transition-all active:scale-[0.99] group"
               >
                 {/* 40px Thumbnail */}
-                <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-neutral-800/80 bg-neutral-900 flex items-center justify-center">
+                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-line bg-surface-2 flex items-center justify-center">
                   <LazyImage
                     src={vote.photoUrl}
                     alt={vote.contestTitle}
@@ -239,17 +239,17 @@ export function ProfileTabs({
 
                 {/* Uppercase Title + One-line Meta */}
                 <div className="flex-1 min-w-0 pr-1">
-                  <h2 className="text-sm font-bold text-white uppercase tracking-tight truncate leading-tight">
+                  <h2 className="text-sm font-bold text-ink uppercase tracking-tight truncate leading-tight">
                     {vote.contestTitle}
                   </h2>
-                  <p className="text-xs text-neutral-400 truncate mt-0.5 leading-snug">
+                  <p className="text-xs text-muted truncate mt-0.5 leading-snug">
                     {vote.dateText}
                     {vote.trustWeight ? ` · Weight ×${vote.trustWeight}` : ''}
                   </p>
                 </div>
 
                 {/* Status Pill */}
-                <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-[#ff6a2b] text-white shadow-sm">
+                <span className="shrink-0 px-3 py-1 rounded-full text-xs font-bold bg-accent-solid text-white shadow-xs">
                   Voting
                 </span>
               </Link>
@@ -260,14 +260,14 @@ export function ProfileTabs({
         {/* ── 3. Following List ── */}
         {activeTab === 'subscriptions' && (
           subscriptions.length === 0 ? (
-            <div className="bg-[#141418] border border-neutral-800/80 rounded-2xl p-8 text-center my-2">
+            <div className="bg-surface border border-line rounded-lg p-8 text-center my-2">
               <span className="text-3xl block mb-2" role="img" aria-label="Star">⭐</span>
-              <p className="text-sm text-neutral-400 font-medium">
+              <p className="text-sm text-muted font-medium">
                 You are not following any contests yet.
               </p>
               <Link
                 href="/"
-                className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#ff6a2b] hover:text-[#ff854d]"
+                className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-accent hover:opacity-80"
               >
                 Find contests →
               </Link>
@@ -277,10 +277,10 @@ export function ProfileTabs({
               <Link
                 key={sub.id}
                 href={`/contest/${sub.contestId}`}
-                className="bg-[#141418] border border-neutral-800/80 hover:border-neutral-700/80 rounded-2xl p-3 flex items-center justify-between gap-3 transition-all active:scale-[0.99] group"
+                className="bg-surface border border-line hover:border-line-strong rounded-lg p-3 flex items-center justify-between gap-3 transition-all active:scale-[0.99] group"
               >
                 {/* 40px Thumbnail */}
-                <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-neutral-800/80 bg-neutral-900 flex items-center justify-center">
+                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-line bg-surface-2 flex items-center justify-center">
                   <LazyImage
                     src={sub.photoUrl}
                     alt={sub.contestTitle}
@@ -292,10 +292,10 @@ export function ProfileTabs({
 
                 {/* Uppercase Title + One-line Meta */}
                 <div className="flex-1 min-w-0 pr-1">
-                  <h2 className="text-sm font-bold text-white uppercase tracking-tight truncate leading-tight">
+                  <h2 className="text-sm font-bold text-ink uppercase tracking-tight truncate leading-tight">
                     {sub.contestTitle}
                   </h2>
-                  <p className="text-xs text-neutral-400 truncate mt-0.5 leading-snug">
+                  <p className="text-xs text-muted truncate mt-0.5 leading-snug">
                     {sub.metaText}
                   </p>
                 </div>

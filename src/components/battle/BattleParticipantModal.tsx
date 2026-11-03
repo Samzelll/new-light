@@ -90,9 +90,9 @@ export function BattleParticipantModal({
 
   const resolvedAvatar = authorAvatar ? resolveImageUrl(authorAvatar, 'avatars') : null;
   const isRedCorner = corner === 'red';
-  const cornerColor = isRedCorner ? 'text-[#ff6a2b]' : 'text-sky-400';
-  const cornerBorder = isRedCorner ? 'border-[#ff6a2b]/30' : 'border-sky-400/30';
-  const cornerBg = isRedCorner ? 'bg-[#ff6a2b]/10' : 'bg-sky-400/10';
+  const cornerColor = isRedCorner ? 'text-side-a' : 'text-side-b';
+  const cornerBorder = isRedCorner ? 'border-side-a/40' : 'border-side-b/40';
+  const cornerBg = isRedCorner ? 'bg-side-a/10' : 'bg-side-b/10';
 
   return (
     <>
@@ -100,18 +100,18 @@ export function BattleParticipantModal({
         role="dialog"
         aria-modal="true"
         aria-label={`Детали участника баттла: ${title}`}
-        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
+        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-xs animate-fade-in"
         onClick={onClose}
       >
         <div
-          className="relative z-10 w-full max-w-5xl max-h-[94vh] bg-[#141417] border border-neutral-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          className="relative z-10 w-full max-w-5xl max-h-[94vh] bg-surface border border-line rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Top Header Bar ── */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-neutral-800/80 bg-[#18181c]">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-line bg-surface-2">
             <div className="flex items-center gap-2.5 min-w-0">
               {resolvedAvatar ? (
-                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20 shrink-0">
+                <div className={`relative w-8 h-8 rounded-full overflow-hidden ring-2 ${isRedCorner ? 'ring-side-a' : 'ring-side-b'} shrink-0 bg-surface`}>
                   <Image
                     src={resolvedAvatar}
                     alt={author || ''}
@@ -122,18 +122,18 @@ export function BattleParticipantModal({
                   />
                 </div>
               ) : (
-                <div className="w-8 h-8 rounded-full bg-neutral-800 border border-white/20 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                <div className="w-8 h-8 rounded-full bg-surface-2 border border-line flex items-center justify-center text-xs font-bold text-ink shrink-0">
                   {author ? author.charAt(0).toUpperCase() : 'B'}
                 </div>
               )}
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-xs sm:text-sm font-black text-white truncate">{title}</h3>
+                  <h3 className="font-display text-xs sm:text-sm font-bold text-ink truncate">{title}</h3>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${cornerBg} ${cornerBorder} ${cornerColor}`}>
-                    {isRedCorner ? '🔴 Красный угол' : '🔵 Синий угол'}
+                    {isRedCorner ? 'Side A' : 'Side B'}
                   </span>
                 </div>
-                {author && <p className="text-[11px] text-neutral-400 truncate">{author}</p>}
+                {author && <p className="text-[11px] text-muted truncate">{author}</p>}
               </div>
             </div>
 
@@ -142,7 +142,7 @@ export function BattleParticipantModal({
                 type="button"
                 onClick={onClose}
                 aria-label="Закрыть"
-                className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full bg-surface-2 hover:bg-surface border border-line text-muted hover:text-ink flex items-center justify-center transition-colors"
               >
                 <X size={16} />
               </button>
@@ -152,8 +152,8 @@ export function BattleParticipantModal({
           {/* ── Modal Body: Multi-Photo Stage + Battle Meta Column ── */}
           <div className="flex-1 overflow-y-auto min-h-0 flex flex-col md:flex-row">
             
-            {/* Left: Dynamic Photo Stage with 4:5 Instagram Crop & Tap-to-Enlarge Original */}
-            <div className="flex-1 p-2 sm:p-4 bg-[#101014] flex flex-col justify-center items-center">
+            {/* Left: Dynamic Photo Stage */}
+            <div className="flex-1 p-2 sm:p-4 bg-bg flex flex-col justify-center items-center">
               <SwipeablePhotoGallery
                 photos={allPhotos}
                 title={title}
@@ -163,18 +163,18 @@ export function BattleParticipantModal({
             </div>
 
             {/* Right Column: Battle Matchup, Abstract Concept & Voting Action */}
-            <div className="w-full md:w-80 lg:w-96 p-4 sm:p-5 bg-[#141417] border-t md:border-t-0 md:border-l border-neutral-800 flex flex-col justify-between gap-4">
+            <div className="w-full md:w-80 lg:w-96 p-4 sm:p-5 bg-surface border-t md:border-t-0 md:border-l border-line flex flex-col justify-between gap-4">
               <div className="space-y-4">
                 
                 {/* 1. Battle Matchup / Corner Status */}
-                <div className={`p-3.5 rounded-2xl border ${cornerBg} ${cornerBorder} space-y-2.5`}>
+                <div className={`p-3.5 rounded-xl border ${cornerBg} ${cornerBorder} space-y-2.5`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted flex items-center gap-1.5">
                       <Swords size={13} className={cornerColor} />
                       <span>Статус в баттле</span>
                     </span>
                     {percentage !== undefined && (
-                      <span className={`text-sm font-black tabular-nums ${cornerColor}`}>
+                      <span className={`text-sm font-bold tabular-nums ${cornerColor}`}>
                         {percentage}% голосов
                       </span>
                     )}
@@ -182,11 +182,11 @@ export function BattleParticipantModal({
 
                   {/* Duel Matchup Bar */}
                   {opponentName && (
-                    <div className="flex items-center gap-2 pt-1 border-t border-white/5">
-                      <span className="text-[11px] text-neutral-400">Дуэль против:</span>
-                      <span className="text-xs font-bold text-white truncate">{opponentName}</span>
+                    <div className="flex items-center gap-2 pt-1 border-t border-line">
+                      <span className="text-[11px] text-muted">Дуэль против:</span>
+                      <span className="text-xs font-bold text-ink truncate">{opponentName}</span>
                       {opponentPercentage !== undefined && (
-                        <span className="text-[11px] text-neutral-400 tabular-nums ml-auto">
+                        <span className="text-[11px] text-muted tabular-nums ml-auto">
                           ({opponentPercentage}%)
                         </span>
                       )}
@@ -194,10 +194,10 @@ export function BattleParticipantModal({
                   )}
 
                   {percentage !== undefined && (
-                    <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-surface-2 rounded-full overflow-hidden border border-line">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
-                          isRedCorner ? 'bg-[#ff6a2b]' : 'bg-sky-400'
+                          isRedCorner ? 'bg-side-a' : 'bg-side-b'
                         }`}
                         style={{ width: `${percentage}%` }}
                       />
@@ -207,7 +207,7 @@ export function BattleParticipantModal({
 
                 {/* 2. Topic / Category */}
                 {category && (
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#ff6a2b] flex items-center gap-1.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
                     <Tag size={12} />
                     <span>{category}</span>
                   </div>
@@ -216,10 +216,10 @@ export function BattleParticipantModal({
                 {/* 3. Abstract Concept / Description */}
                 {authorBio && (
                   <div>
-                    <h4 className="text-xs font-bold text-neutral-400 mb-1">
+                    <h4 className="text-xs font-bold text-muted mb-1">
                       О концепте и авторе
                     </h4>
-                    <p className="text-xs text-neutral-300 leading-relaxed">{authorBio}</p>
+                    <p className="text-xs text-ink/90 leading-relaxed">{authorBio}</p>
                   </div>
                 )}
 
@@ -229,7 +229,7 @@ export function BattleParticipantModal({
                     {tags.map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-0.5 rounded-md bg-neutral-800/80 text-[11px] text-neutral-300 border border-neutral-700/60"
+                        className="px-2 py-0.5 rounded-md bg-surface-2 text-[11px] text-muted border border-line"
                       >
                         #{tag}
                       </span>
@@ -237,18 +237,18 @@ export function BattleParticipantModal({
                   </div>
                 )}
 
-                {/* 5. Sponsor & Bounty (if present) */}
+                {/* 5. Sponsor & Bounty */}
                 {sponsorName && (
-                  <div className="p-3 rounded-xl bg-neutral-900/90 border border-neutral-800 space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                      <Award size={14} className="text-[#ff6a2b]" />
+                  <div className="p-3 rounded-xl bg-surface-2 border border-line space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                      <Award size={14} className="text-accent" />
                       <span>{sponsorName}</span>
                     </div>
                     {sponsorTier && (
-                      <div className="text-[11px] text-neutral-400">{sponsorTier}</div>
+                      <div className="text-[11px] text-muted">{sponsorTier}</div>
                     )}
                     {prizePool && (
-                      <div className="text-xs font-extrabold text-emerald-400">
+                      <div className="text-xs font-bold text-accent">
                         Призовой фонд: {prizePool}
                       </div>
                     )}
@@ -258,16 +258,16 @@ export function BattleParticipantModal({
                 {/* 6. Social Handles */}
                 {socialLinks && Object.values(socialLinks).some(Boolean) && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-neutral-400">Контакты и портфолио</h4>
+                    <h4 className="text-xs font-bold text-muted">Контакты и портфолио</h4>
                     <div className="flex flex-wrap gap-2 text-xs">
                       {socialLinks.instagram && (
                         <a
                           href={socialLinks.instagram}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-line text-ink border border-line transition-colors flex items-center gap-1"
                         >
-                          <Camera size={12} className="text-pink-400" />
+                          <Camera size={12} className="text-accent" />
                           <span>Instagram</span>
                         </a>
                       )}
@@ -276,9 +276,9 @@ export function BattleParticipantModal({
                           href={socialLinks.telegram}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-line text-ink border border-line transition-colors flex items-center gap-1"
                         >
-                          <Send size={12} className="text-sky-400" />
+                          <Send size={12} className="text-side-b" />
                           <span>Telegram</span>
                         </a>
                       )}
@@ -287,9 +287,9 @@ export function BattleParticipantModal({
                           href={socialLinks.portfolio}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-line text-ink border border-line transition-colors flex items-center gap-1"
                         >
-                          <ExternalLink size={12} className="text-amber-400" />
+                          <ExternalLink size={12} className="text-accent" />
                           <span>Портфолио</span>
                         </a>
                       )}
@@ -307,17 +307,17 @@ export function BattleParticipantModal({
                     onVote();
                     onClose();
                   }}
-                  className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 transition-all active:scale-98 shadow-lg cursor-pointer ${
+                  className={`w-full py-3 px-4 rounded-full font-bold text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 transition-all active:scale-98 shadow-md cursor-pointer ${
                     isSelected
-                      ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
+                      ? 'bg-surface-2 hover:bg-surface text-danger border border-danger/40'
                       : isRedCorner
-                      ? 'bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white shadow-[#ff6a2b]/25'
-                      : 'bg-sky-500 hover:bg-sky-400 text-white shadow-sky-500/25'
+                      ? 'bg-side-a text-on-accent hover:opacity-90'
+                      : 'bg-side-b text-on-side-b hover:opacity-90'
                   }`}
                 >
                   {isSelected ? (
                     <>
-                      <X size={16} strokeWidth={2.5} className="text-red-400" />
+                      <X size={16} strokeWidth={2.5} className="text-danger" />
                       <span>Отменить голос за этот угол</span>
                     </>
                   ) : (

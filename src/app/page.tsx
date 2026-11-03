@@ -399,7 +399,7 @@ export default function HomePage() {
         subtitle: contest.categories?.name || 'Photography',
         width: estimatedWidth,
         height: estimatedHeight,
-        dominantColor: (contest as any).dominantColor || '#18181d',
+        dominantColor: (contest as any).dominantColor || '#1c1917',
         blurDataURL: (contest as any).cover_blur,
         isLive: isVoting,
         badge: isVoting
@@ -711,17 +711,17 @@ export default function HomePage() {
     profile?.username || (profile as any)?.username || 'user';
 
   return (
-    <div className="min-h-screen bg-[#0b0b0d] text-white flex flex-col items-center selection:bg-[#ff6a2b]/30">
+    <div className="min-h-screen bg-bg text-ink flex flex-col items-center selection:bg-accent/30">
       {/* Dev cycle advancement notification */}
       {cycleToast && (
-        <div className="fixed top-3 z-50 px-4 py-2 rounded-full bg-[#ff6a2b] text-white font-bold text-xs shadow-xl animate-fade-in">
+        <div className="fixed top-3 z-50 px-4 py-2 rounded-full bg-accent text-on-accent font-bold text-xs shadow-xl animate-fade-in">
           {cycleToast}
         </div>
       )}
 
       {/* Responsive App Container: mobile-first max-w-md, with clean desktop expansion */}
       <div
-        className={`w-full flex flex-col bg-[#0b0b0d] relative transition-all duration-300 ${
+        className={`w-full flex flex-col bg-bg relative transition-all duration-300 ${
           mainTab === 'contests'
             ? 'max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-7xl min-h-screen pb-8 md:pb-24 px-2 sm:px-4 md:px-6'
             : mainTab === 'battles'
@@ -751,32 +751,32 @@ export default function HomePage() {
 
         {/* ── Active Filter Badges Bar (visible when filters applied) ── */}
         {hasActiveFilters && (
-          <div className="px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs border-b border-neutral-800/60 bg-[#121215]">
-            <span className="text-[#ff6a2b] font-bold shrink-0">Filters:</span>
+          <div className="px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs border-b border-line bg-surface">
+            <span className="text-accent font-bold shrink-0">Filters:</span>
             {appliedSearch && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#202026] text-neutral-300">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-2 border border-line text-muted">
                 «{appliedSearch}»
               </span>
             )}
             {onlySubscribed && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ff6a2b]/20 text-[#ff6a2b] border border-[#ff6a2b]/30">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/15 text-accent-soft border border-accent/30 font-semibold">
                 ⭐ Following
               </span>
             )}
             {sortBy !== 'popular' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#202026] text-neutral-300">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-2 border border-line text-muted">
                 {sortBy === 'newest' ? 'Newest' : sortBy === 'for_you' ? 'For You' : 'Ending Soon'}
               </span>
             )}
             {selectedTags.map((tag) => (
-              <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#202026] text-neutral-300">
+              <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-2 border border-line text-muted">
                 #{tag}
               </span>
             ))}
             <button
               type="button"
               onClick={handleResetFilters}
-              className="text-neutral-400 hover:text-white shrink-0 ml-auto flex items-center gap-1 text-[11px] underline"
+              className="text-muted hover:text-ink shrink-0 ml-auto flex items-center gap-1 text-[11px] underline"
             >
               Reset
             </button>
@@ -797,18 +797,18 @@ export default function HomePage() {
             {loadingContests ? (
               <ContestGridSkeleton count={6} />
             ) : displayedContests.length === 0 ? (
-              <div className="bg-[#141418] border border-neutral-800 rounded-3xl p-8 text-center my-6">
+              <div className="bg-surface border border-line rounded-2xl p-8 text-center my-6">
                 <span className="text-4xl block mb-3">🔍</span>
-                <h3 className="text-base font-bold text-white mb-1">
+                <h3 className="text-base font-bold text-ink mb-1">
                   No contests found
                 </h3>
-                <p className="text-xs text-neutral-400 mb-4">
+                <p className="text-xs text-muted mb-4">
                   Try adjusting search keywords or reset active filters.
                 </p>
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="px-4 py-2 rounded-full bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs"
+                  className="px-4 py-2 rounded-full bg-accent-solid hover:bg-accent-hover text-white font-bold text-xs transition-colors"
                 >
                   Reset Filters
                 </button>
@@ -889,16 +889,16 @@ export default function HomePage() {
         {isFilterOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex flex-col justify-end animate-fade-in">
             <div
-              className="w-full max-w-md mx-auto bg-[#161619] border-t border-neutral-800 rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto space-y-5 animate-slide-up"
+              className="w-full max-w-md mx-auto bg-surface-2 border-t border-line rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto space-y-5 animate-slide-up"
               role="dialog"
               aria-modal="true"
               aria-label="Search and filters"
             >
               {/* Sheet Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
+              <div className="flex items-center justify-between pb-3 border-b border-line">
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal size={18} className="text-[#ff6a2b]" strokeWidth={2.5} />
-                  <h3 className="text-base font-bold text-white">
+                  <SlidersHorizontal size={18} className="text-accent" strokeWidth={2.5} />
+                  <h3 className="text-base font-display font-bold text-ink">
                     Search & Filters
                   </h3>
                 </div>
@@ -906,7 +906,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => setIsFilterOpen(false)}
                   aria-label="Close filters"
-                  className="w-8 h-8 rounded-full text-neutral-400 hover:text-white flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-full text-muted hover:text-ink flex items-center justify-center transition-colors"
                 >
                   <X size={20} strokeWidth={2.5} />
                 </button>
@@ -914,24 +914,24 @@ export default function HomePage() {
 
               {/* Search input */}
               <div>
-                <label className="text-xs font-semibold text-neutral-400 block mb-1.5">
+                <label className="text-faint uppercase text-[11px] font-semibold tracking-wide block mb-1.5">
                   Keywords
                 </label>
                 <div className="relative">
-                  <Search size={18} className="absolute left-3.5 top-3 text-neutral-500" />
+                  <Search size={18} className="absolute left-3.5 top-3 text-faint" />
                   <input
                     ref={searchInputRef}
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by title or description..."
-                    className="w-full bg-[#101013] border border-neutral-800 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6a2b]"
+                    className="w-full bg-surface border border-line rounded-xl pl-10 pr-4 py-2.5 text-sm text-ink placeholder:text-faint focus:outline-none focus:border-accent"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-2.5 text-neutral-400 hover:text-white"
+                      className="absolute right-3 top-2.5 text-muted hover:text-ink"
                     >
                       <X size={16} />
                     </button>
@@ -941,7 +941,7 @@ export default function HomePage() {
 
               {/* Sorting options */}
               <div>
-                <label className="text-xs font-semibold text-neutral-400 block mb-2">
+                <label className="text-faint uppercase text-[11px] font-semibold tracking-wide block mb-2">
                   Sort By
                 </label>
                 <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
@@ -950,8 +950,8 @@ export default function HomePage() {
                     onClick={() => setSortBy('popular')}
                     className={`py-2 px-2 rounded-xl text-xs font-bold transition-colors text-center ${
                       sortBy === 'popular'
-                        ? 'bg-[#ff6a2b] text-white'
-                        : 'bg-[#202026] text-neutral-300 hover:text-white'
+                        ? 'border border-accent bg-accent/10 text-accent-soft'
+                        : 'bg-surface text-muted hover:text-ink border border-line'
                     }`}
                   >
                     Popular
@@ -961,8 +961,8 @@ export default function HomePage() {
                     onClick={() => setSortBy('newest')}
                     className={`py-2 px-2 rounded-xl text-xs font-bold transition-colors text-center ${
                       sortBy === 'newest'
-                        ? 'bg-[#ff6a2b] text-white'
-                        : 'bg-[#202026] text-neutral-300 hover:text-white'
+                        ? 'border border-accent bg-accent/10 text-accent-soft'
+                        : 'bg-surface text-muted hover:text-ink border border-line'
                     }`}
                   >
                     Newest
@@ -972,8 +972,8 @@ export default function HomePage() {
                     onClick={() => setSortBy('for_you')}
                     className={`py-2 px-2 rounded-xl text-xs font-bold transition-colors text-center ${
                       sortBy === 'for_you'
-                        ? 'bg-[#ff6a2b] text-white'
-                        : 'bg-[#202026] text-neutral-300 hover:text-white'
+                        ? 'border border-accent bg-accent/10 text-accent-soft'
+                        : 'bg-surface text-muted hover:text-ink border border-line'
                     }`}
                   >
                     For You
@@ -983,8 +983,8 @@ export default function HomePage() {
                     onClick={() => setSortBy('ending_soon')}
                     className={`py-2 px-2 rounded-xl text-xs font-bold transition-colors text-center ${
                       sortBy === 'ending_soon'
-                        ? 'bg-[#ff6a2b] text-white'
-                        : 'bg-[#202026] text-neutral-300 hover:text-white'
+                        ? 'border border-accent bg-accent/10 text-accent-soft'
+                        : 'bg-surface text-muted hover:text-ink border border-line'
                     }`}
                   >
                     Ending
@@ -995,22 +995,22 @@ export default function HomePage() {
               {/* Subscriptions toggle */}
               <div
                 onClick={() => setOnlySubscribed((prev) => !prev)}
-                className="flex items-center justify-between p-3 rounded-2xl bg-[#101013] border border-neutral-800 cursor-pointer hover:border-neutral-700"
+                className="flex items-center justify-between p-3 rounded-xl bg-surface border border-line cursor-pointer hover:border-line-strong transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-amber-400 text-sm">⭐</span>
+                  <span className="text-accent text-sm">⭐</span>
                   <div>
-                    <div className="text-xs font-bold text-white">My Subscriptions</div>
-                    <div className="text-[11px] text-neutral-400">Only followed contests</div>
+                    <div className="text-xs font-bold text-ink">My Subscriptions</div>
+                    <div className="text-[11px] text-muted">Only followed contests</div>
                   </div>
                 </div>
                 <div
                   className={`w-10 h-6 rounded-full p-0.5 transition-colors ${
-                    onlySubscribed ? 'bg-[#ff6a2b]' : 'bg-neutral-800'
+                    onlySubscribed ? 'bg-accent' : 'bg-surface-2 border border-line'
                   }`}
                 >
                   <div
-                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                    className={`w-5 h-5 rounded-full bg-ink transition-transform ${
                       onlySubscribed ? 'translate-x-4' : 'translate-x-0'
                     }`}
                   />
@@ -1019,7 +1019,7 @@ export default function HomePage() {
 
               {/* Categories / Tags chips */}
               <div>
-                <label className="text-xs font-semibold text-neutral-400 block mb-2">
+                <label className="text-faint uppercase text-[11px] font-semibold tracking-wide block mb-2">
                   Categories
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -1036,8 +1036,8 @@ export default function HomePage() {
                         }
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
                           isSelected
-                            ? 'bg-[#ff6a2b] text-white'
-                            : 'bg-[#202026] text-neutral-300 hover:text-white'
+                            ? 'border border-accent bg-accent/10 text-accent-soft'
+                            : 'bg-surface text-muted hover:text-ink border border-line'
                         }`}
                       >
                         #{tag}
@@ -1049,7 +1049,7 @@ export default function HomePage() {
 
               {/* Contest types chips */}
               <div>
-                <label className="text-xs font-semibold text-neutral-400 block mb-2">
+                <label className="text-faint uppercase text-[11px] font-semibold tracking-wide block mb-2">
                   Contest Formats
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -1070,12 +1070,12 @@ export default function HomePage() {
                         }
                         className={`py-2 px-3 rounded-xl text-xs font-bold text-left flex items-center justify-between transition-colors ${
                           isSelected
-                            ? 'bg-[#241712] border border-[#ff6a2b]/40 text-[#ff6a2b]'
-                            : 'bg-[#202026] text-neutral-400'
+                            ? 'border border-accent bg-accent/10 text-accent-soft'
+                            : 'bg-surface text-muted border border-line hover:text-ink'
                         }`}
                       >
                         <span>{t.label}</span>
-                        {isSelected && <Check size={14} strokeWidth={3} />}
+                        {isSelected && <Check size={14} strokeWidth={3} className="text-accent" />}
                       </button>
                     );
                   })}
@@ -1084,7 +1084,7 @@ export default function HomePage() {
 
               {/* Status chips */}
               <div>
-                <label className="text-xs font-semibold text-neutral-400 block mb-2">
+                <label className="text-faint uppercase text-[11px] font-semibold tracking-wide block mb-2">
                   Status
                 </label>
                 <div className="flex gap-2">
@@ -1105,8 +1105,8 @@ export default function HomePage() {
                         }
                         className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-colors ${
                           isSelected
-                            ? 'bg-[#ff6a2b] text-white'
-                            : 'bg-[#202026] text-neutral-400'
+                            ? 'border border-accent bg-accent/10 text-accent-soft'
+                            : 'bg-surface text-muted border border-line hover:text-ink'
                         }`}
                       >
                         {s.label}
@@ -1121,14 +1121,14 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="flex-1 py-3 px-4 rounded-2xl bg-[#202026] hover:bg-[#2a2a32] text-neutral-300 font-bold text-sm transition-colors"
+                  className="flex-1 py-3 px-4 rounded-xl bg-surface-2 hover:bg-surface border border-line text-muted hover:text-ink font-bold text-sm transition-colors"
                 >
                   Reset
                 </button>
                 <button
                   type="button"
                   onClick={handleApplyFilters}
-                  className="flex-1 py-3 px-4 rounded-2xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-sm shadow-lg shadow-[#ff6a2b]/25 transition-colors"
+                  className="flex-1 py-3 px-4 rounded-xl bg-accent-solid hover:bg-accent-hover text-white font-bold text-sm shadow-md transition-colors"
                 >
                   Apply
                 </button>

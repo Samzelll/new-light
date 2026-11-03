@@ -225,7 +225,7 @@ export function SwipeablePhotoGallery({
       {/* 1. STANDART CROPPED VIEW: Instagram Standard 4:5 Mobile Ratio       */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
       <div
-        className={`relative w-full max-w-[520px] mx-auto aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden bg-[#0c0c10] border border-white/10 shadow-2xl select-none group cursor-pointer ${className}`}
+        className={`relative w-full max-w-[520px] mx-auto aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden bg-bg border border-line shadow-2xl select-none group cursor-pointer ${className}`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -264,7 +264,7 @@ export function SwipeablePhotoGallery({
           }}
           title="Открыть оригинал без обрезки"
           aria-label="Открыть оригинал без обрезки"
-          className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/65 hover:bg-black/90 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-transform active:scale-95 shadow-lg"
+          className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-scrim hover:bg-surface-2 text-ink flex items-center justify-center backdrop-blur-md border border-line transition-transform active:scale-95 shadow-lg"
         >
           <Maximize2 size={14} strokeWidth={2.4} />
         </button>
@@ -279,7 +279,7 @@ export function SwipeablePhotoGallery({
                 goToPrev();
               }}
               aria-label="Предыдущее фото"
-              className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/65 hover:bg-black/90 text-white items-center justify-center backdrop-blur-md border border-white/20 shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-95"
+              className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-scrim hover:bg-surface-2 text-ink items-center justify-center backdrop-blur-md border border-line shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-95"
             >
               <ChevronLeft size={18} strokeWidth={2.6} />
             </button>
@@ -291,7 +291,7 @@ export function SwipeablePhotoGallery({
                 goToNext();
               }}
               aria-label="Следующее фото"
-              className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/65 hover:bg-black/90 text-white items-center justify-center backdrop-blur-md border border-white/20 shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-95"
+              className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-scrim hover:bg-surface-2 text-ink items-center justify-center backdrop-blur-md border border-line shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-95"
             >
               <ChevronRight size={18} strokeWidth={2.6} />
             </button>
@@ -305,8 +305,8 @@ export function SwipeablePhotoGallery({
             <div
               className={`px-3 py-1 rounded-full backdrop-blur-md transition-all duration-200 flex items-center gap-1.5 text-xs font-bold tabular-nums shadow-xl ${
                 isDragging || hasAttemptedSwipe
-                  ? 'bg-[#ff6a2b]/95 text-white scale-105 border border-white/40 ring-4 ring-[#ff6a2b]/25 shadow-[#ff6a2b]/40'
-                  : 'bg-black/65 text-white/95 border border-white/20 opacity-85 group-hover:opacity-100'
+                  ? 'bg-accent text-on-accent scale-105 border border-accent/40 ring-4 ring-accent/25 shadow-accent/40'
+                  : 'bg-scrim text-ink border border-line opacity-85 group-hover:opacity-100'
               }`}
             >
               {isDragging || hasAttemptedSwipe ? (
@@ -327,8 +327,8 @@ export function SwipeablePhotoGallery({
                   key={idx}
                   className={`h-1.5 rounded-full transition-all duration-200 ${
                     idx === activeIndex
-                      ? 'w-5 bg-white shadow-sm'
-                      : 'w-1.5 bg-white/40'
+                      ? 'w-5 bg-accent shadow-sm'
+                      : 'w-1.5 bg-muted/40'
                   }`}
                 />
               ))}
@@ -345,7 +345,7 @@ export function SwipeablePhotoGallery({
           role="dialog"
           aria-modal="true"
           aria-label="Просмотр оригинала без обрезки"
-          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col justify-between animate-fade-in select-none text-white overflow-hidden"
+          className="fixed inset-0 z-[100] bg-scrim backdrop-blur-xl flex flex-col justify-between animate-fade-in select-none text-ink overflow-hidden"
           onClick={handleCloseFullscreen}
         >
           {/* Top Bar: Title, Original Aspect Badge, Zoom, Close */}
@@ -354,16 +354,16 @@ export function SwipeablePhotoGallery({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2.5 min-w-0 pr-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold text-neutral-300 flex items-center gap-1.5 shrink-0">
-                <Scan size={12} className="text-[#ff6a2b]" />
+              <span className="px-2.5 py-0.5 rounded-full bg-surface-2 border border-line text-[11px] font-bold text-muted flex items-center gap-1.5 shrink-0">
+                <Scan size={12} className="text-accent" />
                 <span>Исходный размер</span>
               </span>
 
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm font-bold text-white truncate max-w-[45vw] sm:max-w-md">
+                <p className="text-xs sm:text-sm font-bold text-ink truncate max-w-[45vw] sm:max-w-md font-display">
                   {title}
                 </p>
-                {author && <p className="text-[10px] text-neutral-400 truncate">{author}</p>}
+                {author && <p className="text-[10px] text-faint truncate">{author}</p>}
               </div>
             </div>
 
@@ -372,7 +372,7 @@ export function SwipeablePhotoGallery({
               <button
                 type="button"
                 onClick={() => setZoomLevel((z) => (z === 1 ? 1.5 : z === 1.5 ? 2.5 : 1))}
-                className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold flex items-center gap-1 transition-colors border border-white/10"
+                className="px-2.5 py-1 rounded-full bg-surface-2 hover:bg-surface text-xs font-semibold text-ink flex items-center gap-1 transition-colors border border-line"
                 title="Масштаб"
               >
                 {zoomLevel === 1 ? <ZoomIn size={13} /> : <ZoomOut size={13} />}

@@ -85,18 +85,18 @@ export function ContestParticipantModal({
         role="dialog"
         aria-modal="true"
         aria-label={`Детали участника конкурса: ${title}`}
-        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
+        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-scrim backdrop-blur-xs animate-fade-in"
         onClick={onClose}
       >
         <div
-          className="relative z-10 w-full max-w-5xl max-h-[94vh] bg-[#161c17] border border-[#232b24] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col font-['Onest',sans-serif]"
+          className="relative z-10 w-full max-w-5xl max-h-[94vh] bg-surface border border-line rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col font-sans"
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Top Header Bar ── */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[#232b24] bg-[#111612]">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-line bg-surface-2">
             <div className="flex items-center gap-2.5 min-w-0">
               {resolvedAvatar ? (
-                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20 shrink-0">
+                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-line shrink-0 ring-1 ring-accent/30">
                   <Image
                     src={resolvedAvatar}
                     alt={author || ''}
@@ -107,20 +107,20 @@ export function ContestParticipantModal({
                   />
                 </div>
               ) : (
-                <div className="w-8 h-8 rounded-full bg-[#232b24] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                <div className="w-8 h-8 rounded-full bg-surface-2 border border-line flex items-center justify-center text-xs font-bold text-ink shrink-0">
                   {author ? author.charAt(0).toUpperCase() : 'C'}
                 </div>
               )}
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-xs sm:text-sm font-extrabold text-[#eef2ec] truncate">{title}</h3>
+                  <h3 className="text-xs sm:text-sm font-bold text-ink truncate font-display">{title}</h3>
                   {rank !== undefined && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#3fc27a]/15 border border-[#3fc27a]/40 text-[#3fc27a]">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/15 border border-accent/40 text-accent-soft">
                       #{rank} в рейтинге
                     </span>
                   )}
                 </div>
-                {contestTitle && <p className="text-[11px] text-[#8d998f] truncate">{contestTitle}</p>}
+                {contestTitle && <p className="text-[11px] text-muted truncate">{contestTitle}</p>}
               </div>
             </div>
 
@@ -129,7 +129,7 @@ export function ContestParticipantModal({
                 type="button"
                 onClick={onClose}
                 aria-label="Закрыть"
-                className="w-8 h-8 rounded-full bg-[#232b24] hover:bg-[#2d382e] text-[#8d998f] hover:text-[#eef2ec] flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full bg-surface-2 hover:bg-surface text-muted hover:text-ink flex items-center justify-center transition-colors border border-line"
               >
                 <X size={16} />
               </button>
@@ -140,7 +140,7 @@ export function ContestParticipantModal({
           <div className="flex-1 overflow-y-auto min-h-0 flex flex-col md:flex-row">
             
             {/* Left: Dynamic Photo Stage with 4:5 Instagram Crop & Tap-to-Enlarge Original */}
-            <div className="flex-1 p-2 sm:p-4 bg-[#0d110e] flex flex-col justify-center items-center">
+            <div className="flex-1 p-2 sm:p-4 bg-bg flex flex-col justify-center items-center">
               <SwipeablePhotoGallery
                 photos={allPhotos}
                 title={title}
@@ -150,34 +150,34 @@ export function ContestParticipantModal({
             </div>
 
             {/* Right Column: Tournament Placement, Official Rules Check & Vote Action */}
-            <div className="w-full md:w-80 lg:w-96 p-4 sm:p-5 bg-[#161c17] border-t md:border-t-0 md:border-l border-[#232b24] flex flex-col justify-between gap-4">
+            <div className="w-full md:w-80 lg:w-96 p-4 sm:p-5 bg-surface border-t md:border-t-0 md:border-l border-line flex flex-col justify-between gap-4">
               <div className="space-y-4">
                 
                 {/* 1. Tournament Placement Card */}
-                <div className="p-3.5 rounded-2xl bg-[#0d110e] border border-[#232b24] space-y-2">
+                <div className="p-3.5 rounded-2xl bg-surface-2 border border-line space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#8d998f] flex items-center gap-1.5 uppercase tracking-wider">
-                      <Trophy size={13} className="text-[#3fc27a]" />
+                    <span className="text-[11px] font-bold text-muted flex items-center gap-1.5 uppercase tracking-wider">
+                      <Trophy size={13} className="text-accent" />
                       <span>Позиция в конкурсе</span>
                     </span>
                     {rank !== undefined && (
-                      <span className="text-sm font-extrabold text-[#3fc27a] tabular-nums">
+                      <span className="text-sm font-bold text-accent font-display tabular-nums">
                         #{rank} {totalParticipants ? `из ${totalParticipants}` : ''}
                       </span>
                     )}
                   </div>
 
                   {percentage !== undefined && (
-                    <div className="pt-1 border-t border-[#232b24] flex items-center justify-between text-xs">
-                      <span className="text-[#8d998f]">Рейтинг сообщества:</span>
-                      <span className="font-extrabold text-[#eef2ec] tabular-nums">{percentage}%</span>
+                    <div className="pt-1 border-t border-line flex items-center justify-between text-xs">
+                      <span className="text-muted">Рейтинг сообщества:</span>
+                      <span className="font-bold text-ink tabular-nums">{percentage}%</span>
                     </div>
                   )}
 
                   {percentage !== undefined && (
-                    <div className="w-full h-1 bg-[#232b24] rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-surface rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#3fc27a] rounded-full transition-all duration-500"
+                        className="h-full bg-accent rounded-full transition-all duration-500"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
@@ -186,27 +186,27 @@ export function ContestParticipantModal({
 
                 {/* 2. Rules Verification Badge */}
                 {rulesVerified && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#3fc27a]/10 border border-[#3fc27a]/30 text-[#3fc27a] text-xs font-semibold">
-                    <ShieldCheck size={15} strokeWidth={2.4} className="shrink-0" />
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-accent/10 border border-accent/30 text-accent-soft text-xs font-semibold">
+                    <ShieldCheck size={15} strokeWidth={2.4} className="shrink-0 text-accent" />
                     <span>Работа проверена модерацией конкурса</span>
                   </div>
                 )}
 
                 {/* 3. Author Profile & Bio */}
                 <div>
-                  <h4 className="text-xs font-bold text-[#8d998f] mb-1">
+                  <h4 className="text-xs font-bold text-muted mb-1">
                     Автор: {author || 'Конкурсант'}
                   </h4>
                   {authorBio ? (
-                    <p className="text-xs text-[#eef2ec]/90 leading-relaxed">{authorBio}</p>
+                    <p className="text-xs text-ink/90 leading-relaxed">{authorBio}</p>
                   ) : (
-                    <p className="text-xs text-[#8d998f] italic">Заявка подана в основной этап конкурса.</p>
+                    <p className="text-xs text-faint italic">Заявка подана в основной этап конкурса.</p>
                   )}
                 </div>
 
                 {/* 4. Submission Date */}
                 {submissionDate && (
-                  <div className="flex items-center gap-1.5 text-xs text-[#8d998f]">
+                  <div className="flex items-center gap-1.5 text-xs text-muted">
                     <Calendar size={13} />
                     <span>Подано: {submissionDate}</span>
                   </div>
@@ -214,17 +214,17 @@ export function ContestParticipantModal({
 
                 {/* 5. Creator Links */}
                 {socialLinks && Object.values(socialLinks).some(Boolean) && (
-                  <div className="space-y-2 pt-2 border-t border-[#232b24]">
-                    <h4 className="text-xs font-bold text-[#8d998f]">Контакты автора</h4>
+                  <div className="space-y-2 pt-2 border-t border-line">
+                    <h4 className="text-xs font-bold text-muted">Контакты автора</h4>
                     <div className="flex flex-wrap gap-2 text-xs">
                       {socialLinks.instagram && (
                         <a
                           href={`https://instagram.com/${socialLinks.instagram.replace('@', '')}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2.5 py-1 rounded-lg bg-[#232b24] hover:bg-[#2d382e] text-[#eef2ec] transition-colors flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink transition-colors flex items-center gap-1 border border-line"
                         >
-                          <Camera size={12} className="text-pink-400" />
+                          <Camera size={12} className="text-accent" />
                           <span>Instagram</span>
                         </a>
                       )}
@@ -233,9 +233,9 @@ export function ContestParticipantModal({
                           href={`https://t.me/${socialLinks.telegram.replace('@', '')}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2.5 py-1 rounded-lg bg-[#232b24] hover:bg-[#2d382e] text-[#eef2ec] transition-colors flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink transition-colors flex items-center gap-1 border border-line"
                         >
-                          <Send size={12} className="text-sky-400" />
+                          <Send size={12} className="text-accent" />
                           <span>Telegram</span>
                         </a>
                       )}
@@ -244,9 +244,9 @@ export function ContestParticipantModal({
                           href={socialLinks.website}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2.5 py-1 rounded-lg bg-[#232b24] hover:bg-[#2d382e] text-[#eef2ec] transition-colors flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink transition-colors flex items-center gap-1 border border-line"
                         >
-                          <ExternalLink size={12} className="text-emerald-400" />
+                          <ExternalLink size={12} className="text-accent" />
                           <span>Сайт</span>
                         </a>
                       )}
@@ -266,8 +266,8 @@ export function ContestParticipantModal({
                   }}
                   className={`w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 transition-all active:scale-98 shadow-md cursor-pointer ${
                     isSelected
-                      ? 'bg-[#232b24] hover:bg-[#2d382e] text-[#3fc27a] border border-[#3fc27a]/40'
-                      : 'bg-[#3fc27a] hover:bg-[#38b06e] text-black shadow-[#3fc27a]/20'
+                      ? 'bg-surface-2 hover:bg-surface text-accent border border-accent/40'
+                      : 'bg-accent-solid hover:bg-accent-hover text-white shadow-lg'
                   }`}
                 >
                   {isSelected ? (

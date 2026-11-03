@@ -109,28 +109,28 @@ export function GroupVoting({
   };
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-xl font-bold text-white mb-2">Cast your vote in this group</h3>
+    <div className="space-y-6 font-sans">
+      <h3 className="text-xl font-bold text-ink mb-2 font-display">Cast your vote in this group</h3>
       {hasVoted ? (
-        <div className="p-4 bg-accent-green/10 border border-accent-green/20 text-accent-green rounded-xl text-sm flex items-center justify-between gap-3">
+        <div className="p-4 bg-accent/15 border border-accent/30 text-accent-soft rounded-xl text-sm flex items-center justify-between gap-3">
           <span>✓ Your vote has been recorded for this group.</span>
           <button
             type="button"
             onClick={handleCancelVote}
             disabled={isSubmitting}
-            className="text-xs font-bold text-red-400 hover:text-red-300 underline shrink-0 transition-colors"
+            className="text-xs font-bold text-danger hover:underline shrink-0 transition-colors"
           >
             {isSubmitting ? 'Отмена...' : 'Отменить голос'}
           </button>
         </div>
       ) : (
-        <p className="text-gray-400 text-sm">
+        <p className="text-muted text-sm">
           Select one participant to cast your vote. All votes are anonymous.
         </p>
       )}
 
       {error && (
-        <div className="p-3 bg-accent-red/10 border border-accent-red/20 text-accent-red rounded-xl text-sm">
+        <div className="p-3 bg-danger/10 border border-danger/30 text-danger rounded-xl text-sm">
           {error}
         </div>
       )}
@@ -149,20 +149,20 @@ export function GroupVoting({
             <div
               key={p.id}
               onClick={() => handleSelect(p.id)}
-              className={`card flex flex-col justify-between overflow-hidden relative transition-all duration-300 origin-center ${
+              className={`rounded-2xl p-3 bg-surface border flex flex-col justify-between overflow-hidden relative transition-all duration-300 origin-center ${
                 (isSelected || isVotedFor) ? 'scale-[0.88] z-10' : ''
               } ${
                 hasVoted 
                   ? isVotedFor 
-                    ? 'border-brand-500 ring-2 ring-brand-500/50 shadow-[0_0_25px_rgba(255,106,43,0.3)]' 
-                    : 'opacity-60 border-surface-600'
+                    ? 'border-accent ring-2 ring-accent/50 shadow-[0_0_25px_rgba(196,165,116,0.3)]' 
+                    : 'opacity-60 border-line'
                   : isSelected
-                    ? 'border-brand-500 ring-2 ring-brand-500/50 shadow-[0_0_25px_rgba(255,106,43,0.3)]'
-                    : 'cursor-pointer hover:border-surface-400 hover:shadow-lg'
+                    ? 'border-accent ring-2 ring-accent/50 shadow-[0_0_25px_rgba(196,165,116,0.3)]'
+                    : 'border-line cursor-pointer hover:border-line-strong hover:shadow-lg'
               }`}
             >
               {/* Submission Image (Tall vertical rectangle) */}
-              <div className="relative aspect-[3/4] sm:aspect-[4/5] w-full bg-surface-900 rounded-xl overflow-hidden mb-3">
+              <div className="relative aspect-[3/4] sm:aspect-[4/5] w-full bg-surface-2 rounded-xl overflow-hidden mb-3">
                 {photoUrl ? (
                   <LazyImage
                     src={photoUrl}
@@ -172,7 +172,7 @@ export function GroupVoting({
                     sizes="(max-width: 640px) 45vw, 200px"
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-600 text-xs">
+                  <div className="flex items-center justify-center h-full text-muted text-xs">
                     No image uploaded
                   </div>
                 )}
@@ -195,7 +195,7 @@ export function GroupVoting({
                       });
                     }}
                     aria-label={`Inspect ${displayName} photo`}
-                    className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20"
+                    className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-scrim hover:bg-surface-2 text-ink flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-line"
                   >
                     <Maximize2 size={13} strokeWidth={2.4} />
                   </button>
@@ -205,17 +205,17 @@ export function GroupVoting({
               {/* Card Footer */}
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-white text-xs sm:text-sm truncate">
+                  <span className="font-bold text-ink text-xs sm:text-sm truncate font-display">
                     {displayName}
                   </span>
                   {p.profiles?.username && (
-                    <span className="text-[10px] text-gray-500 font-semibold truncate ml-1">
+                    <span className="text-[10px] text-muted font-semibold truncate ml-1">
                       @{p.profiles.username}
                     </span>
                   )}
                 </div>
                 {p.submission_data.description && (
-                  <p className="text-gray-400 text-[11px] line-clamp-2">
+                  <p className="text-muted text-[11px] line-clamp-2">
                     {p.submission_data.description}
                   </p>
                 )}
@@ -223,7 +223,7 @@ export function GroupVoting({
 
               {/* Status Ribbon */}
               {isVotedFor && (
-                <div className="absolute top-3 left-3 bg-brand-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded shadow">
+                <div className="absolute top-3 left-3 bg-accent text-on-accent font-bold text-[9px] uppercase px-2 py-0.5 rounded shadow">
                   Your Vote
                 </div>
               )}
@@ -247,15 +247,15 @@ export function GroupVoting({
 
       {/* Confirmation Modal */}
       {confirmOpen && !hasVoted && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex justify-center items-center p-4 z-50 animate-fade-in">
-          <div className="card w-full max-w-sm bg-surface-800 border border-surface-600 p-6 flex flex-col items-center text-center space-y-6">
-            <div className="w-12 h-12 rounded-full bg-brand-600/20 text-brand-400 flex items-center justify-center">
+        <div className="fixed inset-0 bg-scrim backdrop-blur-xs flex justify-center items-center p-4 z-50 animate-fade-in">
+          <div className="w-full max-w-sm bg-surface-2 border border-line rounded-2xl p-6 flex flex-col items-center text-center space-y-6 text-ink">
+            <div className="w-12 h-12 rounded-full bg-accent/20 text-accent flex items-center justify-center">
               <Check className="w-6 h-6" strokeWidth={2} />
             </div>
             
             <div>
-              <h4 className="text-lg font-bold text-white">Confirm your vote</h4>
-              <p className="text-gray-400 text-sm mt-2">
+              <h4 className="text-lg font-bold text-ink font-display">Confirm your vote</h4>
+              <p className="text-muted text-sm mt-2">
                 You are about to vote in this group. You can only vote once per group in this stage.
               </p>
             </div>
@@ -263,14 +263,14 @@ export function GroupVoting({
             <div className="flex gap-4 w-full">
               <button
                 onClick={() => setConfirmOpen(false)}
-                className="btn btn-secondary flex-1"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-surface border border-line-strong text-ink hover:bg-surface-2 font-bold text-sm transition-colors"
                 disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmVote}
-                className="btn btn-primary flex-1"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-accent-solid hover:bg-accent-hover text-white font-bold text-sm transition-colors shadow-md"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Casting...' : 'Vote Now'}

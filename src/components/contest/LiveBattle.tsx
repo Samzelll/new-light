@@ -79,10 +79,10 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
 
   if (participants.length < 2) {
     return (
-      <div className="card text-center py-10 bg-surface-800 border-surface-700">
+      <div className="rounded-2xl text-center py-10 bg-surface border border-line text-ink font-sans">
         <div className="text-3xl mb-2">⚔️</div>
-        <h3 className="text-white font-bold text-lg mb-1">Battle Match Configuration</h3>
-        <p className="text-gray-400 text-xs max-w-sm mx-auto">
+        <h3 className="text-ink font-bold text-lg mb-1 font-display">Battle Match Configuration</h3>
+        <p className="text-muted text-xs max-w-sm mx-auto">
           {participants.length === 1
             ? '1 competitor is ready. Add a second competitor using Creator Options below to launch the 1v1 battle match!'
             : 'No competitors added yet. Use the Creator Options below to add both battle competitors with photos and item descriptions.'}
@@ -107,9 +107,9 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
   const p2Percent = getPercent(p2.id);
 
   return (
-    <div className="space-y-8 relative">
+    <div className="space-y-8 relative font-sans">
       {voteToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#ff6a2b] text-white text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-surface-2 border border-accent text-accent text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
           {voteToast}
         </div>
       )}
@@ -117,27 +117,27 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
       {previewPhoto && (
         <div 
           onClick={() => setPreviewPhoto(null)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-scrim backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
         >
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="max-w-2xl w-full bg-surface-800 border border-surface-600 rounded-2xl overflow-hidden shadow-2xl relative"
+            className="max-w-2xl w-full bg-surface-2 border border-line rounded-2xl overflow-hidden shadow-2xl relative text-ink"
           >
             <button
               onClick={() => setPreviewPhoto(null)}
-              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/60 text-white font-bold flex items-center justify-center hover:bg-black/80"
+              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-surface text-ink font-bold flex items-center justify-center hover:bg-surface-2 border border-line"
             >
               ✕
             </button>
-            <div className="max-h-[60vh] bg-black overflow-hidden flex items-center justify-center relative min-h-[200px]">
+            <div className="max-h-[60vh] bg-bg overflow-hidden flex items-center justify-center relative min-h-[200px]">
               <LazyImage src={previewPhoto.url} alt={previewPhoto.title} fill className="object-contain" priority sizes="100vw" />
             </div>
             <div className="p-5">
-              <h3 className="text-xl font-bold text-white mb-2">{previewPhoto.title}</h3>
+              <h3 className="text-xl font-bold text-ink mb-2 font-display">{previewPhoto.title}</h3>
               {previewPhoto.desc ? (
-                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{previewPhoto.desc}</p>
+                <p className="text-sm text-muted leading-relaxed whitespace-pre-wrap">{previewPhoto.desc}</p>
               ) : (
-                <p className="text-xs text-gray-400 italic">No description provided for this item.</p>
+                <p className="text-xs text-faint italic">No description provided for this item.</p>
               )}
             </div>
           </div>
@@ -147,53 +147,53 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
         {/* Challenger 1 */}
         <div 
-          className={`card bg-surface-800 border-surface-600 p-6 flex flex-col items-center justify-between text-center relative transition-all duration-300 origin-center ${
-            votedId === p1.id ? 'scale-[0.88] border-emerald-500 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/20 z-10' : ''
+          className={`rounded-2xl bg-surface border p-6 flex flex-col items-center justify-between text-center relative transition-all duration-300 origin-center ${
+            votedId === p1.id ? 'scale-[0.88] border-side-a ring-2 ring-side-a/50 shadow-lg shadow-side-a/20 z-10' : 'border-line'
           }`}
         >
           <div className="w-full flex flex-col items-center">
             <div 
               onClick={() => setPreviewPhoto({ url: p1Photo, title: p1Name, desc: p1Desc })}
-              className="aspect-square w-full max-w-[260px] rounded-2xl bg-surface-900 border border-surface-700 overflow-hidden mb-4 relative shadow-lg group cursor-pointer"
+              className="aspect-square w-full max-w-[260px] rounded-2xl bg-surface-2 border border-line overflow-hidden mb-4 relative shadow-lg group cursor-pointer"
             >
               <LazyImage src={p1Photo} alt={p1Name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="260px" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
               {votedId === p1.id && (
-                <span className="absolute bottom-3 left-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow flex items-center gap-1 backdrop-blur-xs">
+                <span className="absolute bottom-3 left-3 text-[10px] font-bold bg-side-a text-on-accent px-2.5 py-1 rounded-md uppercase tracking-wider shadow flex items-center gap-1 backdrop-blur-xs">
                   <span>✓ Selected</span>
-                  <span className="border-l border-emerald-400/50 pl-1">{formatPercentage(p1Percent)}</span>
+                  <span className="border-l border-on-accent/30 pl-1">{formatPercentage(p1Percent)}</span>
                 </span>
               )}
-              <span className="absolute top-3 right-3 text-[10px] bg-black/60 text-gray-200 px-2 py-0.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="absolute top-3 right-3 text-[10px] bg-scrim text-ink px-2 py-0.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity border border-line">
                 🔍 View Photo
               </span>
             </div>
 
-            <h3 className="text-xl font-extrabold text-white mb-2">{p1Name}</h3>
+            <h3 className="text-xl font-bold text-ink mb-2 font-display">{p1Name}</h3>
             
             {p1Desc && (
-              <p className="text-xs text-gray-300 mb-4 px-2 line-clamp-3 leading-relaxed bg-surface-900/60 p-2.5 rounded-lg border border-surface-700/50 w-full text-left">
+              <p className="text-xs text-muted mb-4 px-2 line-clamp-3 leading-relaxed bg-surface-2 p-2.5 rounded-lg border border-line w-full text-left">
                 {p1Desc}
               </p>
             )}
 
             <div className="my-2">
-              <span className={`text-3xl font-black tracking-tight ${votedId === p1.id ? 'text-emerald-400' : 'text-white'}`}>
+              <span className={`text-3xl font-bold tracking-tight font-display ${votedId === p1.id ? 'text-side-a' : 'text-ink'}`}>
                 {formatPercentage(p1Percent)}
               </span>
-              <span className="block text-[10px] uppercase font-bold text-gray-400 mt-0.5">Current Votes</span>
+              <span className="block text-[10px] uppercase font-bold text-muted mt-0.5">Current Votes</span>
             </div>
           </div>
 
           <button
             onClick={() => handleVote(p1.id)}
             disabled={!isAuthenticated || !!votedId || voting}
-            className={`w-full mt-4 btn text-xs py-3 font-extrabold uppercase tracking-wider transition-all ${
+            className={`w-full mt-4 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
               votedId === p1.id
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-side-a text-on-accent'
                 : !votedId && isAuthenticated
-                ? 'bg-surface-700 hover:bg-emerald-600 text-white border border-surface-600 hover:border-emerald-500'
-                : 'bg-surface-700 text-gray-400 cursor-not-allowed'
+                ? 'bg-accent-solid hover:bg-accent-hover text-white shadow-md'
+                : 'bg-surface-2 text-faint border border-line cursor-not-allowed'
             }`}
           >
             {votedId === p1.id ? '✓ Selected' : votedId ? 'Vote Recorded' : 'Vote for Competitor'}
@@ -202,53 +202,53 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
 
         {/* Challenger 2 */}
         <div 
-          className={`card bg-surface-800 border-surface-600 p-6 flex flex-col items-center justify-between text-center relative transition-all duration-300 origin-center ${
-            votedId === p2.id ? 'scale-[0.88] border-emerald-500 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/20 z-10' : ''
+          className={`rounded-2xl bg-surface border p-6 flex flex-col items-center justify-between text-center relative transition-all duration-300 origin-center ${
+            votedId === p2.id ? 'scale-[0.88] border-side-b ring-2 ring-side-b/50 shadow-lg shadow-side-b/20 z-10' : 'border-line'
           }`}
         >
           <div className="w-full flex flex-col items-center">
             <div 
               onClick={() => setPreviewPhoto({ url: p2Photo, title: p2Name, desc: p2Desc })}
-              className="aspect-square w-full max-w-[260px] rounded-2xl bg-surface-900 border border-surface-700 overflow-hidden mb-4 relative shadow-lg group cursor-pointer"
+              className="aspect-square w-full max-w-[260px] rounded-2xl bg-surface-2 border border-line overflow-hidden mb-4 relative shadow-lg group cursor-pointer"
             >
               <LazyImage src={p2Photo} alt={p2Name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="260px" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
               {votedId === p2.id && (
-                <span className="absolute bottom-3 right-3 text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-md uppercase tracking-wider shadow flex items-center gap-1 backdrop-blur-xs">
+                <span className="absolute bottom-3 right-3 text-[10px] font-bold bg-side-b text-on-side-b px-2.5 py-1 rounded-md uppercase tracking-wider shadow flex items-center gap-1 backdrop-blur-xs">
                   <span>✓ Selected</span>
-                  <span className="border-l border-emerald-400/50 pl-1">{formatPercentage(p2Percent)}</span>
+                  <span className="border-l border-on-side-b/30 pl-1">{formatPercentage(p2Percent)}</span>
                 </span>
               )}
-              <span className="absolute top-3 left-3 text-[10px] bg-black/60 text-gray-200 px-2 py-0.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="absolute top-3 left-3 text-[10px] bg-scrim text-ink px-2 py-0.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity border border-line">
                 🔍 View Photo
               </span>
             </div>
 
-            <h3 className="text-xl font-extrabold text-white mb-2">{p2Name}</h3>
+            <h3 className="text-xl font-bold text-ink mb-2 font-display">{p2Name}</h3>
             
             {p2Desc && (
-              <p className="text-xs text-gray-300 mb-4 px-2 line-clamp-3 leading-relaxed bg-surface-900/60 p-2.5 rounded-lg border border-surface-700/50 w-full text-left">
+              <p className="text-xs text-muted mb-4 px-2 line-clamp-3 leading-relaxed bg-surface-2 p-2.5 rounded-lg border border-line w-full text-left">
                 {p2Desc}
               </p>
             )}
 
             <div className="my-2">
-              <span className={`text-3xl font-black tracking-tight ${votedId === p2.id ? 'text-emerald-400' : 'text-white'}`}>
+              <span className={`text-3xl font-bold tracking-tight font-display ${votedId === p2.id ? 'text-side-b' : 'text-ink'}`}>
                 {formatPercentage(p2Percent)}
               </span>
-              <span className="block text-[10px] uppercase font-bold text-gray-400 mt-0.5">Current Votes</span>
+              <span className="block text-[10px] uppercase font-bold text-muted mt-0.5">Current Votes</span>
             </div>
           </div>
 
           <button
             onClick={() => handleVote(p2.id)}
             disabled={!isAuthenticated || !!votedId || voting}
-            className={`w-full mt-4 btn text-xs py-3 font-extrabold uppercase tracking-wider transition-all ${
+            className={`w-full mt-4 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
               votedId === p2.id
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-side-b text-on-side-b'
                 : !votedId && isAuthenticated
-                ? 'bg-surface-700 hover:bg-emerald-600 text-white border border-surface-600 hover:border-emerald-500'
-                : 'bg-surface-700 text-gray-400 cursor-not-allowed'
+                ? 'bg-accent-solid hover:bg-accent-hover text-white shadow-md'
+                : 'bg-surface-2 text-faint border border-line cursor-not-allowed'
             }`}
           >
             {votedId === p2.id ? '✓ Selected' : votedId ? 'Vote Recorded' : 'Vote for Competitor'}
@@ -257,15 +257,15 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
       </div>
 
       {/* Mid Split Percentage Indicator */}
-      <div className="card bg-surface-800 border-surface-700 p-3.5">
-        <div className="flex justify-between items-center text-xs font-black tracking-wide">
-          <span className={`flex items-center gap-1.5 ${votedId === p1.id ? 'text-emerald-400' : 'text-neutral-300'}`}>
-            <span className={`w-2 h-2 rounded-full ${votedId === p1.id ? 'bg-emerald-500' : 'bg-neutral-500'}`}></span>
+      <div className="rounded-2xl bg-surface border border-line p-3.5 text-ink">
+        <div className="flex justify-between items-center text-xs font-bold tracking-wide">
+          <span className={`flex items-center gap-1.5 ${votedId === p1.id ? 'text-side-a' : 'text-muted'}`}>
+            <span className={`w-2 h-2 rounded-full ${votedId === p1.id ? 'bg-side-a' : 'bg-line-strong'}`}></span>
             {p1Name} · {formatPercentage(p1Percent)}
           </span>
-          <span className={`flex items-center gap-1.5 ${votedId === p2.id ? 'text-emerald-400' : 'text-neutral-300'}`}>
+          <span className={`flex items-center gap-1.5 ${votedId === p2.id ? 'text-side-b' : 'text-muted'}`}>
             {formatPercentage(p2Percent)} · {p2Name}
-            <span className={`w-2 h-2 rounded-full ${votedId === p2.id ? 'bg-emerald-500' : 'bg-neutral-500'}`}></span>
+            <span className={`w-2 h-2 rounded-full ${votedId === p2.id ? 'bg-side-b' : 'bg-line-strong'}`}></span>
           </span>
         </div>
       </div>

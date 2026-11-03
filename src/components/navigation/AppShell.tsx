@@ -29,17 +29,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="app-shell relative">
       {/* Screen Loading Splash Overlay on mount */}
       {initialLoading && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#000000] text-[#F9F9F9] transition-opacity duration-300">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg text-ink transition-opacity duration-300">
           <div className="flex flex-col items-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl p-0.5 shadow-[0_0_30px_rgba(232,81,2,0.4)] animate-pulse flex items-center justify-center bg-gradient-to-br from-[#D4B5A3] via-[#E14603] to-[#0C0100]">
-              <div className="w-full h-full bg-[#000000] rounded-[14px] flex items-center justify-center">
-                <span className="text-xl font-black text-[#F9F9F9] tracking-wider">
+            <div className="w-14 h-14 rounded-2xl p-0.5 shadow-[0_0_30px_rgba(196,165,116,0.3)] animate-pulse flex items-center justify-center bg-gradient-to-br from-accent via-accent-solid to-surface-2">
+              <div className="w-full h-full bg-bg rounded-[14px] flex items-center justify-center">
+                <span className="text-xl font-black text-accent font-display tracking-wider">
                   ON
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#646464]">
-              <div className="w-2 h-2 rounded-full bg-[#E85102] animate-ping" />
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted">
+              <div className="w-2 h-2 rounded-full bg-accent animate-ping" />
               <span>Loading Opinion Net...</span>
             </div>
           </div>

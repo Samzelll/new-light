@@ -44,11 +44,11 @@ export const PinCard = memo(function PinCard({
     <article
       data-pin-id={pin.id}
       aria-hidden={!isRevealed}
-      className={`group relative w-full rounded-2xl overflow-hidden border border-white/[0.08] select-none [content-visibility:auto] [contain-intrinsic-size:auto_320px] transition-all ${
-        isRevealed ? 'hover:border-[#ff6a2b]/60 hover:shadow-[0_10px_30px_-6px_rgba(255,106,43,0.25)] active:scale-[0.98]' : ''
+      className={`group relative w-full rounded-lg overflow-hidden border border-line bg-surface select-none [content-visibility:auto] [contain-intrinsic-size:auto_320px] transition-all ${
+        isRevealed ? 'hover:border-accent/60 active:scale-[0.99]' : ''
       }`}
       style={{
-        backgroundColor: pin.dominantColor || '#141418',
+        backgroundColor: pin.dominantColor || '#1c1917',
       }}
       onClick={() => {
         if (isRevealed && onClick) {
@@ -64,15 +64,15 @@ export const PinCard = memo(function PinCard({
         {/* Shimmer overlay while pending */}
         {isShimmering && (
           <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-            <div className="absolute inset-0 -translate-x-full pin-shimmer-beam bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+            <div className="absolute inset-0 -translate-x-full pin-shimmer-beam bg-gradient-to-r from-transparent via-line/40 to-transparent" />
           </div>
         )}
 
         {/* ── Failure Placeholder State ── */}
         {isFailed && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-3 text-center bg-neutral-900/90 backdrop-blur-xs">
-            <ImageOff size={22} className="text-neutral-500 mb-1.5" />
-            <span className="text-[11px] font-semibold text-neutral-300 mb-2">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-3 text-center bg-surface/90 backdrop-blur-xs">
+            <ImageOff size={22} className="text-muted mb-1.5" />
+            <span className="text-[11px] font-semibold text-muted mb-2">
               Failed to load
             </span>
             {onRetry && (
@@ -83,9 +83,9 @@ export const PinCard = memo(function PinCard({
                   e.preventDefault();
                   onRetry(pin.id);
                 }}
-                className="px-2.5 py-1 rounded-full bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-[10px] flex items-center gap-1.5 border border-neutral-700 transition-colors active:scale-95 cursor-pointer"
+                className="px-2.5 py-1 rounded-full bg-surface-2 hover:bg-line text-ink font-bold text-[10px] flex items-center gap-1.5 border border-line transition-colors active:scale-95 cursor-pointer"
               >
-                <RotateCcw size={11} className="text-[#ff6a2b]" />
+                <RotateCcw size={11} className="text-accent" />
                 <span>Tap to retry</span>
               </button>
             )}
@@ -115,38 +115,38 @@ export const PinCard = memo(function PinCard({
             />
           )}
 
-          {/* Vignette gradients for text legibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0d] via-black/25 to-black/50 pointer-events-none" />
-
           {/* Top Badges (Live, Tag, Category) */}
           <div className="relative top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between pointer-events-none">
             <div className="flex items-center gap-1.5">
               {pin.isLive ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-950/80 backdrop-blur-xs text-emerald-400 border border-emerald-500/30 shadow-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="bg-accent/20 text-accent-soft px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide flex items-center gap-1.5 border border-accent/30 shadow-xs backdrop-blur-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
                   Live
                 </span>
               ) : pin.badge ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/75 backdrop-blur-xs text-[#ff6a2b] border border-[#ff6a2b]/30 shadow-xs">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-scrim text-accent-soft border border-line shadow-xs">
                   {pin.badge}
                 </span>
               ) : null}
             </div>
 
             {pin.tag && (
-              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-black/60 backdrop-blur-xs text-neutral-300 border border-white/10">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-scrim text-muted border border-line">
                 {pin.tag}
               </span>
             )}
           </div>
 
-          {/* Bottom Card Footer */}
-          <div className="relative bottom-2.5 left-2.5 right-2.5 z-10 pointer-events-none">
-            <h3 className="text-xs sm:text-sm font-black tracking-tight text-white line-clamp-2 leading-tight drop-shadow-md">
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Bottom Card Caption Strip (Solid scrim, no gradient) */}
+          <div className="relative z-10 bg-scrim px-3 py-2.5 border-t border-line pointer-events-none">
+            <h3 className="font-display text-[17px] font-semibold text-ink leading-tight line-clamp-2">
               {pin.title}
             </h3>
             {pin.subtitle && (
-              <p className="text-[11px] text-neutral-300 font-medium truncate mt-1 drop-shadow-xs">
+              <p className="text-[13px] text-muted truncate mt-0.5">
                 {pin.subtitle}
               </p>
             )}
@@ -159,7 +159,7 @@ export const PinCard = memo(function PinCard({
   // If pin has an href and no custom onClick, wrap in Link
   if (pin.href && !onClick) {
     return (
-      <Link href={pin.href} className="block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6a2b] rounded-2xl">
+      <Link href={pin.href} className="block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-lg">
         {cardContent}
       </Link>
     );

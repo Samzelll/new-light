@@ -37,7 +37,7 @@ export function DescriptionSheet({
   if (!isOpen || !contest) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/80 backdrop-blur-xs animate-fade-in">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-scrim backdrop-blur-xs animate-fade-in">
       {/* Click outside backdrop */}
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
@@ -47,25 +47,25 @@ export function DescriptionSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Detailed contest description"
-        className="relative z-10 w-full max-w-md mx-auto bg-[#161619] border-t border-neutral-800 rounded-t-3xl p-5 max-h-[80vh] overflow-y-auto space-y-4 shadow-2xl animate-slide-up"
+        className="relative z-10 w-full max-w-md mx-auto bg-surface border-t border-line rounded-t-3xl p-5 max-h-[80vh] overflow-y-auto space-y-4 shadow-2xl animate-slide-up"
       >
         {/* Handle */}
-        <div className="w-10 h-1 rounded-full bg-neutral-700 mx-auto -mt-1 mb-2" />
+        <div className="w-10 h-1 rounded-full bg-line-strong mx-auto -mt-1 mb-2" />
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-neutral-800 pb-3">
+        <div className="flex items-start justify-between gap-3 border-b border-line pb-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-bold text-[#ff6a2b] uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-accent uppercase tracking-wider">
                 {stageInfo || 'Contest Details'}
               </span>
               {(contest.is_featured || (contest as any).isFeatured) && (
-                <span className="px-2 py-0.5 rounded-full bg-[#ff6a2b]/20 text-[#ff6a2b] text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-accent/15 text-accent-soft text-[10px] font-bold">
                   ★ Popular
                 </span>
               )}
             </div>
-            <h2 className="text-base font-black text-white uppercase tracking-tight truncate">
+            <h2 className="text-base font-black text-ink font-display uppercase tracking-tight truncate">
               {contest.title}
             </h2>
           </div>
@@ -73,7 +73,7 @@ export function DescriptionSheet({
             type="button"
             onClick={onClose}
             aria-label="Close description"
-            className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white flex items-center justify-center shrink-0 transition-colors"
+            className="w-8 h-8 rounded-full bg-surface-2 hover:bg-line text-muted hover:text-ink flex items-center justify-center shrink-0 border border-line transition-colors"
           >
             <X size={16} strokeWidth={2.5} />
           </button>
@@ -81,12 +81,12 @@ export function DescriptionSheet({
 
         {/* Category & Tags */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#222226] text-xs font-semibold text-neutral-300">
-            <Tag size={12} className="text-[#ff6a2b]" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 border border-line text-xs font-semibold text-muted">
+            <Tag size={12} className="text-accent" />
             <span>Category: {contest.categoryId?.replace('cat-', '') || 'Photography'}</span>
           </span>
           {contest.prize && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#222226] text-xs font-semibold text-emerald-400">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 border border-line text-xs font-semibold text-accent">
               <Award size={12} />
               <span>Prize: {contest.prize}</span>
             </span>
@@ -95,10 +95,10 @@ export function DescriptionSheet({
 
         {/* Description */}
         <div className="space-y-1.5">
-          <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-muted uppercase tracking-wider">
             Description
           </h3>
-          <p className="text-sm text-neutral-200 leading-relaxed bg-[#121215] p-3 rounded-2xl border border-neutral-800/60">
+          <p className="text-sm text-ink leading-relaxed bg-surface-2 p-3 rounded-2xl border border-line">
             {contest.description}
           </p>
         </div>
@@ -106,14 +106,14 @@ export function DescriptionSheet({
         {/* Quick Rules */}
         {contest.quickRules && contest.quickRules.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Shield size={13} className="text-[#ff6a2b]" />
+            <h3 className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1.5">
+              <Shield size={13} className="text-accent" />
               <span>Voting Rules</span>
             </h3>
-            <ul className="space-y-1.5 bg-[#121215] p-3 rounded-2xl border border-neutral-800/60 text-xs text-neutral-300">
+            <ul className="space-y-1.5 bg-surface-2 p-3 rounded-2xl border border-line text-xs text-muted">
               {contest.quickRules.map((rule: string, idx: number) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <span className="text-[#ff6a2b] font-bold shrink-0">•</span>
+                  <span className="text-accent font-bold shrink-0">•</span>
                   <span>{rule}</span>
                 </li>
               ))}
@@ -126,7 +126,7 @@ export function DescriptionSheet({
           <Link
             href={`/contest/${contest.id}`}
             onClick={onClose}
-            className="w-full py-3 px-4 rounded-2xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#ff6a2b]/20 transition-all active:scale-[0.99]"
+            className="w-full py-3 px-4 rounded-2xl bg-accent-solid hover:bg-accent-hover text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-black/20 transition-all active:scale-[0.99]"
           >
             <span>Open Contest Page</span>
             <ExternalLink size={14} />

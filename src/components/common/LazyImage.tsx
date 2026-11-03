@@ -117,14 +117,14 @@ export function LazyImage({
     return (
       <div
         ref={containerRef}
-        className={`${baseContainerStyle} bg-gradient-to-br from-neutral-900 via-[#18181b] to-neutral-950 flex flex-col items-center justify-center p-3 text-neutral-500`}
+        className={`${baseContainerStyle} bg-gradient-to-br from-surface via-surface-2 to-bg flex flex-col items-center justify-center p-3 text-faint`}
         onClick={onClick}
       >
-        <div className="w-9 h-9 rounded-full bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-400 mb-1.5 shadow-inner">
+        <div className="w-9 h-9 rounded-full bg-surface-2 border border-line flex items-center justify-center text-muted mb-1.5 shadow-inner">
           {hasError ? <ImageOff size={16} /> : <Camera size={16} />}
         </div>
         {(fallbackText || alt) && (
-          <span className="text-[11px] text-center font-medium text-neutral-400 line-clamp-2 px-2">
+          <span className="text-[11px] text-center font-medium text-muted line-clamp-2 px-2">
             {fallbackText ?? alt}
           </span>
         )}
@@ -142,8 +142,8 @@ export function LazyImage({
     <div ref={containerRef} className={baseContainerStyle} onClick={onClick}>
       {/* ── Progressive Shimmer Placeholder ── */}
       {!isLoaded && (
-        <div className="absolute inset-0 z-0 bg-neutral-900 overflow-hidden" aria-hidden>
-          <div className="w-full h-full bg-gradient-to-r from-neutral-900 via-neutral-800/80 to-neutral-900 animate-pulse" />
+        <div className="absolute inset-0 z-0 bg-surface-2 overflow-hidden" aria-hidden>
+          <div className="w-full h-full bg-gradient-to-r from-surface-2 via-line to-surface-2 animate-pulse" />
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent animate-shimmer bg-[length:200%_100%]" />
         </div>
       )}

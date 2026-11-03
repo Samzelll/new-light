@@ -106,13 +106,13 @@ export function SideDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="Side menu"
-        className="drawer overflow-y-auto flex flex-col justify-between border-l border-white/10 shadow-[-24px_0_80px_rgba(0,0,0,0.45)]"
+        className="drawer bg-surface-2 overflow-y-auto flex flex-col justify-between border-l border-line shadow-[-24px_0_80px_rgba(0,0,0,0.5)]"
         data-open={isOpen ? 'true' : 'false'}
       >
         <div className="space-y-6">
           {/* Header row with close button */}
-          <div className="flex items-center justify-between pb-2 border-b border-ink/10">
-            <span className="font-display text-caption font-bold uppercase tracking-wider text-muted">
+          <div className="flex items-center justify-between pb-2 border-b border-line">
+            <span className="text-faint uppercase text-[11px] font-semibold tracking-wide">
               Opinion Net Menu
             </span>
             <button
@@ -130,9 +130,9 @@ export function SideDrawer({
             <Link
               href="/profile"
               onClick={onClose}
-              className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-br from-white/[0.09] to-white/[0.03] hover:from-white/[0.13] hover:to-white/[0.05] border border-white/10 transition-colors group shadow-lg"
+              className="flex items-center gap-3 p-3 rounded-xl bg-surface hover:bg-surface-2 border border-line transition-colors group shadow-sm"
             >
-              <div className="avatar h-12 w-12 flex-none">
+              <div className="w-11 h-11 rounded-full bg-surface-2 ring-2 ring-accent overflow-hidden relative flex-none">
                 {(() => {
                   const raw = (activeProfile as any)?.avatar_url || activeProfile?.avatarUrl;
                   const resolved = raw ? resolveImageUrl(raw, 'avatars') : null;
@@ -147,8 +147,8 @@ export function SideDrawer({
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-accent-solid text-ink">
-                      <User size={22} strokeWidth={2} />
+                    <div className="w-full h-full flex items-center justify-center bg-surface-2 text-accent">
+                      <User size={20} strokeWidth={2} />
                     </div>
                   );
                 })()}
@@ -158,11 +158,11 @@ export function SideDrawer({
                   {(activeProfile as any).display_name || activeProfile.displayName || activeProfile.username}
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-caption text-faint truncate">
+                  <span className="text-xs text-faint truncate">
                     @{activeProfile.username}
                   </span>
                   {isAdminOrMod && (
-                    <span className="pill pill-soft text-[10px] px-1.5 py-0 font-bold uppercase">
+                    <span className="bg-accent/15 text-accent-soft text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
                       {activeProfile.role === 'admin' ? 'Admin' : 'Moderator'}
                     </span>
                   )}
@@ -170,27 +170,27 @@ export function SideDrawer({
               </div>
             </Link>
           ) : (
-            <div className="p-3 rounded-lg bg-surface border border-ink/5 text-center space-y-2">
-              <p className="text-caption text-muted">Browsing as guest</p>
+            <div className="p-3 rounded-xl bg-surface border border-line text-center space-y-2">
+              <p className="text-xs text-muted">Browsing as guest</p>
               <Link
                 href="/auth"
                 onClick={onClose}
-                className="btn btn-primary btn-sm btn-block text-xs"
+                className="block w-full py-2 px-3 rounded-full bg-accent-solid hover:bg-accent-hover text-white font-bold text-xs transition-colors"
               >
                 Sign In
               </Link>
             </div>
           )}
 
-          {/* Main Navigation Links (Clean, non-redundant - profile sub-tabs live on /profile) */}
+          {/* Main Navigation Links */}
           <nav className="space-y-1" aria-label="Primary navigation">
-            <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-faint">
+            <p className="px-2 pb-1 text-faint uppercase text-[11px] font-semibold tracking-wide">
               Navigate
             </p>
             <Link
               href="/"
               onClick={onClose}
-              className="menu-item flex items-center gap-3"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
             >
               <Vote size={18} className="text-accent" strokeWidth={2.2} />
               <span>Explore Contests</span>
@@ -199,7 +199,7 @@ export function SideDrawer({
             <Link
               href="/rules"
               onClick={onClose}
-              className="menu-item flex items-center gap-3"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
             >
               <Award size={18} className="text-muted" strokeWidth={2} />
               <span>Rules & Prizes</span>
@@ -208,7 +208,7 @@ export function SideDrawer({
             <Link
               href="/onboarding"
               onClick={onClose}
-              className="menu-item flex items-center gap-3"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
             >
               <HelpCircle size={18} className="text-muted" strokeWidth={2} />
               <span>How It Works</span>
@@ -217,14 +217,14 @@ export function SideDrawer({
 
           {/* Admin / Creator / Moderator Tools */}
           {(isAdminOrMod || activeProfile?.role === 'creator') && (
-            <div className="pt-4 border-t border-ink/10 space-y-2">
-              <span className="font-display text-[10px] font-bold uppercase tracking-wider text-faint block px-2">
+            <div className="pt-4 border-t border-line space-y-2">
+              <span className="text-faint uppercase text-[11px] font-semibold tracking-wide block px-2">
                 Management & Tools
               </span>
               <Link
                 href="/create"
                 onClick={onClose}
-                className="menu-item flex items-center gap-3 text-accent font-semibold"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-accent hover:bg-surface transition-colors text-sm font-semibold"
               >
                 <PlusCircle size={18} strokeWidth={2.2} />
                 <span>Create Contest</span>
@@ -232,7 +232,7 @@ export function SideDrawer({
               <Link
                 href="/admin"
                 onClick={onClose}
-                className="menu-item flex items-center gap-3"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-ink hover:bg-surface transition-colors text-sm font-medium"
               >
                 <Shield size={18} strokeWidth={2.2} className="text-accent" />
                 <span>
@@ -244,7 +244,7 @@ export function SideDrawer({
         </div>
 
         {/* Dev Tools Footer (Quick Role Switcher) */}
-        {showDevTools && <div className="pt-6 border-t border-ink/10 mt-6 space-y-3">
+        {showDevTools && <div className="pt-6 border-t border-line mt-6 space-y-3">
           <div className="flex items-center justify-between text-[11px] text-faint">
             <span className="flex items-center gap-1 font-bold">
               <Users size={12} />
@@ -258,10 +258,10 @@ export function SideDrawer({
             <button
               type="button"
               onClick={() => onSwitchUser?.('admin')}
-              className={`p-1.5 rounded text-center font-bold border transition-colors ${
+              className={`p-1.5 rounded-lg text-center font-bold border transition-colors ${
                 profile?.role === 'admin'
-                  ? 'bg-accent-solid text-ink border-accent-solid'
-                  : 'bg-surface text-muted border-ink/10 hover:text-ink'
+                  ? 'bg-accent text-on-accent border-accent'
+                  : 'bg-surface text-muted border-line hover:text-ink'
               }`}
             >
               Admin
@@ -269,10 +269,10 @@ export function SideDrawer({
             <button
               type="button"
               onClick={() => onSwitchUser?.('creator')}
-              className={`p-1.5 rounded text-center font-bold border transition-colors ${
+              className={`p-1.5 rounded-lg text-center font-bold border transition-colors ${
                 profile?.role === 'creator'
-                  ? 'bg-accent-solid text-ink border-accent-solid'
-                  : 'bg-surface text-muted border-ink/10 hover:text-ink'
+                  ? 'bg-accent text-on-accent border-accent'
+                  : 'bg-surface text-muted border-line hover:text-ink'
               }`}
             >
               Creator
@@ -280,10 +280,10 @@ export function SideDrawer({
             <button
               type="button"
               onClick={() => onSwitchUser?.('user')}
-              className={`p-1.5 rounded text-center font-bold border transition-colors ${
+              className={`p-1.5 rounded-lg text-center font-bold border transition-colors ${
                 profile?.role === 'user'
-                  ? 'bg-accent-solid text-ink border-accent-solid'
-                  : 'bg-surface text-muted border-ink/10 hover:text-ink'
+                  ? 'bg-accent text-on-accent border-accent'
+                  : 'bg-surface text-muted border-line hover:text-ink'
               }`}
             >
               User
@@ -291,10 +291,10 @@ export function SideDrawer({
             <button
               type="button"
               onClick={() => onSwitchUser?.('guest')}
-              className={`p-1.5 rounded text-center font-bold border transition-colors ${
+              className={`p-1.5 rounded-lg text-center font-bold border transition-colors ${
                 !profile
-                  ? 'bg-accent-solid text-ink border-accent-solid'
-                  : 'bg-surface text-muted border-ink/10 hover:text-ink'
+                  ? 'bg-accent text-on-accent border-accent'
+                  : 'bg-surface text-muted border-line hover:text-ink'
               }`}
             >
               Guest
@@ -305,7 +305,7 @@ export function SideDrawer({
           <button
             type="button"
             onClick={onAdvanceCycle}
-            className="w-full py-2 px-3 rounded-lg bg-surface border border-ink/10 hover:border-accent text-faint hover:text-accent font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+            className="w-full py-2 px-3 rounded-lg bg-surface border border-line hover:border-accent text-muted hover:text-accent font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
           >
             <FastForward size={14} />
             <span>Advance to 06:00 UTC</span>

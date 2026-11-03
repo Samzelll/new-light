@@ -1,62 +1,47 @@
 /** @type {import('tailwindcss').Config} */
-// All colors, radii and fonts come from CSS variables in globals.css.
-// Components never use raw hex values or Tailwind palette colors (no `bg-orange-600`):
-// change a token once and the whole app follows.
-const token = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
-
 module.exports = {
   content: [
-    './index.html',
     './src/**/*.{js,jsx,ts,tsx}',
   ],
   theme: {
     extend: {
       colors: {
-        bg: token('bg'), // page background
-        surface: token('surface'), // cards, list rows
-        surface2: token('surface-2'), // sheets, inputs, drawer
-        'surface-2': token('surface-2'),
-        ink: token('ink'), // primary text (also used for 5-10% overlays: bg-ink/10)
-        muted: token('muted'), // secondary text
-        faint: token('faint'), // captions, placeholders, inactive tabs
-        light: token('light'), // white buttons
-        'on-light': token('on-light'), // text on light surfaces
+        bg: '#131110',
+        surface: '#1c1917',
+        'surface-2': '#26221f',
+        surface2: '#26221f',
+        line: '#2e2924',
+        'line-strong': '#3a342e',
+        ink: '#ece6dc',
+        muted: '#a8a093',
+        faint: '#928a7d',
         accent: {
-          DEFAULT: token('accent'), // icons, rings, underlines, text on dark
-          solid: token('accent-solid'), // filled buttons and pills (white text passes AA)
-          hover: token('accent-hover'),
-          soft: token('accent-soft'), // text on tinted accent backgrounds
+          DEFAULT: '#c4a574',
+          soft: '#e0c796',
+          solid: '#8a6a3a',
+          hover: '#735830',
         },
-        'accent-solid': token('accent-solid'),
-        'accent-hover': token('accent-hover'),
-        'accent-soft': token('accent-soft'),
-        success: token('success'),
-        danger: {
-          DEFAULT: token('danger'),
-          soft: token('danger-soft'),
-        },
-        'danger-soft': token('danger-soft'),
-        warn: token('warn'),
-        corner: {
-          red: token('corner-red'),
-          green: token('corner-green'),
-          'on-red': token('on-corner-red'),
-          'on-green': token('on-corner-green'),
-        },
-        'corner-red': token('corner-red'),
-        'corner-green': token('corner-green'),
-        'on-corner-red': token('on-corner-red'),
-        'on-corner-green': token('on-corner-green'),
+        'accent-soft': '#e0c796',
+        'accent-solid': '#8a6a3a',
+        'accent-hover': '#735830',
+        'on-accent': '#2a1f0c',
+        'side-a': '#c4a574',
+        'side-b': '#8aa0c4',
+        'on-side-b': '#101b33',
+        danger: '#d9776b',
+        scrim: 'rgba(19, 17, 16, 0.86)',
+        light: '#ece6dc',
+        'on-light': '#131110',
       },
       borderRadius: {
-        sm: 'var(--r-sm)',
-        md: 'var(--r-md)',
-        lg: 'var(--r-lg)',
-        xl: 'var(--r-xl)',
+        sm: '8px',
+        md: '12px',
+        lg: '16px',
+        xl: '20px',
       },
       fontFamily: {
-        display: ['var(--font-display)'],
-        sans: ['var(--font-body)'],
+        display: ['var(--font-display)', 'Lora', 'Georgia', 'serif'],
+        sans: ['var(--font-body)', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         caption: ['0.6875rem', { lineHeight: '1rem' }], // 11px
@@ -71,7 +56,7 @@ module.exports = {
         app: '28rem', // 448px phone column
       },
       transitionTimingFunction: {
-        out: 'var(--ease)',
+        out: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
       },
     },
   },

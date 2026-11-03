@@ -135,20 +135,20 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#0b0b0d] text-white p-4 flex flex-col items-center justify-center">
-        <div className="w-12 h-12 rounded-full border-2 border-[#ff6a2b] border-t-transparent animate-spin mb-3" />
-        <p className="text-xs text-neutral-400">Загрузка баттла...</p>
+      <main className="min-h-screen bg-bg text-ink p-4 flex flex-col items-center justify-center">
+        <div className="w-12 h-12 rounded-full border-2 border-accent border-t-transparent animate-spin mb-3" />
+        <p className="text-xs text-muted">Загрузка баттла...</p>
       </main>
     );
   }
 
   if (!battle || !redComp || !blueComp) {
     return (
-      <main className="min-h-screen bg-[#0b0b0d] text-white p-6 flex flex-col items-center justify-center space-y-4">
-        <p className="text-sm text-neutral-400">Баттл не найден или завершён.</p>
+      <main className="min-h-screen bg-bg text-ink p-6 flex flex-col items-center justify-center space-y-4">
+        <p className="text-sm text-muted">Баттл не найден или завершён.</p>
         <button
           onClick={onBack || (() => router.push('/?tab=battles'))}
-          className="px-5 py-2.5 rounded-full bg-neutral-800 hover:bg-neutral-700 text-xs font-bold text-white transition-colors"
+          className="px-5 py-2.5 rounded-full bg-surface-2 hover:bg-line text-xs font-bold text-ink transition-colors"
         >
           Вернуться в ленту баттлов
         </button>
@@ -160,10 +160,10 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
   const bluePercent = Math.round(blueComp.percentage);
 
   return (
-    <main className="min-h-screen bg-[#0b0b0d] text-white font-['Onest',sans-serif] selection:bg-[#ff6a2b]/30 pb-28">
+    <main className="min-h-screen bg-bg text-ink selection:bg-accent/30 pb-28">
       {/* Toast Feedback */}
       {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-[#161619] border border-[#ff6a2b]/50 text-[#ff6a2b] text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-surface-2 border border-accent/50 text-accent text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
           {toastMessage}
         </div>
       )}
@@ -176,7 +176,7 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
             type="button"
             onClick={onBack || (() => router.push('/?tab=battles'))}
             aria-label="Назад"
-            className="w-10 h-10 rounded-full bg-neutral-900/80 hover:bg-neutral-800 border border-white/10 flex items-center justify-center text-white transition-colors"
+            className="w-10 h-10 rounded-full bg-scrim text-ink border border-line flex items-center justify-center transition-colors hover:border-line-strong"
           >
             <ArrowLeft size={18} strokeWidth={2.4} />
           </button>
@@ -186,7 +186,7 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
               type="button"
               onClick={handleShare}
               aria-label="Поделиться"
-              className="w-10 h-10 rounded-full bg-neutral-900/80 hover:bg-neutral-800 border border-white/10 flex items-center justify-center text-white transition-colors active:scale-95"
+              className="w-10 h-10 rounded-full bg-scrim text-ink border border-line flex items-center justify-center transition-colors active:scale-95 hover:border-line-strong"
             >
               <Share2 size={17} strokeWidth={2.4} />
             </button>
@@ -200,51 +200,51 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
               aria-label="Подписаться"
               className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors ${
                 isSubscribed
-                  ? 'bg-[#ff6a2b]/20 border-[#ff6a2b]/40 text-[#ff6a2b]'
-                  : 'bg-neutral-900/80 hover:bg-neutral-800 border-white/10 text-white'
+                  ? 'bg-accent/15 border-accent text-accent'
+                  : 'bg-scrim border-line text-ink hover:border-line-strong'
               }`}
             >
-              <Bookmark size={18} strokeWidth={2.4} className={isSubscribed ? 'fill-[#ff6a2b]' : ''} />
+              <Bookmark size={18} strokeWidth={2.4} className={isSubscribed ? 'fill-accent' : ''} />
             </button>
           </div>
         </div>
 
         {/* ── Battle Header Banner ── */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#ff6a2b]">
-            <span className="w-2 h-2 rounded-full bg-[#ff6a2b] animate-pulse shrink-0" />
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-accent">
+            <span className="w-2 h-2 rounded-full bg-accent animate-pulse shrink-0" />
             <span>1v1 ДУЭЛЬ · БЕСКОНЕЧНЫЙ БАТТЛ</span>
-            <span className="text-neutral-500">·</span>
-            <span className="text-neutral-400 font-semibold">{battle.category || 'Opinion Arena'}</span>
+            <span className="text-line-strong">·</span>
+            <span className="text-muted font-semibold">{battle.category || 'Opinion Arena'}</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-tight leading-tight">
             {battle.title}
           </h1>
 
           {battle.description && (
-            <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed">
+            <p className="text-xs sm:text-sm text-muted leading-relaxed">
               {battle.description}
             </p>
           )}
 
           {/* Sponsor Bounty Strip */}
-          <div className="flex items-center gap-2 px-3.5 py-2 mt-2 rounded-xl bg-neutral-900/90 border border-amber-500/30 text-amber-300 text-xs font-semibold shadow-sm">
-            <Trophy size={14} className="text-amber-400 shrink-0" />
+          <div className="flex items-center gap-2 px-3.5 py-2 mt-2 rounded-xl bg-surface border border-line text-ink text-xs font-semibold shadow-sm">
+            <Trophy size={14} className="text-accent shrink-0" />
             <div className="truncate">
               <span>Призовой фонд: 100 000 ₽</span>
-              <span className="mx-2 text-neutral-500">·</span>
-              <span className="text-neutral-400 font-normal">Спонсор: Alpha Creator Fund</span>
+              <span className="mx-2 text-faint">·</span>
+              <span className="text-muted font-normal">Спонсор: Alpha Creator Fund</span>
             </div>
           </div>
         </div>
 
         {/* ── 1v1 Split Arena Cards ── */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-neutral-400 font-bold px-1">
-            <span className="flex items-center gap-1.5 text-[#ff6a2b]">
+          <div className="flex items-center justify-between text-xs text-muted font-bold px-1">
+            <span className="flex items-center gap-1.5 text-accent">
               <Swords size={13} />
-              <span>Красный угол vs Синий угол</span>
+              <span>Сторона A vs Сторона B</span>
             </span>
             <span className="tabular-nums">
               {battle.totalVotes > 0 ? `Всего голосов: ${battle.totalVotes}` : 'Прямой эфир'}
@@ -254,17 +254,17 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
           {/* Duel Cards Grid */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             
-            {/* 🔴 RED CORNER CARD */}
+            {/* 🔴 SIDE A CARD */}
             <div
               onClick={() => handleVote('red')}
-              className={`relative rounded-2xl sm:rounded-3xl p-3 sm:p-4 border transition-all duration-300 flex flex-col justify-between cursor-pointer group select-none ${
+              className={`relative rounded-xl p-3 sm:p-4 border transition-all duration-300 flex flex-col justify-between cursor-pointer group select-none ${
                 userVote === 'red'
-                  ? 'bg-[#ff6a2b]/15 border-[#ff6a2b] ring-2 ring-[#ff6a2b]/30'
-                  : 'bg-[#141418] border-neutral-800 hover:border-neutral-700'
+                  ? 'bg-surface border-side-a ring-2 ring-side-a/40 shadow-[0_0_30px_rgba(196,165,116,0.25)]'
+                  : 'bg-surface border-side-a/60 hover:border-side-a'
               }`}
             >
-              {/* Photo Box: Instagram 4:5 standard crop (object-cover, no black bars) */}
-              <div className="relative w-full aspect-[4/5] rounded-xl sm:rounded-2xl overflow-hidden bg-black/40 mb-3 border border-white/10">
+              {/* Photo Box: Instagram 4:5 standard crop */}
+              <div className="relative w-full aspect-[4/5] rounded-lg overflow-hidden bg-surface-2 mb-3 border border-line">
                 <Image
                   src={redComp.photoUrl}
                   alt={redComp.name}
@@ -301,14 +301,14 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
                   }}
                   title="Подробности и фото участника"
                   aria-label="Подробности и фото участника"
-                  className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-transform active:scale-90"
+                  className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-scrim text-ink flex items-center justify-center backdrop-blur-xs border border-line transition-transform active:scale-90 hover:border-line-strong"
                 >
                   <Maximize2 size={13} strokeWidth={2.4} />
                 </button>
 
                 {/* Photos count pill if multiple */}
                 {redComp.photos && redComp.photos.length > 1 && (
-                  <div className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-white border border-white/10 pointer-events-none">
+                  <div className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full bg-scrim text-[10px] font-bold text-ink border border-line pointer-events-none">
                     {redComp.photos.length} фото
                   </div>
                 )}
@@ -316,29 +316,29 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
 
               {/* Title & Creator */}
               <div className="space-y-1 mb-2.5">
-                <div className="text-[10px] font-black uppercase tracking-wider text-[#ff6a2b]">
-                  Красный угол
+                <div className="text-[10px] font-black uppercase tracking-wider text-side-a">
+                  Сторона A
                 </div>
-                <h3 className="text-xs sm:text-sm font-extrabold text-white truncate">{redComp.name}</h3>
+                <h3 className="font-display text-xs sm:text-sm font-bold text-ink truncate">{redComp.name}</h3>
                 {redComp.author && (
-                  <p className="text-[11px] text-neutral-400 truncate">{redComp.author}</p>
+                  <p className="text-[11px] text-muted truncate">{redComp.author}</p>
                 )}
               </div>
 
               {/* Vote Split & Button */}
               <div className="space-y-2 mt-auto">
                 <div className="flex items-center justify-between text-xs font-black">
-                  <span className="text-[#ff6a2b] tabular-nums">{redPercent}%</span>
+                  <span className="text-side-a tabular-nums">{redPercent}%</span>
                   {userVote === 'red' && (
-                    <span className="text-[10px] font-extrabold text-emerald-400 flex items-center gap-0.5">
+                    <span className="text-[10px] font-extrabold text-side-a flex items-center gap-0.5">
                       <Check size={11} strokeWidth={3} /> Ваш выбор
                     </span>
                   )}
                 </div>
 
-                <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden border border-line">
                   <div
-                    className="h-full bg-[#ff6a2b] rounded-full transition-all duration-500"
+                    className="h-full bg-side-a rounded-full transition-all duration-500"
                     style={{ width: `${redPercent}%` }}
                   />
                 </div>
@@ -349,10 +349,10 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
                     e.stopPropagation();
                     handleVote('red');
                   }}
-                  className={`w-full py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                  className={`w-full py-2 rounded-full text-xs font-bold transition-all active:scale-95 ${
                     userVote === 'red'
-                      ? 'bg-neutral-800 text-neutral-200 border border-neutral-700'
-                      : 'bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white shadow-md'
+                      ? 'bg-surface-2 text-danger border border-danger/40'
+                      : 'bg-side-a text-on-accent hover:opacity-90 shadow-sm'
                   }`}
                 >
                   {userVote === 'red' ? 'Отменить голос' : 'Голосовать'}
@@ -360,17 +360,17 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
               </div>
             </div>
 
-            {/* 🔵 BLUE CORNER CARD */}
+            {/* 🔵 SIDE B CARD */}
             <div
               onClick={() => handleVote('blue')}
-              className={`relative rounded-2xl sm:rounded-3xl p-3 sm:p-4 border transition-all duration-300 flex flex-col justify-between cursor-pointer group select-none ${
+              className={`relative rounded-xl p-3 sm:p-4 border transition-all duration-300 flex flex-col justify-between cursor-pointer group select-none ${
                 userVote === 'blue'
-                  ? 'bg-sky-500/15 border-sky-400 ring-2 ring-sky-400/30'
-                  : 'bg-[#141418] border-neutral-800 hover:border-neutral-700'
+                  ? 'bg-surface border-side-b ring-2 ring-side-b/40 shadow-[0_0_30px_rgba(138,160,196,0.25)]'
+                  : 'bg-surface border-side-b/60 hover:border-side-b'
               }`}
             >
-              {/* Photo Box: Instagram 4:5 standard crop (object-cover, no black bars) */}
-              <div className="relative w-full aspect-[4/5] rounded-xl sm:rounded-2xl overflow-hidden bg-black/40 mb-3 border border-white/10">
+              {/* Photo Box: Instagram 4:5 standard crop */}
+              <div className="relative w-full aspect-[4/5] rounded-lg overflow-hidden bg-surface-2 mb-3 border border-line">
                 <Image
                   src={blueComp.photoUrl}
                   alt={blueComp.name}
@@ -407,14 +407,14 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
                   }}
                   title="Подробности и фото участника"
                   aria-label="Подробности и фото участника"
-                  className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-transform active:scale-90"
+                  className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-scrim text-ink flex items-center justify-center backdrop-blur-xs border border-line transition-transform active:scale-90 hover:border-line-strong"
                 >
                   <Maximize2 size={13} strokeWidth={2.4} />
                 </button>
 
                 {/* Photos count pill if multiple */}
                 {blueComp.photos && blueComp.photos.length > 1 && (
-                  <div className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-white border border-white/10 pointer-events-none">
+                  <div className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full bg-scrim text-[10px] font-bold text-ink border border-line pointer-events-none">
                     {blueComp.photos.length} фото
                   </div>
                 )}
@@ -422,29 +422,29 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
 
               {/* Title & Creator */}
               <div className="space-y-1 mb-2.5">
-                <div className="text-[10px] font-black uppercase tracking-wider text-sky-400">
-                  Синий угол
+                <div className="text-[10px] font-black uppercase tracking-wider text-side-b">
+                  Сторона B
                 </div>
-                <h3 className="text-xs sm:text-sm font-extrabold text-white truncate">{blueComp.name}</h3>
+                <h3 className="font-display text-xs sm:text-sm font-bold text-ink truncate">{blueComp.name}</h3>
                 {blueComp.author && (
-                  <p className="text-[11px] text-neutral-400 truncate">{blueComp.author}</p>
+                  <p className="text-[11px] text-muted truncate">{blueComp.author}</p>
                 )}
               </div>
 
               {/* Vote Split & Button */}
               <div className="space-y-2 mt-auto">
                 <div className="flex items-center justify-between text-xs font-black">
-                  <span className="text-sky-400 tabular-nums">{bluePercent}%</span>
+                  <span className="text-side-b tabular-nums">{bluePercent}%</span>
                   {userVote === 'blue' && (
-                    <span className="text-[10px] font-extrabold text-emerald-400 flex items-center gap-0.5">
+                    <span className="text-[10px] font-extrabold text-side-b flex items-center gap-0.5">
                       <Check size={11} strokeWidth={3} /> Ваш выбор
                     </span>
                   )}
                 </div>
 
-                <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden border border-line">
                   <div
-                    className="h-full bg-sky-400 rounded-full transition-all duration-500"
+                    className="h-full bg-side-b rounded-full transition-all duration-500"
                     style={{ width: `${bluePercent}%` }}
                   />
                 </div>
@@ -455,10 +455,10 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
                     e.stopPropagation();
                     handleVote('blue');
                   }}
-                  className={`w-full py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                  className={`w-full py-2 rounded-full text-xs font-bold transition-all active:scale-95 ${
                     userVote === 'blue'
-                      ? 'bg-neutral-800 text-neutral-200 border border-neutral-700'
-                      : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md'
+                      ? 'bg-surface-2 text-danger border border-danger/40'
+                      : 'bg-side-b text-on-side-b hover:opacity-90 shadow-sm'
                   }`}
                 >
                   {userVote === 'blue' ? 'Отменить голос' : 'Голосовать'}
@@ -470,33 +470,33 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
         </div>
 
         {/* ── Battle Format & Mechanics Strip ── */}
-        <div className="rounded-2xl bg-[#141418] border border-neutral-800 p-3.5 grid grid-cols-3 divide-x divide-neutral-800 text-center">
+        <div className="rounded-xl bg-surface border border-line p-3.5 grid grid-cols-3 divide-x divide-line text-center">
           <div className="px-2">
-            <div className="text-sm sm:text-base font-extrabold text-white">Бесконечный</div>
-            <div className="text-[11px] text-neutral-400 mt-0.5">формат баттла</div>
+            <div className="text-sm sm:text-base font-bold text-ink">Бесконечный</div>
+            <div className="text-[11px] text-muted mt-0.5">формат баттла</div>
           </div>
           <div className="px-2">
-            <div className="text-sm sm:text-base font-extrabold text-white">1v1 Дуэль</div>
-            <div className="text-[11px] text-neutral-400 mt-0.5">прямой выбор</div>
+            <div className="text-sm sm:text-base font-bold text-ink">1v1 Дуэль</div>
+            <div className="text-[11px] text-muted mt-0.5">прямой выбор</div>
           </div>
           <div className="px-2">
-            <div className="text-sm sm:text-base font-extrabold text-emerald-400">Вес голоса</div>
-            <div className="text-[11px] text-neutral-400 mt-0.5">защита от накруток</div>
+            <div className="text-sm sm:text-base font-bold text-accent">Вес голоса</div>
+            <div className="text-[11px] text-muted mt-0.5">защита от накруток</div>
           </div>
         </div>
 
         {/* ── Rules Checklist for Battles ── */}
         <div className="space-y-2 py-1 px-1">
-          <div className="flex items-center gap-2 text-xs text-neutral-300">
-            <Check size={15} className="text-[#ff6a2b] shrink-0" strokeWidth={2.8} />
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <Check size={15} className="text-accent shrink-0" strokeWidth={2.8} />
             <span>Голосование 1 на 1 без ограничения по времени раунда</span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-neutral-300">
-            <Check size={15} className="text-[#ff6a2b] shrink-0" strokeWidth={2.8} />
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <Check size={15} className="text-accent shrink-0" strokeWidth={2.8} />
             <span>Один голос на дуэль — вы можете изменить выбор в любой момент</span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-neutral-300">
-            <Check size={15} className="text-[#ff6a2b] shrink-0" strokeWidth={2.8} />
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <Check size={15} className="text-accent shrink-0" strokeWidth={2.8} />
             <span>В арене баттлов работает плавный свайп и переход к следующей паре</span>
           </div>
         </div>
@@ -506,7 +506,7 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
           <button
             type="button"
             onClick={() => setShowArenaView(true)}
-            className="w-full h-[52px] rounded-2xl bg-[#ff6a2b] hover:bg-[#ff7a3d] active:scale-[0.99] text-white font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-[#ff6a2b]/20 cursor-pointer"
+            className="w-full h-[52px] rounded-full bg-accent-solid hover:bg-accent-hover active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
           >
             <Swords size={18} strokeWidth={2.4} />
             <span>Войти в Арену баттла (Полноэкранный режим)</span>

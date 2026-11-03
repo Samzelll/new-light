@@ -45,3 +45,20 @@ export function getCountdown(targetDateInput: string | Date | undefined | null):
   }
   return `${diffMinutes}m remaining`;
 }
+
+/**
+ * Returns the proper English ordinal representation (e.g. 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 4 -> "4th").
+ */
+export function getOrdinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+/**
+ * Formats a placement rank into human-readable place string (e.g. 1 -> "1st Place", 2 -> "2nd Place").
+ */
+export function formatPlace(rank: number): string {
+  return `${getOrdinal(rank)} Place`;
+}
+

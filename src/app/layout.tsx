@@ -1,10 +1,11 @@
 import '../app/globals.css';
 import type { Metadata } from 'next';
-import { Manrope, Unbounded } from 'next/font/google';
+import { Manrope, Lora } from 'next/font/google';
 import { ReduxProvider } from '@/components/providers/ReduxProvider';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { AppShell } from '@/components/navigation/AppShell';
 import { PwaRegister } from '@/components/providers/PwaRegister';
+import { PerfInit } from '@/perf/PerfInit';
 
 const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
@@ -13,9 +14,9 @@ const manrope = Manrope({
   display: 'swap',
 });
 
-const unbounded = Unbounded({
+const lora = Lora({
   subsets: ['latin', 'cyrillic'],
-  weight: ['500', '700', '800', '900'],
+  weight: ['500', '600', '700'],
   variable: '--font-display',
   display: 'swap',
 });
@@ -23,7 +24,7 @@ const unbounded = Unbounded({
 export const dynamic = 'force-dynamic';
 
 export const viewport = {
-  themeColor: '#0b0b0d',
+  themeColor: '#131110',
 };
 
 export const metadata: Metadata = {
@@ -35,13 +36,11 @@ export const metadata: Metadata = {
   },
 };
 
-import { PerfInit } from '@/perf/PerfInit';
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   return (
-    <html lang="en" className={`${manrope.variable} ${unbounded.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${manrope.variable} ${lora.variable}`} suppressHydrationWarning>
       <head>
         {supabaseUrl && <link rel="preconnect" href={supabaseUrl} />}
         <link rel="preconnect" href="https://images.unsplash.com" />

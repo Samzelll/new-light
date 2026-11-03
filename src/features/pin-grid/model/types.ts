@@ -12,7 +12,7 @@ export interface PinItem {
   subtitle?: string;
   tag?: string;
   badge?: string;
-  badgeColor?: 'emerald' | 'orange' | 'amber' | 'neutral';
+  badgeColor?: 'accent' | 'muted' | 'danger' | 'surface';
   isLive?: boolean;
   href?: string;
   onClick?: () => void;

@@ -169,21 +169,21 @@ export function PhotoLightbox({
         role="dialog"
         aria-modal="true"
         aria-label={`Submission details: ${title}`}
-        className="fixed inset-0 z-50 bg-[#0c0c10]/95 backdrop-blur-2xl flex flex-col overflow-y-auto animate-fade-in select-none text-white"
+        className="fixed inset-0 z-50 bg-scrim backdrop-blur-2xl flex flex-col overflow-y-auto animate-fade-in select-none text-ink font-sans"
       >
         {/* ── Ultra-Clean Pro Header Bar ── */}
-        <header className="sticky top-0 z-30 w-full bg-[#0c0c10]/80 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 py-2.5 flex items-center justify-between">
+        <header className="sticky top-0 z-30 w-full bg-surface-2/90 backdrop-blur-xl border-b border-line px-4 sm:px-6 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0 pr-4">
             {category && (
-              <span className="px-2 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10 text-[10px] font-bold uppercase tracking-wider shrink-0">
+              <span className="px-2 py-0.5 rounded-full bg-surface text-muted border border-line text-[10px] font-bold uppercase tracking-wider shrink-0">
                 {category}
               </span>
             )}
-            <h2 className="text-sm sm:text-base font-bold text-white truncate drop-shadow">
+            <h2 className="text-sm sm:text-base font-bold text-ink truncate drop-shadow font-display">
               {title}
             </h2>
             {author && (
-              <span className="text-xs text-neutral-400 hidden sm:inline truncate">
+              <span className="text-xs text-muted hidden sm:inline truncate">
                 by {author}
               </span>
             )}
@@ -198,7 +198,7 @@ export function PhotoLightbox({
                 setZoomLevel(1);
               }}
               title="View fullscreen"
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-neutral-300 hover:text-white flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-surface hover:bg-surface-2 text-muted hover:text-ink flex items-center justify-center transition-colors border border-line"
             >
               <Maximize2 size={15} />
             </button>
@@ -208,7 +208,7 @@ export function PhotoLightbox({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-neutral-300 hover:text-white flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-surface hover:bg-surface-2 text-muted hover:text-ink flex items-center justify-center transition-colors border border-line"
             >
               <X size={17} />
             </button>
@@ -238,8 +238,8 @@ export function PhotoLightbox({
               
               {/* Creator Card */}
               {author && (
-                <div className="bg-[#141418] border border-white/5 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
-                  <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-800 border border-white/10 shrink-0">
+                <div className="bg-surface border border-line rounded-2xl p-4 flex items-center gap-3 shadow-lg">
+                  <div className="relative w-11 h-11 rounded-full overflow-hidden bg-surface-2 border border-line shrink-0 ring-1 ring-accent/30">
                     {resolvedAuthorAvatar ? (
                       <Image
                         src={resolvedAuthorAvatar}
@@ -250,7 +250,7 @@ export function PhotoLightbox({
                         referrerPolicy="no-referrer"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center font-bold text-sm text-white bg-neutral-700">
+                      <div className="w-full h-full flex items-center justify-center font-bold text-sm text-ink bg-surface-2">
                         {author.replace('@', '')[0]?.toUpperCase() || 'A'}
                       </div>
                     )}
@@ -258,12 +258,12 @@ export function PhotoLightbox({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold text-white truncate">
+                      <span className="text-sm font-bold text-ink truncate font-display">
                         {author.replace('@', '')}
                       </span>
-                      <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+                      <ShieldCheck size={14} className="text-accent shrink-0" />
                     </div>
-                    <p className="text-xs text-neutral-400 truncate">
+                    <p className="text-xs text-muted truncate">
                       {author}
                     </p>
                   </div>
@@ -271,26 +271,26 @@ export function PhotoLightbox({
               )}
 
               {/* Description & Work Details */}
-              <div className="bg-[#141418] border border-white/5 rounded-2xl p-4 space-y-2.5 shadow-lg">
-                <h3 className="text-base font-bold text-white leading-tight">
+              <div className="bg-surface border border-line rounded-2xl p-4 space-y-2.5 shadow-lg">
+                <h3 className="text-base font-bold text-ink leading-tight font-display">
                   {title}
                 </h3>
 
-                <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                <p className="text-xs sm:text-sm text-muted leading-relaxed">
                   {authorBio ||
                     `Featured contest entry for this round. Evaluate composition, depth, and technical execution.`}
                 </p>
 
                 {/* Compact Social Channels */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/5">
+                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-line">
                   {resolvedSocials.instagram && (
                     <a
                       href={resolvedSocials.instagram}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink text-xs transition-colors border border-line"
                     >
-                      <Camera size={12} className="text-pink-400" />
+                      <Camera size={12} className="text-accent" />
                       <span>Instagram</span>
                     </a>
                   )}
@@ -300,9 +300,9 @@ export function PhotoLightbox({
                       href={resolvedSocials.telegram}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink text-xs transition-colors border border-line"
                     >
-                      <Send size={12} className="text-sky-400" />
+                      <Send size={12} className="text-accent" />
                       <span>Telegram</span>
                     </a>
                   )}
@@ -312,9 +312,9 @@ export function PhotoLightbox({
                       href={resolvedSocials.twitter}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink text-xs transition-colors border border-line"
                     >
-                      <Share2 size={12} className="text-blue-400" />
+                      <Share2 size={12} className="text-accent" />
                       <span>X</span>
                     </a>
                   )}
@@ -324,9 +324,9 @@ export function PhotoLightbox({
                       href={resolvedSocials.portfolio}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface text-ink text-xs transition-colors border border-line"
                     >
-                      <Globe size={12} className="text-emerald-400" />
+                      <Globe size={12} className="text-accent" />
                       <span>Portfolio</span>
                     </a>
                   )}
@@ -335,14 +335,14 @@ export function PhotoLightbox({
 
               {/* Sponsor Row (Minimal & Neat) */}
               {(sponsorName || prizePool) && (
-                <div className="bg-[#141418] border border-white/5 rounded-2xl px-4 py-3 flex items-center gap-2.5 shadow-lg text-xs text-neutral-300">
-                  <Award size={16} className="text-amber-400 shrink-0" />
+                <div className="bg-surface border border-line rounded-2xl px-4 py-3 flex items-center gap-2.5 shadow-lg text-xs text-muted">
+                  <Award size={16} className="text-accent shrink-0" />
                   <div className="min-w-0">
-                    <span className="font-semibold text-white truncate block">
+                    <span className="font-semibold text-ink truncate block">
                       {sponsorName || 'Contest Sponsor'}
                     </span>
                     {prizePool && (
-                      <span className="text-[11px] text-amber-300/90 block">
+                      <span className="text-[11px] text-accent-soft block">
                         Prize pool: {prizePool}
                       </span>
                     )}
@@ -361,13 +361,13 @@ export function PhotoLightbox({
                   }}
                   className={`w-full py-3.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
                     isSelected
-                      ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
-                      : 'bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white shadow-[#ff6a2b]/30'
+                      ? 'bg-surface-2 hover:bg-surface text-danger border border-danger/40'
+                      : 'bg-accent-solid hover:bg-accent-hover text-white shadow-lg'
                   }`}
                 >
                   {isSelected ? (
                     <>
-                      <X size={16} strokeWidth={2.5} className="text-red-400" />
+                      <X size={16} strokeWidth={2.5} className="text-danger" />
                       <span>Cancel vote for this entry</span>
                     </>
                   ) : (
@@ -386,11 +386,11 @@ export function PhotoLightbox({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-60 bg-black/98 flex flex-col justify-between animate-fade-in select-none text-white overflow-hidden"
+          className="fixed inset-0 z-60 bg-scrim flex flex-col justify-between animate-fade-in select-none text-ink overflow-hidden"
         >
           {/* Top Bar */}
           <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
-            <span className="text-xs font-semibold text-neutral-300 truncate max-w-[60vw]">
+            <span className="text-xs font-semibold text-muted truncate max-w-[60vw]">
               {title} {allPhotos.length > 1 && `(${activeIndex + 1} / ${allPhotos.length})`}
             </span>
 
@@ -398,7 +398,7 @@ export function PhotoLightbox({
               <button
                 type="button"
                 onClick={() => setZoomLevel((z) => (z === 1 ? 1.5 : z === 1.5 ? 2.5 : 1))}
-                className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold flex items-center gap-1 transition-colors"
+                className="px-2.5 py-1 rounded-full bg-surface-2 hover:bg-surface text-xs font-semibold text-ink flex items-center gap-1 transition-colors border border-line"
               >
                 {zoomLevel === 1 ? <ZoomIn size={13} /> : <ZoomOut size={13} />}
                 <span>{zoomLevel}x</span>
@@ -410,7 +410,7 @@ export function PhotoLightbox({
                   setIsFullscreenModal(false);
                   setZoomLevel(1);
                 }}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-transform active:scale-90"
+                className="w-8 h-8 rounded-full bg-surface-2 hover:bg-surface text-ink flex items-center justify-center transition-transform active:scale-90 border border-line"
               >
                 <X size={16} />
               </button>

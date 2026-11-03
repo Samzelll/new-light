@@ -423,26 +423,26 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#0d110e] text-[#eef2ec] max-w-lg mx-auto p-4 space-y-4 animate-fade-in font-['Onest',sans-serif]">
-        <div className="w-full h-[280px] bg-[#161c17] rounded-[18px] animate-pulse" />
-        <div className="h-8 w-3/4 bg-[#161c17] rounded-[14px] animate-pulse" />
-        <div className="h-20 bg-[#161c17] rounded-[18px] animate-pulse" />
+      <main className="min-h-screen bg-bg text-ink max-w-lg mx-auto p-4 space-y-4 animate-fade-in font-sans">
+        <div className="w-full h-[280px] bg-surface rounded-[18px] animate-pulse border border-line" />
+        <div className="h-8 w-3/4 bg-surface rounded-[14px] animate-pulse border border-line" />
+        <div className="h-20 bg-surface rounded-[18px] animate-pulse border border-line" />
       </main>
     );
   }
 
   if (error || !contest) {
     return (
-      <main className="min-h-screen bg-[#0d110e] text-[#eef2ec] max-w-lg mx-auto p-6 flex flex-col items-center justify-center text-center font-['Onest',sans-serif]">
-        <div className="w-16 h-16 rounded-full bg-[#161c17] border border-[#232b24] flex items-center justify-center text-2xl mb-4">
+      <main className="min-h-screen bg-bg text-ink max-w-lg mx-auto p-6 flex flex-col items-center justify-center text-center font-sans">
+        <div className="w-16 h-16 rounded-full bg-surface border border-line flex items-center justify-center text-2xl mb-4 text-accent">
           ⚠️
         </div>
-        <h2 className="text-xl font-bold text-[#eef2ec]">
+        <h2 className="text-xl font-bold text-ink font-display">
           {error || (isRu ? 'Конкурс не найден' : 'Contest not found')}
         </h2>
         <button
           onClick={handleGoBack}
-          className="mt-6 px-5 py-2.5 rounded-[18px] bg-[#161c17] border border-[#232b24] text-xs font-bold text-[#eef2ec] hover:bg-[#232b24] transition-colors"
+          className="mt-6 px-5 py-2.5 rounded-[18px] bg-surface border border-line-strong text-xs font-bold text-ink hover:bg-surface-2 transition-colors"
         >
           {isRu ? 'Вернуться назад' : 'Go back'}
         </button>
@@ -478,17 +478,17 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
       : DEFAULT_COVER);
 
   return (
-    <main className="min-h-screen bg-[#0d110e] text-[#eef2ec] font-['Onest',sans-serif] selection:bg-[#3fc27a]/30 pb-28">
+    <main className="min-h-screen bg-bg text-ink font-sans selection:bg-accent/30 pb-28">
       {/* Toast Feedback */}
       {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-[#161c17] border border-[#3fc27a]/50 text-[#3fc27a] text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-surface-2 border border-accent/50 text-accent text-xs font-bold shadow-2xl animate-fade-in pointer-events-none">
           {toastMessage}
         </div>
       )}
 
       <div className="max-w-lg mx-auto relative">
         {/* 1. Full-bleed cover image (~280px tall) */}
-        <div className="relative w-full h-[280px] sm:h-[320px] overflow-hidden bg-[#161c17]">
+        <div className="relative w-full h-[280px] sm:h-[320px] overflow-hidden bg-surface">
           <Image
             src={coverUrl}
             alt={contest.title}
@@ -500,8 +500,8 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
             referrerPolicy="no-referrer"
           />
 
-          {/* Bottom gradient fade into page background #0d110e */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d110e] via-[#0d110e]/60 to-black/25 pointer-events-none" />
+          {/* Bottom gradient fade into page background */}
+          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/60 to-black/25 pointer-events-none" />
 
           {/* Cover overlay buttons (no separate top bar) */}
           <div className="absolute top-4 inset-x-4 flex items-center justify-between z-20 pt-safe">
@@ -510,7 +510,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
               type="button"
               onClick={handleGoBack}
               aria-label={isRu ? 'Назад' : 'Back'}
-              className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#eef2ec] transition-colors"
+              className="w-10 h-10 rounded-full bg-scrim hover:bg-surface-2 backdrop-blur-md border border-line flex items-center justify-center text-ink transition-colors"
             >
               <ArrowLeft size={18} strokeWidth={2.4} />
             </button>
@@ -521,7 +521,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                 type="button"
                 onClick={handleShareContest}
                 aria-label={isRu ? 'Поделиться' : 'Share'}
-                className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#eef2ec] transition-colors active:scale-95"
+                className="w-10 h-10 rounded-full bg-scrim hover:bg-surface-2 backdrop-blur-md border border-line flex items-center justify-center text-ink transition-colors active:scale-95"
               >
                 <Share2 size={17} strokeWidth={2.4} />
               </button>
@@ -532,11 +532,11 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                 aria-label={isRu ? 'Подписаться' : 'Subscribe'}
                 className={`w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center transition-colors ${
                   isSubscribed
-                    ? 'bg-[#3fc27a]/20 border-[#3fc27a]/40 text-[#3fc27a]'
-                    : 'bg-black/40 hover:bg-black/60 border-white/10 text-[#eef2ec]'
+                    ? 'bg-accent/20 border-accent/40 text-accent-soft'
+                    : 'bg-scrim hover:bg-surface-2 border-line text-ink'
                 }`}
               >
-                <Bookmark size={18} strokeWidth={2.4} className={isSubscribed ? 'fill-[#3fc27a]' : ''} />
+                <Bookmark size={18} strokeWidth={2.4} className={isSubscribed ? 'fill-accent' : ''} />
               </button>
 
               {isCreator && (
@@ -544,7 +544,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                   type="button"
                   onClick={() => setShowStatusSheet(true)}
                   aria-label={isRu ? 'Управление конкурсом' : 'Manage contest'}
-                  className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#eef2ec] transition-colors"
+                  className="w-10 h-10 rounded-full bg-scrim hover:bg-surface-2 backdrop-blur-md border border-line flex items-center justify-center text-ink transition-colors"
                 >
                   <MoreHorizontal size={18} strokeWidth={2.4} />
                 </button>
@@ -556,52 +556,52 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
         {/* 2. Header block overlapping cover bottom (-mt-8) */}
         <div className="-mt-8 relative z-10 px-4 space-y-4">
           <div>
-            {/* Small status line with pulsing green dot */}
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#3fc27a]">
-              <span className="w-2 h-2 rounded-full bg-[#3fc27a] animate-pulse shrink-0" />
+            {/* Small status line with pulsing brass dot */}
+            <div className="flex items-center gap-2 text-xs font-semibold text-accent-soft">
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse shrink-0" />
               <span>
                 {isRu ? 'Голосование идёт · вечный конкурс' : 'Voting is live · Eternal contest'}
               </span>
             </div>
 
             {/* Title */}
-            <h1 className="text-[30px] font-extrabold text-[#eef2ec] leading-tight tracking-tight mt-1.5">
+            <h1 className="text-[30px] font-bold text-ink leading-tight tracking-tight mt-1.5 font-display">
               {contest.title}
             </h1>
 
             {/* Description */}
             {contest.description && (
-              <p className="text-[#8d998f] text-sm leading-relaxed line-clamp-2 mt-1">
+              <p className="text-muted text-sm leading-relaxed line-clamp-2 mt-1">
                 {contest.description}
               </p>
             )}
 
             {/* Sponsor & Prize Pool showcase strip */}
-            <div className="flex items-center gap-2 px-3.5 py-2 mt-3 rounded-[14px] bg-[#161c17] border border-amber-500/30 text-amber-300 text-xs font-semibold shadow-sm">
-              <Trophy size={15} className="text-amber-400 shrink-0" />
+            <div className="flex items-center gap-2 px-3.5 py-2 mt-3 rounded-[14px] bg-accent/10 border border-accent/25 text-accent-soft text-xs font-semibold shadow-sm">
+              <Trophy size={15} className="text-accent shrink-0" />
               <div className="truncate">
                 <span>{isRu ? 'Призовой фонд: 100 000 ₽' : 'Prize Pool: $1,500'}</span>
-                <span className="mx-2 text-[#8d998f]">·</span>
-                <span className="text-[#8d998f] font-normal">{isRu ? 'Спонсор: Alpha Creator Fund' : 'Partner: Alpha Creator Fund'}</span>
+                <span className="mx-2 text-muted">·</span>
+                <span className="text-muted font-normal">{isRu ? 'Спонсор: Alpha Creator Fund' : 'Partner: Alpha Creator Fund'}</span>
               </div>
             </div>
           </div>
 
           {/* 3. Compact stats strip (3 cells) */}
-          <div className="rounded-[18px] bg-[#161c17] border border-[#232b24] p-3.5 grid grid-cols-3 divide-x divide-[#232b24]">
-            {/* Cell 1: Participants with thin green progress bar */}
+          <div className="rounded-[18px] bg-surface border border-line p-3.5 grid grid-cols-3 divide-x divide-line">
+            {/* Cell 1: Participants with thin brass progress bar */}
             <div className="px-3 flex flex-col justify-between">
               <div>
-                <div className="text-base sm:text-lg font-extrabold text-[#eef2ec] tabular-nums">
+                <div className="text-base sm:text-lg font-bold text-ink tabular-nums font-display">
                   {participants.length} / {contest.max_participants || 50}
                 </div>
-                <div className="text-[11px] text-[#8d998f] mt-0.5">
+                <div className="text-[11px] text-muted mt-0.5">
                   {isRu ? 'участников' : 'participants'}
                 </div>
               </div>
-              <div className="w-full h-1 bg-[#232b24] rounded-full overflow-hidden mt-2">
+              <div className="w-full h-1 bg-surface-2 rounded-full overflow-hidden mt-2">
                 <div
-                  className="h-full bg-[#3fc27a] rounded-full transition-all duration-500"
+                  className="h-full bg-accent rounded-full transition-all duration-500"
                   style={{
                     width: `${Math.min(
                       100,
@@ -614,30 +614,30 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
             {/* Cell 2: Contest format */}
             <div className="px-3 flex flex-col justify-center">
-              <div className="text-base sm:text-lg font-extrabold text-[#eef2ec]">
+              <div className="text-base sm:text-lg font-bold text-ink font-display">
                 {isRu ? 'Вечный' : 'Eternal'}
               </div>
-              <div className="text-[11px] text-[#8d998f] mt-0.5">
+              <div className="text-[11px] text-muted mt-0.5">
                 {isRu ? 'формат' : 'format'}
               </div>
             </div>
 
             {/* Cell 3: Rating mode */}
             <div className="px-3 flex flex-col justify-center">
-              <div className="text-base sm:text-lg font-extrabold text-[#eef2ec]">
+              <div className="text-base sm:text-lg font-bold text-ink font-display">
                 Live
               </div>
-              <div className="text-[11px] text-[#8d998f] mt-0.5">
+              <div className="text-[11px] text-muted mt-0.5">
                 {isRu ? 'рейтинг' : 'rating'}
               </div>
             </div>
           </div>
 
-          {/* 4. Rules: max 3 bullet lines with green check marks */}
+          {/* 4. Rules: max 3 bullet lines with brass check marks */}
           <div className="space-y-2 py-0.5">
             {rulesList.map((rule, idx) => (
-              <div key={idx} className="flex items-start gap-2.5 text-xs text-[#eef2ec] leading-snug">
-                <Check size={16} className="text-[#3fc27a] shrink-0 mt-0.5" strokeWidth={2.8} />
+              <div key={idx} className="flex items-start gap-2.5 text-xs text-ink leading-snug">
+                <Check size={16} className="text-accent shrink-0 mt-0.5" strokeWidth={2.8} />
                 <span>{rule}</span>
               </div>
             ))}
@@ -647,7 +647,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           <div className="flex items-center gap-3 pt-1">
             <Link
               href={`/apply/${contest.id}`}
-              className="flex-1 h-[50px] rounded-[18px] bg-[#e2622a] hover:bg-[#d0541f] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center transition-all shadow-md"
+              className="flex-1 h-[50px] rounded-[18px] bg-accent-solid hover:bg-accent-hover active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center transition-all shadow-md"
             >
               {isRu ? 'Добавить работу' : 'Add entry'}
             </Link>
@@ -657,8 +657,8 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
               onClick={handleToggleSubscribe}
               className={`h-[50px] px-6 rounded-[18px] border text-sm font-semibold transition-all shrink-0 ${
                 isSubscribed
-                  ? 'bg-[#3fc27a]/15 border-[#3fc27a]/40 text-[#3fc27a]'
-                  : 'bg-[#161c17] hover:bg-[#1f2720] border-[#232b24] text-[#eef2ec]'
+                  ? 'bg-accent/15 border-accent/40 text-accent-soft'
+                  : 'bg-surface hover:bg-surface-2 border-line text-ink'
               }`}
             >
               {isSubscribed ? (isRu ? 'Вы подписаны' : 'Subscribed') : (isRu ? 'Подписаться' : 'Subscribe')}
@@ -668,17 +668,17 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           {/* 6. Popular entries / Competitors section */}
           <div className="pt-2 space-y-3">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-xl font-bold text-[#eef2ec] tracking-tight">
+              <h2 className="text-xl font-bold text-ink tracking-tight font-display">
                 {isRu ? 'Популярные работы' : 'Popular entries'}
               </h2>
-              <span className="text-xs text-[#8d998f] font-medium">
+              <span className="text-xs text-muted font-medium">
                 {isRu ? 'Рейтинг сообщества' : 'Community rating'}
               </span>
             </div>
 
             {/* Inline note if user has voted */}
             {votedParticipant && (
-              <div className="rounded-[18px] bg-[#122418] border border-[#3fc27a]/30 text-[#3fc27a] p-3.5 text-xs font-medium leading-relaxed animate-fade-in flex items-center justify-between gap-2">
+              <div className="rounded-[18px] bg-accent/10 border border-accent/30 text-accent-soft p-3.5 text-xs font-medium leading-relaxed animate-fade-in flex items-center justify-between gap-2">
                 <span>
                   {isRu
                     ? `Вы проголосовали за «${votedParticipantName}». Нажмите ещё раз, чтобы отменить.`
@@ -689,14 +689,14 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
             {/* Entries empty state */}
             {participants.length === 0 ? (
-              <div className="p-8 text-center rounded-[18px] bg-[#161c17] border border-[#232b24] space-y-3">
+              <div className="p-8 text-center rounded-[18px] bg-surface border border-line space-y-3">
                 <div className="text-3xl">📷</div>
-                <p className="text-xs text-[#8d998f]">
+                <p className="text-xs text-muted">
                   {isRu ? 'В конкурсе пока нет работ' : 'No entries submitted yet.'}
                 </p>
                 <Link
                   href={`/apply/${contest.id}`}
-                  className="inline-block px-4 py-2 rounded-full bg-[#e2622a] text-white text-xs font-bold shadow"
+                  className="inline-block px-4 py-2 rounded-full bg-accent-solid hover:bg-accent-hover text-white text-xs font-bold shadow"
                 >
                   {isRu ? 'Добавить первую работу' : 'Submit first entry'}
                 </Link>
@@ -724,13 +724,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                     <div
                       key={p.id}
                       onClick={() => setExpandedRowId(isExpanded ? null : p.id)}
-                      className={`rounded-[18px] bg-[#161c17] border p-3 flex items-center gap-3 transition-colors cursor-pointer select-none ${
-                        isVoted ? 'border-[#3fc27a]' : 'border-[#232b24] hover:border-[#333d34]'
+                      className={`rounded-[18px] bg-surface border p-3 flex items-center gap-3 transition-colors cursor-pointer select-none ${
+                        isVoted ? 'border-accent ring-1 ring-accent/30' : 'border-line hover:border-line-strong'
                       }`}
                     >
                       {/* Rank */}
                       <div className="w-5 text-center shrink-0">
-                        <span className={`text-sm font-extrabold ${isVoted ? 'text-[#3fc27a]' : 'text-[#8d998f]'}`}>
+                        <span className={`text-sm font-bold font-display ${isVoted ? 'text-accent' : 'text-muted'}`}>
                           {rank}
                         </span>
                       </div>
@@ -764,7 +764,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                             onVote: () => handleToggleVote(p.id),
                           });
                         }}
-                        className="w-16 h-16 rounded-[12px] overflow-hidden shrink-0 relative bg-black/40 border border-[#232b24] hover:opacity-90 transition-opacity"
+                        className="w-16 h-16 rounded-[12px] overflow-hidden shrink-0 relative bg-surface-2 border border-line hover:opacity-90 transition-opacity"
                       >
                         <Image
                           src={photoUrl}
@@ -779,12 +779,12 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
                       {/* Name / Caption / Thin Progress Bar */}
                       <div className="flex-1 min-w-0 pr-1">
-                        <div className="text-sm font-bold text-[#eef2ec] truncate">
+                        <div className="text-sm font-bold text-ink truncate font-display">
                           {name}
                         </div>
                         {desc ? (
                           <p
-                            className={`text-xs text-[#8d998f] mt-0.5 leading-snug transition-all ${
+                            className={`text-xs text-muted mt-0.5 leading-snug transition-all ${
                               isExpanded ? 'line-clamp-5' : 'line-clamp-1'
                             }`}
                           >
@@ -793,9 +793,9 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                         ) : null}
 
                         {/* Thin progress bar */}
-                        <div className="w-full h-1 bg-[#232b24] rounded-full overflow-hidden mt-2">
+                        <div className="w-full h-1 bg-surface-2 rounded-full overflow-hidden mt-2">
                           <div
-                            className="h-full bg-[#3fc27a] rounded-full transition-all duration-300"
+                            className="h-full bg-accent rounded-full transition-all duration-300"
                             style={{ width: `${percent}%` }}
                           />
                         </div>
@@ -803,7 +803,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
                       {/* Right: Percent + Small Pill Vote Button */}
                       <div className="shrink-0 flex flex-col items-end gap-1.5 pl-1">
-                        <span className="text-base font-extrabold text-[#eef2ec] tabular-nums leading-none">
+                        <span className="text-base font-bold text-ink tabular-nums leading-none font-display">
                           {percent}%
                         </span>
                         <button
@@ -815,8 +815,8 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                           disabled={submittingVoteId === p.id}
                           className={`text-xs font-bold rounded-full px-3 py-1 transition-all active:scale-95 flex items-center gap-1 ${
                             isVoted
-                              ? 'bg-[#3fc27a] text-[#0d110e] hover:bg-[#38b06d]'
-                              : 'border border-[#3fc27a]/60 text-[#3fc27a] hover:bg-[#3fc27a]/10'
+                              ? 'bg-accent text-on-accent hover:bg-accent-soft'
+                              : 'border border-accent/60 text-accent hover:bg-accent/10'
                           }`}
                         >
                           {submittingVoteId === p.id ? (
@@ -839,14 +839,14 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                               setMenuOpenId(menuOpenId === p.id ? null : p.id);
                             }}
                             aria-label="Actions"
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-[#8d998f] hover:text-[#eef2ec] hover:bg-[#232b24] transition-colors"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-muted hover:text-ink hover:bg-surface-2 transition-colors"
                           >
                             <MoreHorizontal size={14} />
                           </button>
                           {menuOpenId === p.id && (
                             <div
                               onClick={(e) => e.stopPropagation()}
-                              className="absolute right-0 top-8 z-30 bg-[#161c17] border border-[#232b24] rounded-xl shadow-xl p-1 min-w-[130px] animate-fade-in"
+                              className="absolute right-0 top-8 z-30 bg-surface-2 border border-line rounded-xl shadow-xl p-1 min-w-[130px] animate-fade-in"
                             >
                               <button
                                 type="button"
@@ -854,7 +854,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                                   setMenuOpenId(null);
                                   handleDeleteCompetitor(p.id);
                                 }}
-                                className="w-full text-left px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-2"
+                                className="w-full text-left px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/10 rounded-lg transition-colors flex items-center gap-2"
                               >
                                 <Trash2 size={12} />
                                 <span>{isRu ? 'Удалить' : 'Remove'}</span>
@@ -869,15 +869,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
               </div>
             )}
 
-
-
             {/* Show all / Show fewer button (for eternal/standard contests with many entries) */}
             {sortedParticipants.length > INITIAL_LIMIT && (
               <div className="pt-2 text-center">
                 <button
                   type="button"
                   onClick={() => setShowAllEntries((prev) => !prev)}
-                  className="w-full py-3 rounded-[18px] bg-[#161c17] hover:bg-[#1f2720] border border-[#232b24] text-xs font-bold text-[#eef2ec] transition-colors"
+                  className="w-full py-3 rounded-[18px] bg-surface hover:bg-surface-2 border border-line text-xs font-bold text-ink transition-colors"
                 >
                   {showAllEntries
                     ? (isRu ? 'Свернуть' : 'Show fewer')
@@ -896,25 +894,25 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
         <div className="fixed inset-0 z-50 flex items-end justify-center">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-scrim backdrop-blur-xs transition-opacity"
             onClick={() => setShowStatusSheet(false)}
           />
 
           {/* Sheet */}
-          <div className="relative w-full max-w-lg bg-[#161c17] border-t border-[#232b24] rounded-t-[24px] p-6 space-y-4 z-10 animate-fade-in pb-safe">
-            <div className="flex items-center justify-between border-b border-[#232b24] pb-3">
+          <div className="relative w-full max-w-lg bg-surface-2 border-t border-line rounded-t-[24px] p-6 space-y-4 z-10 animate-fade-in pb-safe text-ink">
+            <div className="flex items-center justify-between border-b border-line pb-3">
               <div>
-                <h3 className="text-base font-extrabold text-[#eef2ec]">
+                <h3 className="text-base font-bold text-ink font-display">
                   {isRu ? 'Статус конкурса' : 'Contest status'}
                 </h3>
-                <p className="text-xs text-[#8d998f] mt-0.5">
+                <p className="text-xs text-muted mt-0.5">
                   {isRu ? 'Панель управления организатора' : 'Organizer management controls'}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowStatusSheet(false)}
-                className="w-8 h-8 rounded-full bg-[#232b24] flex items-center justify-center text-[#8d998f] hover:text-[#eef2ec]"
+                className="w-8 h-8 rounded-full bg-surface hover:bg-surface-2 border border-line flex items-center justify-center text-muted hover:text-ink"
               >
                 <X size={16} />
               </button>
@@ -969,20 +967,20 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                     }}
                     className={`w-full p-3.5 rounded-[18px] border text-left flex items-center justify-between transition-colors ${
                       isCurrent
-                        ? 'border-[#3fc27a] bg-[#122418]'
-                        : 'border-[#232b24] bg-[#161c17] hover:bg-[#1f2720]'
+                        ? 'border-accent bg-accent/15'
+                        : 'border-line bg-surface hover:bg-surface-2'
                     }`}
                   >
                     <div>
-                      <div className={`text-sm font-bold ${isCurrent ? 'text-[#3fc27a]' : 'text-[#eef2ec]'}`}>
+                      <div className={`text-sm font-bold ${isCurrent ? 'text-accent font-display' : 'text-ink'}`}>
                         {isRu ? opt.labelRu : opt.labelEn}
                       </div>
-                      <div className="text-[11px] text-[#8d998f] mt-0.5">
+                      <div className="text-[11px] text-muted mt-0.5">
                         {isRu ? opt.descRu : opt.descEn}
                       </div>
                     </div>
                     {isCurrent && (
-                      <span className="w-6 h-6 rounded-full bg-[#3fc27a] text-[#0d110e] flex items-center justify-center shrink-0">
+                      <span className="w-6 h-6 rounded-full bg-accent text-on-accent flex items-center justify-center shrink-0">
                         <Check size={14} strokeWidth={3} />
                       </span>
                     )}
@@ -992,14 +990,14 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
             </div>
 
             {/* Creator direct add competitor action */}
-            <div className="pt-2 border-t border-[#232b24]">
+            <div className="pt-2 border-t border-line">
               <button
                 type="button"
                 onClick={() => {
                   setShowStatusSheet(false);
                   setShowAddModal(true);
                 }}
-                className="w-full py-3 rounded-[18px] bg-[#232b24] hover:bg-[#2c372d] text-xs font-bold text-[#eef2ec] transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-[18px] bg-surface hover:bg-surface-2 border border-line-strong text-xs font-bold text-ink transition-colors flex items-center justify-center gap-2"
               >
                 <Plus size={14} />
                 <span>{isRu ? 'Добавить участника напрямую' : 'Directly add competitor'}</span>
@@ -1012,16 +1010,16 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
       {/* ── Creator Add Competitor Modal ── */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
-          <div className="relative w-full max-w-md bg-[#161c17] border border-[#232b24] rounded-[24px] p-6 space-y-4 z-10 animate-fade-in shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#232b24] pb-3">
-              <h4 className="text-sm font-extrabold text-[#eef2ec]">
+          <div className="absolute inset-0 bg-scrim backdrop-blur-xs" onClick={() => setShowAddModal(false)} />
+          <div className="relative w-full max-w-md bg-surface border border-line rounded-[24px] p-6 space-y-4 z-10 animate-fade-in shadow-2xl text-ink">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <h4 className="text-sm font-bold text-ink font-display">
                 {isRu ? 'Добавить участника в конкурс' : 'Add competitor to contest'}
               </h4>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="w-7 h-7 rounded-full bg-[#232b24] flex items-center justify-center text-[#8d998f] hover:text-[#eef2ec]"
+                className="w-7 h-7 rounded-full bg-surface-2 border border-line flex items-center justify-center text-muted hover:text-ink"
               >
                 <X size={14} />
               </button>
@@ -1029,7 +1027,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
 
             <form onSubmit={handleAddCompetitor} className="space-y-3.5">
               <div>
-                <label className="text-[11px] font-semibold text-[#8d998f] block mb-1">
+                <label className="text-[11px] font-semibold text-muted block mb-1">
                   {isRu ? 'Имя участника / название работы *' : 'Name / Title *'}
                 </label>
                 <input
@@ -1037,13 +1035,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                   placeholder={isRu ? 'например, Участник 1' : 'e.g. Challenger 1'}
                   value={newCompName}
                   onChange={(e) => setNewCompName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-[14px] bg-[#0d110e] border border-[#232b24] text-xs text-[#eef2ec] focus:outline-none focus:border-[#3fc27a]"
+                  className="w-full px-3.5 py-2.5 rounded-[14px] bg-bg border border-line text-xs text-ink focus:outline-none focus:border-accent"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-[#8d998f] block mb-1">
+                <label className="text-[11px] font-semibold text-muted block mb-1">
                   {isRu ? 'Ссылка на фото *' : 'Photo URL *'}
                 </label>
                 <input
@@ -1051,13 +1049,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                   placeholder="https://images.unsplash.com/..."
                   value={newCompPhoto}
                   onChange={(e) => setNewCompPhoto(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-[14px] bg-[#0d110e] border border-[#232b24] text-xs text-[#eef2ec] focus:outline-none focus:border-[#3fc27a]"
+                  className="w-full px-3.5 py-2.5 rounded-[14px] bg-bg border border-line text-xs text-ink focus:outline-none focus:border-accent"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-[#8d998f] block mb-1">
+                <label className="text-[11px] font-semibold text-muted block mb-1">
                   {isRu ? 'Описание работы (необязательно)' : 'Description / Story (optional)'}
                 </label>
                 <textarea
@@ -1065,7 +1063,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                   placeholder={isRu ? 'Пара слов о кадре...' : 'A few words about the photo...'}
                   value={newCompDesc}
                   onChange={(e) => setNewCompDesc(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-[14px] bg-[#0d110e] border border-[#232b24] text-xs text-[#eef2ec] focus:outline-none focus:border-[#3fc27a] resize-none"
+                  className="w-full px-3.5 py-2 rounded-[14px] bg-bg border border-line text-xs text-ink focus:outline-none focus:border-accent resize-none"
                 />
               </div>
 
@@ -1073,14 +1071,14 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-[14px] bg-[#232b24] text-xs font-semibold text-[#8d998f] hover:text-[#eef2ec]"
+                  className="px-4 py-2 rounded-[14px] bg-surface-2 border border-line text-xs font-semibold text-muted hover:text-ink"
                 >
                   {isRu ? 'Отмена' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   disabled={addingComp}
-                  className="px-4 py-2 rounded-[14px] bg-[#e2622a] hover:bg-[#d0541f] text-white text-xs font-bold transition-colors"
+                  className="px-4 py-2 rounded-[14px] bg-accent-solid hover:bg-accent-hover text-white text-xs font-bold transition-colors shadow"
                 >
                   {addingComp ? '...' : (isRu ? 'Добавить' : 'Add')}
                 </button>

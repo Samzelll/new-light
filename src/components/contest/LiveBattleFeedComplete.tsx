@@ -128,39 +128,39 @@ function EmbeddedDescriptionSheet({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-scrim backdrop-blur-xs animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-[#16161a] border border-neutral-800 rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl flex flex-col space-y-4 max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-md bg-surface border border-line rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl flex flex-col space-y-4 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
+        <div className="flex items-center justify-between border-b border-line pb-3">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#ff6a2b]" />
-            <h3 className="text-sm font-black text-white">{contest.title}</h3>
+            <span className="w-2 h-2 rounded-full bg-accent" />
+            <h3 className="text-sm font-black text-ink font-display">{contest.title}</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Закрыть описание"
-            className="w-7 h-7 rounded-full bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center"
+            className="w-7 h-7 rounded-full bg-surface-2 text-muted hover:text-ink flex items-center justify-center border border-line"
           >
             <X size={15} />
           </button>
         </div>
 
-        <div className="space-y-3 text-xs text-neutral-300">
+        <div className="space-y-3 text-xs text-muted">
           <div>
-            <h4 className="font-bold text-white mb-1">Tournament Format</h4>
-            <p className="text-neutral-400">
+            <h4 className="font-bold text-ink mb-1">Tournament Format</h4>
+            <p className="text-muted">
               {stageInfo || '1v1 Live Battle with instant vote tallying.'}
             </p>
           </div>
 
           <div>
-            <h4 className="font-bold text-white mb-1">Voting Rules</h4>
-            <p className="text-neutral-400 leading-relaxed">
+            <h4 className="font-bold text-ink mb-1">Voting Rules</h4>
+            <p className="text-muted leading-relaxed">
               One vote per duel. Choose the most compelling and atmospheric
               entry. Votes are weighted by community trust index.
             </p>
@@ -168,8 +168,8 @@ function EmbeddedDescriptionSheet({
 
           {contest.description && (
             <div>
-              <h4 className="font-bold text-white mb-1">About Contest</h4>
-              <p className="text-neutral-400 leading-relaxed">{contest.description}</p>
+              <h4 className="font-bold text-ink mb-1">About Contest</h4>
+              <p className="text-muted leading-relaxed">{contest.description}</p>
             </div>
           )}
         </div>
@@ -177,7 +177,7 @@ function EmbeddedDescriptionSheet({
         <button
           type="button"
           onClick={onClose}
-          className="w-full py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs transition-colors"
+          className="w-full py-2.5 rounded-xl bg-surface-2 hover:bg-line text-ink font-bold text-xs border border-line transition-colors"
         >
           Got it
         </button>
@@ -237,12 +237,12 @@ function BattleSlide({
           className="group inline-flex items-center justify-center gap-1.5 max-w-[92%] text-center cursor-pointer transition-all active:scale-95"
           title="Открыть детали и правила конкурса"
         >
-          <span className="text-sm sm:text-base font-black tracking-wide text-white group-hover:text-[#ff6a2b] transition-colors truncate drop-shadow-md">
+          <span className="text-sm sm:text-base font-black tracking-wide text-ink group-hover:text-accent font-display transition-colors truncate drop-shadow-md">
             {battle.title}
           </span>
           <ChevronRight
             size={16}
-            className="text-neutral-500 group-hover:text-[#ff6a2b] group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
+            className="text-faint group-hover:text-accent group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
           />
         </Link>
       </header>
@@ -250,7 +250,7 @@ function BattleSlide({
       {/* ── Арена 50/50: Две карточки ── */}
       <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full h-full pb-0.5 gap-1.5">
         {/* ══════════════════════════════════════════════════════════ */}
-        {/* 1. ВЕРХНЯЯ КАРТОЧКА (RED CORNER) — 50% Высоты             */}
+        {/* 1. ВЕРХНЯЯ КАРТОЧКА (RED / SIDE-A CORNER) — 50% Высоты    */}
         {/* ══════════════════════════════════════════════════════════ */}
         <div
           role="button"
@@ -264,9 +264,9 @@ function BattleSlide({
               onVote('red');
             }
           }}
-          className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
+          className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-line bg-surface ${
             userVote === 'red'
-              ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10 cursor-pointer'
+              ? 'scale-[0.88] ring-2 ring-side-a shadow-[0_0_30px_rgba(196,165,116,0.35)] z-10 cursor-pointer'
               : userVote === 'green'
               ? 'opacity-70 brightness-[0.7] cursor-pointer hover:opacity-90'
               : isReady
@@ -276,8 +276,8 @@ function BattleSlide({
         >
           {/* Skeleton Shimmer пока фото не декодированы */}
           {!isReady && (
-            <div className="absolute inset-0 bg-neutral-900 animate-pulse flex items-center justify-center z-10">
-              <div className="w-8 h-8 rounded-full bg-neutral-800/80 animate-ping opacity-40" />
+            <div className="absolute inset-0 bg-surface-2 animate-pulse flex items-center justify-center z-10">
+              <div className="w-8 h-8 rounded-full bg-line/80 animate-ping opacity-40" />
             </div>
           )}
 
@@ -298,19 +298,19 @@ function BattleSlide({
           )}
 
           {/* Затемнение */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-bg/85 pointer-events-none" />
 
           {/* Верхняя плашка карточки: Бейдж выбора + Кнопка зума */}
           <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
             <div>
               {userVote === 'red' && (
                 <span
-                  className="px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] flex items-center gap-1.5 shadow-lg border border-emerald-400/40 animate-fade-in transition-colors cursor-pointer"
+                  className="px-2.5 py-0.5 rounded-full bg-side-a text-on-accent font-extrabold text-[11px] flex items-center gap-1.5 shadow-lg border border-side-a/40 animate-fade-in transition-colors cursor-pointer"
                   title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
                   <span>Selected</span>
-                  <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                  <span className="font-black border-l border-on-accent/30 pl-1.5 text-on-accent tabular-nums">
                     {percentages.red}%
                   </span>
                 </span>
@@ -346,7 +346,7 @@ function BattleSlide({
                 });
               }}
               aria-label="Увеличить фото и открыть детали"
-              className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
+              className="w-8 h-8 rounded-full bg-scrim hover:bg-surface-2 text-ink flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-line shadow-md ml-auto"
             >
               <Maximize2 size={14} strokeWidth={2.4} />
             </button>
@@ -356,7 +356,7 @@ function BattleSlide({
           <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
             <div className="flex items-center gap-2">
               {battle.red.author && battle.red.authorAvatar && (
-                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-line-strong shadow-sm shrink-0">
                   <Image
                     src={resolveImageUrl(battle.red.authorAvatar, 'avatars')}
                     alt={battle.red.author}
@@ -369,7 +369,7 @@ function BattleSlide({
               )}
               <div className="min-w-0">
                 {battle.red.author && (
-                  <span className="text-xs sm:text-sm font-black text-white drop-shadow-lg truncate block leading-tight">
+                  <span className="text-xs sm:text-sm font-black text-ink font-display drop-shadow-lg truncate block leading-tight">
                     {battle.red.author}
                   </span>
                 )}
@@ -377,8 +377,8 @@ function BattleSlide({
                   <span
                     className={`${
                       battle.red.author
-                        ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5'
-                        : 'text-sm sm:text-base font-black text-white'
+                        ? 'text-[10px] sm:text-[11px] text-muted font-medium mt-0.5'
+                        : 'text-sm sm:text-base font-black text-ink'
                     } drop-shadow truncate block leading-tight`}
                   >
                     {battle.red.name}
@@ -394,8 +394,8 @@ function BattleSlide({
               <div
                 className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
                   userVote === 'red'
-                    ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/60'
-                    : 'bg-black/80 text-neutral-300 border-neutral-700/60'
+                    ? 'bg-surface/90 text-accent border-accent/40'
+                    : 'bg-surface/80 text-muted border-line'
                 }`}
               >
                 {percentages.red}%
@@ -409,13 +409,13 @@ function BattleSlide({
         {/* ══════════════════════════════════════════════════════════ */}
         <div
           aria-hidden="true"
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-gradient-to-br from-[#ff6a2b] to-[#e04500] border-2 border-[#0b0b0d] flex items-center justify-center font-black text-xs text-white shadow-2xl pointer-events-none ring-2 ring-white/20 animate-pulse"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-accent border-2 border-bg flex items-center justify-center font-black text-xs text-on-accent shadow-2xl pointer-events-none ring-1 ring-accent-soft/40 animate-pulse"
         >
           VS
         </div>
 
         {/* ══════════════════════════════════════════════════════════ */}
-        {/* 2. НИЖНЯЯ КАРТОЧКА (GREEN CORNER) — 50% Высоты           */}
+        {/* 2. НИЖНЯЯ КАРТОЧКА (SIDE-B CORNER) — 50% Высоты          */}
         {/* ══════════════════════════════════════════════════════════ */}
         <div
           role="button"
@@ -429,9 +429,9 @@ function BattleSlide({
               onVote('green');
             }
           }}
-          className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#121215] ${
+          className={`group relative flex-1 h-1/2 min-h-0 w-full overflow-hidden transition-all duration-300 origin-center rounded-2xl sm:rounded-3xl border border-line bg-surface ${
             userVote === 'green'
-              ? 'scale-[0.88] ring-2 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] z-10 cursor-pointer'
+              ? 'scale-[0.88] ring-2 ring-side-b shadow-[0_0_30px_rgba(138,160,196,0.35)] z-10 cursor-pointer'
               : userVote === 'red'
               ? 'opacity-70 brightness-[0.7] cursor-pointer hover:opacity-90'
               : isReady
@@ -441,8 +441,8 @@ function BattleSlide({
         >
           {/* Skeleton Shimmer пока фото не декодированы */}
           {!isReady && (
-            <div className="absolute inset-0 bg-neutral-900 animate-pulse flex items-center justify-center z-10">
-              <div className="w-8 h-8 rounded-full bg-neutral-800/80 animate-ping opacity-40" />
+            <div className="absolute inset-0 bg-surface-2 animate-pulse flex items-center justify-center z-10">
+              <div className="w-8 h-8 rounded-full bg-line/80 animate-ping opacity-40" />
             </div>
           )}
 
@@ -463,19 +463,19 @@ function BattleSlide({
           )}
 
           {/* Затемнение */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-bg/85 pointer-events-none" />
 
           {/* Верхняя плашка карточки: Бейдж выбора + Кнопка зума */}
           <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
             <div>
               {userVote === 'green' && (
                 <span
-                  className="px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] flex items-center gap-1.5 shadow-lg border border-emerald-400/40 animate-fade-in transition-colors cursor-pointer"
+                  className="px-2.5 py-0.5 rounded-full bg-side-b text-on-side-b font-extrabold text-[11px] flex items-center gap-1.5 shadow-lg border border-side-b/40 animate-fade-in transition-colors cursor-pointer"
                   title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
                   <span>Selected</span>
-                  <span className="font-black border-l border-emerald-400/50 pl-1.5 text-emerald-100 tabular-nums">
+                  <span className="font-black border-l border-on-side-b/30 pl-1.5 text-on-side-b tabular-nums">
                     {percentages.green}%
                   </span>
                 </span>
@@ -511,7 +511,7 @@ function BattleSlide({
                 });
               }}
               aria-label="Увеличить фото и открыть детали"
-              className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white/95 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md ml-auto"
+              className="w-8 h-8 rounded-full bg-scrim hover:bg-surface-2 text-ink flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-line shadow-md ml-auto"
             >
               <Maximize2 size={14} strokeWidth={2.4} />
             </button>
@@ -521,7 +521,7 @@ function BattleSlide({
           <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
             <div className="flex items-center gap-2">
               {battle.green.author && battle.green.authorAvatar && (
-                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
+                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-line-strong shadow-sm shrink-0">
                   <Image
                     src={resolveImageUrl(battle.green.authorAvatar, 'avatars')}
                     alt={battle.green.author}
@@ -534,7 +534,7 @@ function BattleSlide({
               )}
               <div className="min-w-0">
                 {battle.green.author && (
-                  <span className="text-xs sm:text-sm font-black text-white drop-shadow-lg truncate block leading-tight">
+                  <span className="text-xs sm:text-sm font-black text-ink font-display drop-shadow-lg truncate block leading-tight">
                     {battle.green.author}
                   </span>
                 )}
@@ -542,8 +542,8 @@ function BattleSlide({
                   <span
                     className={`${
                       battle.green.author
-                        ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5'
-                        : 'text-sm sm:text-base font-black text-white'
+                        ? 'text-[10px] sm:text-[11px] text-muted font-medium mt-0.5'
+                        : 'text-sm sm:text-base font-black text-ink'
                     } drop-shadow truncate block leading-tight`}
                   >
                     {battle.green.name}
@@ -559,8 +559,8 @@ function BattleSlide({
               <div
                 className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
                   userVote === 'green'
-                    ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/60'
-                    : 'bg-black/80 text-neutral-300 border-neutral-700/60'
+                    ? 'bg-surface/90 text-side-b border-side-b/40'
+                    : 'bg-surface/80 text-muted border-line'
                 }`}
               >
                 {percentages.green}%
@@ -572,13 +572,13 @@ function BattleSlide({
 
       {/* Ошибка загрузки фото с возможностью повтора */}
       {photosState === 'error' && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-red-950/90 border border-red-500/60 text-red-200 text-xs font-bold flex items-center gap-2 shadow-xl animate-fade-in">
-          <AlertCircle size={14} className="text-red-400 shrink-0" />
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-surface border border-danger/60 text-danger text-xs font-bold flex items-center gap-2 shadow-xl animate-fade-in">
+          <AlertCircle size={14} className="text-danger shrink-0" />
           <span>Фото не загрузились</span>
           <button
             type="button"
             onClick={retryPhotos}
-            className="underline hover:text-white transition-colors"
+            className="underline hover:text-ink transition-colors"
           >
             Повторить
           </button>
@@ -599,14 +599,14 @@ interface EndOfFeedSlideProps {
 
 function EndOfFeedSlide({ onScrollToTop, onResetFilters }: EndOfFeedSlideProps) {
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center select-none bg-[#0b0b0d]">
-      <div className="w-16 h-16 rounded-3xl bg-neutral-900 border border-neutral-800 flex items-center justify-center text-3xl mb-4 shadow-xl">
+    <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center select-none bg-bg">
+      <div className="w-16 h-16 rounded-3xl bg-surface border border-line flex items-center justify-center text-3xl mb-4 shadow-xl">
         🏆
       </div>
-      <h3 className="text-base sm:text-lg font-black text-white mb-2 tracking-wide">
+      <h3 className="text-base sm:text-lg font-black text-ink font-display mb-2 tracking-wide">
         Вы посмотрели все дуэли
       </h3>
-      <p className="text-xs text-neutral-400 mb-6 max-w-xs leading-relaxed">
+      <p className="text-xs text-muted mb-6 max-w-xs leading-relaxed">
         Все активные 1v1 батлы в этой подборке просмотрены. Вы можете вернуться к началу
         или выбрать другие категории.
       </p>
@@ -614,7 +614,7 @@ function EndOfFeedSlide({ onScrollToTop, onResetFilters }: EndOfFeedSlideProps) 
         <button
           type="button"
           onClick={onScrollToTop}
-          className="w-full py-3 px-5 rounded-full bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-[#ff6a2b]/25 transition-all active:scale-95"
+          className="w-full py-3 px-5 rounded-full bg-accent-solid hover:bg-accent-hover text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-black/30 transition-all active:scale-95"
         >
           <ArrowUp size={16} strokeWidth={2.5} />
           <span>Вернуться в начало</span>
@@ -623,7 +623,7 @@ function EndOfFeedSlide({ onScrollToTop, onResetFilters }: EndOfFeedSlideProps) 
           <button
             type="button"
             onClick={onResetFilters}
-            className="w-full py-3 px-5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white font-bold text-xs border border-neutral-800 transition-all active:scale-95"
+            className="w-full py-3 px-5 rounded-full bg-surface hover:bg-surface-2 text-muted hover:text-ink font-bold text-xs border border-line-strong transition-all active:scale-95"
           >
             Сбросить фильтры
           </button>
@@ -881,20 +881,20 @@ export function LiveBattleFeedComplete({
   if (battles.length === 0) {
     return (
       <div className="flex-1 px-4 py-16 flex flex-col items-center justify-center text-center select-none">
-        <div className="w-16 h-16 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-2xl mb-4">
+        <div className="w-16 h-16 rounded-full bg-surface border border-line flex items-center justify-center text-2xl mb-4">
           ⚔️
         </div>
-        <h3 className="text-base font-bold text-white mb-1.5">
+        <h3 className="text-base font-bold text-ink font-display mb-1.5">
           No active battles match your filters
         </h3>
-        <p className="text-xs text-neutral-400 mb-6 max-w-xs">
+        <p className="text-xs text-muted mb-6 max-w-xs">
           Try resetting filters or selecting different categories.
         </p>
         {onResetFilters && (
           <button
             type="button"
             onClick={onResetFilters}
-            className="px-5 py-2.5 rounded-full bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs shadow-lg shadow-[#ff6a2b]/20 transition-all active:scale-95"
+            className="px-5 py-2.5 rounded-full bg-accent-solid hover:bg-accent-hover text-white font-bold text-xs shadow-lg shadow-black/20 transition-all active:scale-95"
           >
             Reset Filters
           </button>
@@ -909,9 +909,9 @@ export function LiveBattleFeedComplete({
       {errorToast && (
         <div
           role="alert"
-          className="fixed top-4 inset-x-0 mx-auto w-fit z-50 bg-red-950/90 border border-red-500/80 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-fade-in"
+          className="fixed top-4 inset-x-0 mx-auto w-fit z-50 bg-surface border border-danger/80 text-ink text-xs font-bold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-fade-in"
         >
-          <AlertCircle size={15} className="text-red-400" />
+          <AlertCircle size={15} className="text-danger" />
           <span>{errorToast}</span>
         </div>
       )}
