@@ -298,25 +298,8 @@ export function TikTokFeedView({
             <section
               key={group.id}
               data-group-id={group.id}
-              className="h-full w-full snap-start snap-always relative overflow-hidden shrink-0 flex flex-col px-1 pt-0 pb-16 lg:pb-0 select-none min-h-0 [content-visibility:auto] [contain-intrinsic-size:auto_100dvh]"
+              className="h-full w-full snap-start snap-always relative overflow-hidden shrink-0 flex flex-col px-1 pt-1 pb-1.5 sm:pb-2 lg:pb-1 select-none min-h-0 [content-visibility:auto] [contain-intrinsic-size:auto_100dvh]"
             >
-              {/* ── Top Bar: Заголовок конкурса ── */}
-              <header className="flex items-center justify-center px-3 py-1.5 shrink-0 z-20 bg-transparent border-none w-full">
-                <Link
-                  href={`/contest/${group.contestId}`}
-                  className="group inline-flex items-center justify-center gap-1.5 max-w-[92%] text-center cursor-pointer transition-all active:scale-95"
-                  title="Open contest details & rules"
-                >
-                  <span className="text-sm sm:text-base font-black tracking-wide text-ink group-hover:text-accent font-display transition-colors truncate drop-shadow-md">
-                    {currentContest?.title || shortTitle}
-                  </span>
-                  <ChevronRight
-                    size={16}
-                    className="text-faint group-hover:text-accent group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
-                  />
-                </Link>
-              </header>
-
               {/* ── 4 карточки 2x2: Заполнение всего доступного вьюпорта ── */}
               <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-1.5 sm:gap-2 min-h-0 w-full h-full pb-0.5">
                 {group.members.slice(0, 4).map((member, idx) => {
@@ -467,6 +450,23 @@ export function TikTokFeedView({
                   );
                 })}
               </div>
+
+              {/* ── Нижняя плашка конкурса (правый нижний угол под карточками) ── */}
+              <footer className="flex items-center justify-end px-2 pt-1.5 pb-0.5 shrink-0 z-20 w-full">
+                <Link
+                  href={`/contest/${group.contestId}`}
+                  className="group inline-flex items-center justify-end gap-1.5 text-right cursor-pointer transition-all active:scale-95 py-1 px-3 rounded-full bg-surface/90 hover:bg-surface-2 border border-line/90 backdrop-blur-md shadow-sm max-w-[85%]"
+                  title="Open contest details & rules"
+                >
+                  <span className="text-xs sm:text-sm font-bold tracking-wide text-ink group-hover:text-accent font-display transition-colors truncate drop-shadow-sm">
+                    {currentContest?.title || shortTitle}
+                  </span>
+                  <ChevronRight
+                    size={14}
+                    className="text-accent group-hover:translate-x-0.5 transition-all shrink-0"
+                  />
+                </Link>
+              </footer>
             </section>
           );
         })}

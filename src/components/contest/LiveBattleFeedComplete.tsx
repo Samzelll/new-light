@@ -229,24 +229,7 @@ function BattleSlide({
   const isReady = photosState === 'ready';
 
   return (
-    <div className="h-full w-full flex flex-col relative select-none px-1 pt-0 pb-16 lg:pb-0 overflow-hidden min-h-0">
-      {/* ── Шапка: Заголовок конкурса ── */}
-      <header className="flex items-center justify-center px-3 py-1.5 shrink-0 z-20 bg-transparent border-none w-full">
-        <Link
-          href={`/contest/${targetContestId}`}
-          className="group inline-flex items-center justify-center gap-1.5 max-w-[92%] text-center cursor-pointer transition-all active:scale-95"
-          title="Открыть детали и правила конкурса"
-        >
-          <span className="text-sm sm:text-base font-black tracking-wide text-ink group-hover:text-accent font-display transition-colors truncate drop-shadow-md">
-            {battle.title}
-          </span>
-          <ChevronRight
-            size={16}
-            className="text-faint group-hover:text-accent group-hover:translate-x-0.5 transition-all shrink-0 opacity-70 group-hover:opacity-100"
-          />
-        </Link>
-      </header>
-
+    <div className="h-full w-full flex flex-col relative select-none px-1 pt-1 pb-1.5 sm:pb-2 lg:pb-1 overflow-hidden min-h-0">
       {/* ── Арена 50/50: Две карточки ── */}
       <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full h-full pb-0.5 gap-1.5">
         {/* ══════════════════════════════════════════════════════════ */}
@@ -569,6 +552,23 @@ function BattleSlide({
           )}
         </div>
       </div>
+
+      {/* ── Нижняя плашка конкурса (правый нижний угол под участниками) ── */}
+      <footer className="flex items-center justify-end px-2 pt-1.5 pb-0.5 shrink-0 z-20 w-full">
+        <Link
+          href={`/contest/${targetContestId}`}
+          className="group inline-flex items-center justify-end gap-1.5 text-right cursor-pointer transition-all active:scale-95 py-1 px-3 rounded-full bg-surface/90 hover:bg-surface-2 border border-line/90 backdrop-blur-md shadow-sm max-w-[85%]"
+          title="Открыть детали и правила конкурса"
+        >
+          <span className="text-xs sm:text-sm font-bold tracking-wide text-ink group-hover:text-accent font-display transition-colors truncate drop-shadow-sm">
+            {battle.title}
+          </span>
+          <ChevronRight
+            size={14}
+            className="text-accent group-hover:translate-x-0.5 transition-all shrink-0"
+          />
+        </Link>
+      </footer>
 
       {/* Ошибка загрузки фото с возможностью повтора */}
       {photosState === 'error' && (

@@ -325,7 +325,7 @@ export default function ProfilePage() {
           bio={profile?.bio ?? 'Lead Coordinator at Opinion Net'}
           trustScore={trustScore}
           onEditClick={() => setIsEditOpen(true)}
-          onBackClick={() => router.back()}
+          backHref="/"
         />
 
         {/* ── Component 2: StatsRow ── */}

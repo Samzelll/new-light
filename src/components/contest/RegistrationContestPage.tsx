@@ -338,11 +338,7 @@ export function ContestPage({ contest, participants = [], userHasApplied = false
 
   // Back handler
   const handleBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push('/');
-    }
+    router.push('/');
   };
 
   // Handle closing sheet and restoring focus
@@ -416,14 +412,13 @@ export function ContestPage({ contest, participants = [], userHasApplied = false
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none" />
 
           {/* Overlaid round back button (top-left) */}
-          <button
-            type="button"
-            onClick={handleBack}
+          <Link
+            href="/"
             aria-label="Go back"
-            className="absolute top-3 left-3 w-10 h-10 rounded-full bg-scrim hover:bg-surface-2 backdrop-blur-md text-ink flex items-center justify-center active:scale-95 transition-all border border-line z-20 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="absolute top-3 left-3 w-10 h-10 rounded-full bg-scrim hover:bg-surface-2 backdrop-blur-md text-ink flex items-center justify-center active:scale-95 transition-all border border-line z-20 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
           >
             <ArrowLeft size={18} strokeWidth={2.5} />
-          </button>
+          </Link>
 
           {/* Overlaid round share button (top-right) */}
           <button

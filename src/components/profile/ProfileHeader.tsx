@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { ChevronLeft, Pencil, User } from 'lucide-react';
 import { isAdmin, canModerateContests } from '@/constants/permissions';
 import { LazyImage } from '@/components/common/LazyImage';
@@ -13,7 +14,8 @@ export interface ProfileHeaderProps {
   bio?: string;
   trustScore: number;
   onEditClick: () => void;
-  onBackClick: () => void;
+  onBackClick?: () => void;
+  backHref?: string;
 }
 
 export function ProfileHeader({
@@ -25,6 +27,7 @@ export function ProfileHeader({
   trustScore,
   onEditClick,
   onBackClick,
+  backHref = '/',
 }: ProfileHeaderProps) {
   // Only show role pill for admins / moderators. Regular users see none.
   const showAdminPill = role && (isAdmin(role) || canModerateContests(role) || role === 'admin' || role === 'developer');
@@ -37,14 +40,18 @@ export function ProfileHeader({
       {/* ── Top Bar: Back button (left) and Edit pencil button (right) ── */}
       {/* No title, no search, no sign-out, no create/moderation icons here */}
       <header className="flex items-center justify-between py-3">
-        <button
-          type="button"
-          onClick={onBackClick}
-          aria-label="Back"
-          className="w-10 h-10 rounded-full text-accent hover:opacity-80 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent -ml-2"
+        <Link
+          href={backHref}
+          onClick={() => {
+            if (onBackClick) {
+              onBackClick();
+            }
+          }}
+          aria-label="Back to Home"
+          className="w-10 h-10 rounded-full text-accent hover:opacity-80 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent -ml-2 cursor-pointer"
         >
           <ChevronLeft size={28} strokeWidth={2.5} />
-        </button>
+        </Link>
 
         <button
           type="button"

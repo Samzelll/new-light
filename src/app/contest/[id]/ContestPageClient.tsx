@@ -414,11 +414,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   };
 
   const handleGoBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push('/');
-    }
+    router.push('/');
   };
 
   if (loading) {
@@ -438,14 +434,31 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           ⚠️
         </div>
         <h2 className="text-xl font-bold text-ink font-display">
-          {error || (isRu ? 'Конкурс не найден' : 'Contest not found')}
+          {error === 'Row not found'
+            ? (isRu ? 'Конкурс или дуэль не найдены' : 'Contest or duel not found')
+            : (error || (isRu ? 'Конкурс не найден' : 'Contest not found'))}
         </h2>
-        <button
-          onClick={handleGoBack}
-          className="mt-6 px-5 py-2.5 rounded-[18px] bg-surface border border-line-strong text-xs font-bold text-ink hover:bg-surface-2 transition-colors"
-        >
-          {isRu ? 'Вернуться назад' : 'Go back'}
-        </button>
+        <p className="text-xs text-muted mt-2 max-w-xs leading-relaxed">
+          {isRu
+            ? 'Возможно, страница была завершена или перемещена. Вы можете сразу вернуться к ленте.'
+            : 'This entry may have concluded or moved. Return to the active spotlight feed.'}
+        </p>
+        <div className="flex items-center justify-center gap-3 mt-6">
+          <Link
+            href="/"
+            className="px-5 py-2.5 rounded-full bg-accent-solid hover:bg-accent-hover text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+          >
+            <span>←</span>
+            <span>{isRu ? 'На главную' : 'Back to Home'}</span>
+          </Link>
+          <button
+            type="button"
+            onClick={handleGoBack}
+            className="px-5 py-2.5 rounded-full bg-surface border border-line-strong text-xs font-bold text-ink hover:bg-surface-2 transition-all active:scale-95"
+          >
+            {isRu ? 'Назад' : 'Go back'}
+          </button>
+        </div>
       </main>
     );
   }
@@ -506,14 +519,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
           {/* Cover overlay buttons (no separate top bar) */}
           <div className="absolute top-4 inset-x-4 flex items-center justify-between z-20 pt-safe">
             {/* Back button */}
-            <button
-              type="button"
-              onClick={handleGoBack}
+            <Link
+              href="/"
               aria-label={isRu ? 'Назад' : 'Back'}
-              className="w-10 h-10 rounded-full bg-scrim hover:bg-surface-2 backdrop-blur-md border border-line flex items-center justify-center text-ink transition-colors"
+              className="w-10 h-10 rounded-full bg-scrim hover:bg-surface-2 backdrop-blur-md border border-line flex items-center justify-center text-ink transition-colors cursor-pointer"
             >
               <ArrowLeft size={18} strokeWidth={2.4} />
-            </button>
+            </Link>
 
             {/* Right buttons: Share, Bookmark & Manage */}
             <div className="flex items-center gap-2">

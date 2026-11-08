@@ -116,7 +116,7 @@ export const PinCard = memo(function PinCard({
           )}
 
           {/* Top Badges (Live, Tag, Category, Following Star Icon) */}
-          <div className="relative top-2 left-2 right-2 z-10 flex items-center justify-between pointer-events-none">
+          <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between pointer-events-none">
             <div className="flex items-center gap-1">
               {pin.isLive ? (
                 <span className="bg-accent/25 text-accent-soft px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 border border-accent/35 shadow-xs backdrop-blur-xs">
@@ -124,7 +124,7 @@ export const PinCard = memo(function PinCard({
                   Live
                 </span>
               ) : pin.badge ? (
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-scrim text-accent-soft border border-line shadow-xs">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-scrim/90 text-accent-soft border border-line shadow-xs backdrop-blur-xs">
                   {pin.badge}
                 </span>
               ) : null}
@@ -133,14 +133,14 @@ export const PinCard = memo(function PinCard({
             {/* Right Badge: Star icon for following / saved, or compact text tag */}
             {pin.isSubscribed || pin.tag?.toLowerCase().includes('follow') ? (
               <span
-                className="w-6 h-6 rounded-full bg-scrim/90 border border-line flex items-center justify-center text-accent shadow-xs backdrop-blur-xs shrink-0"
-                title="Подписка оформлена"
-                aria-label="Подписка"
+                className="w-6 h-6 rounded-full bg-surface/90 border border-accent/40 flex items-center justify-center text-accent shadow-xs backdrop-blur-md shrink-0 ml-auto"
+                title="В избранном"
+                aria-label="В избранном"
               >
                 <Star size={11} className="fill-accent text-accent" />
               </span>
             ) : pin.tag ? (
-              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-scrim text-muted border border-line shrink-0">
+              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-scrim/90 text-muted border border-line shrink-0 ml-auto backdrop-blur-xs">
                 {pin.tag}
               </span>
             ) : null}

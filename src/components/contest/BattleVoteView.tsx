@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
   ChevronRight,
@@ -31,7 +30,6 @@ interface BattleVoteViewProps {
 }
 
 export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps) {
-  const router = useRouter();
 
   const [battle, setBattle] = useState<BattleContest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -355,14 +353,19 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
         {/* ── Top Bar: Back Button + Centered Clickable Contest Title + Share Button ── */}
         <header className="flex items-center justify-between px-1 py-1 relative z-20 shrink-0 bg-transparent border-none">
           {/* Back Button (Seamless) */}
-          <button
-            type="button"
-            onClick={() => (onBack ? onBack() : router.push('/'))}
+          <Link
+            href="/?tab=battles"
+            onClick={(e) => {
+              if (onBack) {
+                e.preventDefault();
+                onBack();
+              }
+            }}
             aria-label="Back"
-            className="w-8 h-8 rounded-full bg-transparent hover:bg-surface-2 text-ink/80 hover:text-ink flex items-center justify-center transition-all active:scale-95 border-none shrink-0"
+            className="w-8 h-8 rounded-full bg-transparent hover:bg-surface-2 text-ink/80 hover:text-ink flex items-center justify-center transition-all active:scale-95 border-none shrink-0 cursor-pointer"
           >
             <ChevronLeft size={20} strokeWidth={2.5} />
-          </button>
+          </Link>
 
           {/* Centered Clickable Title */}
           <button

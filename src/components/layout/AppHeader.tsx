@@ -42,7 +42,7 @@ export function AppHeader({
       : null;
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between px-3 h-14 bg-bg/95 backdrop-blur-md border-b border-line select-none">
+    <header className="sticky top-0 z-40 flex items-center justify-between px-3 sm:px-6 h-14 bg-bg/95 backdrop-blur-md border-b border-line select-none w-full">
       {/* Search / Filter button (left) with indicator dot when filters are active */}
       <button
         type="button"
@@ -58,13 +58,9 @@ export function AppHeader({
 
       {/* Header Tabs (center): Contests, Feed, Battles */}
       <nav
-        className="tabs flex-1 max-w-[280px] mx-2 relative flex items-center justify-center"
+        className="flex-1 max-w-[280px] sm:max-w-[340px] mx-2 relative grid grid-cols-3 items-center text-center h-full"
         role="tablist"
         aria-label="Main navigation"
-        style={{
-          '--tab-count': '3',
-          '--tab-index': tabIndex.toString(),
-        } as React.CSSProperties}
       >
         <button
           type="button"
@@ -73,8 +69,8 @@ export function AppHeader({
           aria-selected={activeTab === 'contests'}
           aria-controls="panel-contests"
           onClick={() => onTabChange('contests')}
-          className={`tab focus:outline-none focus-visible:ring-1 focus-visible:ring-accent text-[14px] font-semibold py-2 px-2 transition-colors relative ${
-            activeTab === 'contests' ? 'text-ink' : 'text-faint hover:text-ink'
+          className={`w-full py-2.5 px-1 text-[14px] font-semibold transition-colors relative flex items-center justify-center focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
+            activeTab === 'contests' ? 'text-ink font-bold' : 'text-faint hover:text-ink'
           }`}
         >
           Contests
@@ -87,8 +83,8 @@ export function AppHeader({
           aria-selected={activeTab === 'feed'}
           aria-controls="panel-feed"
           onClick={() => onTabChange('feed')}
-          className={`tab focus:outline-none focus-visible:ring-1 focus-visible:ring-accent text-[14px] font-semibold py-2 px-2 transition-colors relative ${
-            activeTab === 'feed' ? 'text-ink' : 'text-faint hover:text-ink'
+          className={`w-full py-2.5 px-1 text-[14px] font-semibold transition-colors relative flex items-center justify-center focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
+            activeTab === 'feed' ? 'text-ink font-bold' : 'text-faint hover:text-ink'
           }`}
         >
           Feed
@@ -101,15 +97,23 @@ export function AppHeader({
           aria-selected={activeTab === 'battles'}
           aria-controls="panel-battles"
           onClick={() => onTabChange('battles')}
-          className={`tab focus:outline-none focus-visible:ring-1 focus-visible:ring-accent text-[14px] font-semibold py-2 px-2 transition-colors relative ${
-            activeTab === 'battles' ? 'text-ink' : 'text-faint hover:text-ink'
+          className={`w-full py-2.5 px-1 text-[14px] font-semibold transition-colors relative flex items-center justify-center focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
+            activeTab === 'battles' ? 'text-ink font-bold' : 'text-faint hover:text-ink'
           }`}
         >
           Battles
         </button>
 
-        {/* Sliding 2px Accent Tab Underline */}
-        <div className="tab-indicator !bg-accent !h-[2px]" aria-hidden="true" />
+        {/* Sliding Dot Indicator (replaces bottom underline) */}
+        <div
+          className="absolute bottom-1.5 left-0 h-1.5 w-1/3 flex justify-center pointer-events-none transition-transform duration-300 ease-out"
+          style={{
+            transform: `translateX(${tabIndex * 100}%)`,
+          }}
+          aria-hidden="true"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(196,165,116,0.7)]" />
+        </div>
       </nav>
 
       {/* Avatar profile button (right): 40px, bg-surface-2, harmonized border/ring in brass accent */}

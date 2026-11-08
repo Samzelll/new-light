@@ -128,8 +128,8 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       const updateCols = () => {
         const w = window.innerWidth;
-        if (w >= 1280) setColumnsCount(4);
-        else if (w >= 768) setColumnsCount(3);
+        if (w >= 1440) setColumnsCount(4);
+        else if (w >= 900) setColumnsCount(3);
         else setColumnsCount(2);
       };
       updateCols();
@@ -712,7 +712,7 @@ export default function HomePage() {
     profile?.username || (profile as any)?.username || 'user';
 
   return (
-    <div className="min-h-screen bg-bg text-ink flex flex-col items-center selection:bg-accent/30">
+    <div className="w-full min-h-screen bg-bg text-ink flex flex-col items-center selection:bg-accent/30">
       {/* Dev cycle advancement notification */}
       {cycleToast && (
         <div className="fixed top-3 z-50 px-4 py-2 rounded-full bg-accent text-on-accent font-bold text-xs shadow-xl animate-fade-in">
@@ -724,10 +724,10 @@ export default function HomePage() {
       <div
         className={`w-full flex flex-col bg-bg relative transition-all duration-300 ${
           mainTab === 'contests'
-            ? 'w-full max-w-full md:max-w-4xl lg:max-w-6xl xl:max-w-7xl min-h-screen pb-8 md:pb-24 px-1 sm:px-2 md:px-4'
+            ? 'w-full max-w-7xl mx-auto min-h-screen pb-8 md:pb-24 sm:px-4 lg:px-6'
             : mainTab === 'battles'
-            ? 'max-w-md lg:max-w-xl xl:max-w-2xl h-[100dvh] pb-0 overflow-hidden'
-            : 'max-w-md md:max-w-lg lg:max-w-xl h-[100dvh] pb-0 overflow-hidden'
+            ? 'w-full max-w-md md:max-w-lg lg:max-w-2xl mx-auto h-[100dvh] pb-0 overflow-hidden'
+            : 'w-full max-w-md md:max-w-lg lg:max-w-2xl mx-auto h-[100dvh] pb-0 overflow-hidden'
         }`}
       >
         {/* ── Top Header with 3 Tabs: Contests | Feed | Battles ── */}
@@ -793,7 +793,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="flex-1 px-2 sm:px-3 pt-2"
+            className="flex-1 px-1 sm:px-0 pt-2"
           >
             {loadingContests ? (
               <ContestGridSkeleton count={6} />

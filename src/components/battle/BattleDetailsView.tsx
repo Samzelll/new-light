@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   ArrowLeft,
   Share2,
@@ -217,14 +218,19 @@ export function BattleDetailsView({ battleId, onBack }: BattleDetailsViewProps) 
       <div className="w-full max-w-xl mx-auto px-2 sm:px-6 pt-3 space-y-3.5 sm:space-y-5">
         {/* ── Top Bar ── */}
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onBack || (() => router.push('/?tab=battles'))}
+          <Link
+            href="/?tab=battles"
+            onClick={(e) => {
+              if (onBack) {
+                e.preventDefault();
+                onBack();
+              }
+            }}
             aria-label="Назад"
-            className="w-10 h-10 rounded-full bg-surface text-ink border border-line flex items-center justify-center transition-colors hover:border-line-strong"
+            className="w-10 h-10 rounded-full bg-surface text-ink border border-line flex items-center justify-center transition-colors hover:border-line-strong cursor-pointer"
           >
             <ArrowLeft size={18} strokeWidth={2.4} />
-          </button>
+          </Link>
 
           <div className="flex items-center gap-2">
             <button

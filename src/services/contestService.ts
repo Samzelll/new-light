@@ -94,13 +94,79 @@ export async function getContests(
 export async function getContestById(
   id: string
 ): Promise<{ data: Contest | null; error: string | null }> {
+  if (!id) return { data: null, error: 'Contest ID is required' };
+
+  // 1. Direct fetch from supabase / mockDb
   const { data, error } = await supabase
     .from('contests')
     .select('*, categories(name, slug, icon_url)')
     .eq('id', id)
     .single();
 
-  return { data: (data as Contest) ?? null, error: error?.message ?? null };
+  if (data) {
+    return { data: (data as Contest), error: null };
+  }
+
+  // 2. Fallback: Check alias map (maps battle IDs and slug IDs to actual contest records)
+  const aliasMap: Record<string, string> = {
+    'contest-neon-shinjuku': 'contest-battle-01',
+    'battle-01': 'contest-battle-01',
+    'battle-02': 'contest-tennis-apply',
+    'battle-03': 'contest-photo-month',
+    'battle-04': 'contest-glamour',
+    'battle-05': 'contest-nature',
+  };
+  const mappedId = aliasMap[id];
+  if (mappedId && mappedId !== id) {
+    const { data: aliasData } = await supabase
+      .from('contests')
+      .select('*, categories(name, slug, icon_url)')
+      .eq('id', mappedId)
+      .single();
+    if (aliasData) {
+      return { data: (aliasData as Contest), error: null };
+    }
+  }
+
+  // 3. Fallback: check SEED_CONTESTS from mockStore
+  try {
+    const { SEED_CONTESTS } = await import('@/services/mock/mockStore');
+    const storeContest = SEED_CONTESTS.find((c: any) => c.id === id);
+    if (storeContest) {
+      return { data: storeContest as unknown as Contest, error: null };
+    }
+  } catch {}
+
+  // 4. Fallback: Check SEED_SAMPLE_BATTLES to synthesize contest if ID is from battle feed
+  try {
+    const { SEED_SAMPLE_BATTLES } = await import('@/services/battleDataService');
+    const matchedBattle = SEED_SAMPLE_BATTLES.find((b) => b.id === id || b.contestId === id);
+    if (matchedBattle) {
+      const syntheticContest: Contest = {
+        id: matchedBattle.contestId || matchedBattle.id,
+        title: matchedBattle.title.replace(/·.*/, '').trim(),
+        description: `Live duel tournament in ${matchedBattle.category}. Vote for the most compelling shot.`,
+        rules: 'Fair community 1v1 battle voting on Opinion Net.',
+        type: 'battle',
+        status: 'active',
+        category_id: 'cat-creative',
+        cover_url: matchedBattle.red.photo || matchedBattle.green.photo,
+        max_participants: 2,
+        group_size: 2,
+        registration_start: null,
+        registration_end: null,
+        voting_start: new Date().toISOString(),
+        voting_end: null,
+        created_by: 'usr-admin-01',
+        is_featured: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      return { data: syntheticContest, error: null };
+    }
+  } catch {}
+
+  return { data: null, error: error?.message ?? 'Contest not found' };
 }
 
 // ── createContest ─────────────────────────────────────────────────

@@ -34,28 +34,15 @@ export function ContestCardSkeleton({ heightClass = 'h-52' }: { heightClass?: st
 /**
  * ContestGridSkeleton renders 4 to 6 cards simulating the 2-column home masonry grid.
  */
-export function ContestGridSkeleton({ count = 6 }: { count?: number }) {
-  const col1 = [1, 2, 3].slice(0, Math.ceil(count / 2));
-  const col2 = [4, 5, 6].slice(0, Math.floor(count / 2));
-
+export function ContestGridSkeleton({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:gap-2.5 w-full">
-      <div className="flex flex-col gap-2 sm:gap-2.5">
-        {col1.map((id, idx) => (
-          <ContestCardSkeleton
-            key={`s-c1-${id}`}
-            heightClass={idx % 2 === 0 ? 'h-52 sm:h-56' : 'h-64 sm:h-72'}
-          />
-        ))}
-      </div>
-      <div className="flex flex-col gap-2 sm:gap-2.5">
-        {col2.map((id, idx) => (
-          <ContestCardSkeleton
-            key={`s-c2-${id}`}
-            heightClass={idx % 2 === 0 ? 'h-64 sm:h-72' : 'h-52 sm:h-56'}
-          />
-        ))}
-      </div>
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-1.5 sm:gap-2.5 w-full">
+      {Array.from({ length: count }).map((_, idx) => (
+        <ContestCardSkeleton
+          key={`s-c-${idx}`}
+          heightClass={idx % 3 === 0 ? 'h-64 sm:h-72' : idx % 2 === 0 ? 'h-52 sm:h-60' : 'h-56 sm:h-64'}
+        />
+      ))}
     </div>
   );
 }
