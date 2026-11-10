@@ -7,7 +7,6 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  Maximize2,
   Check,
   Share2,
   Trophy,
@@ -433,24 +432,33 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             {hasVoted && userVotedCorner === 'red' && (
               <div className="absolute top-3 left-3 z-10 animate-fade-in">
                 <span
-                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-on-accent bg-accent hover:bg-accent-soft shadow-md inline-flex items-center gap-1.5 border border-accent/40 cursor-pointer transition-colors"
+                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-accent-fg bg-accent shadow-md inline-flex items-center gap-1.5 border border-accent/40 cursor-pointer transition-colors"
                   title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
                   <span>Selected</span>
-                  <span className="font-black border-l border-on-accent/30 pl-1.5 text-on-accent tabular-nums">
-                    {redComp.percentage.toFixed(1)}%
-                  </span>
                 </span>
               </div>
             )}
 
-            {/* Top-Right: Zoom inspect button */}
-            <div className="absolute top-3 right-3 z-20">
+            {/* Photo */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={redComp.photoUrl}
+              alt={redComp.name}
+              className="w-full h-full object-cover object-center pointer-events-none"
+            />
+
+            {/* Bottom Dark Scrim */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+
+            {/* Entry Author Avatar + Handle + Work Title (click opens photo) */}
+            <div className="absolute bottom-3 left-3.5 right-24 z-10">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   const authorTag = redComp.author || undefined;
                   setLightboxData({
                     isOpen: true,
@@ -480,27 +488,9 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                     onVote: () => handleVote(redComp),
                   });
                 }}
-                aria-label={`Inspect ${redComp.name} photo`}
-                className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white/90 hover:text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-white/20 shadow-md"
+                className="group/author flex items-center gap-2 min-w-0 max-w-full text-left rounded-md px-1.5 py-1 -ml-1.5 -mb-1 bg-surface/50 hover:bg-surface/85 active:scale-95 backdrop-blur-xs transition-all cursor-pointer pointer-events-auto border border-transparent hover:border-line shadow-xs"
+                aria-label={`Inspect ${redComp.name || redComp.author || 'competitor'} photo`}
               >
-                <Maximize2 size={14} strokeWidth={2.4} />
-              </button>
-            </div>
-
-            {/* Photo */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={redComp.photoUrl}
-              alt={redComp.name}
-              className="w-full h-full object-cover object-center pointer-events-none"
-            />
-
-            {/* Bottom Dark Scrim */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
-
-            {/* Entry Author Avatar + Handle + Work Title */}
-            <div className="absolute bottom-3 left-3.5 right-24 z-10 pointer-events-none">
-              <div className="flex items-center gap-2">
                 {redComp.author && redComp.authorAvatar && (
                   <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/40 shadow-sm shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -513,23 +503,25 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                 )}
                 <div className="min-w-0">
                   {redComp.author && (
-                    <span className="text-xs sm:text-sm font-black text-white drop-shadow-md truncate block leading-tight">
+                    <span className="text-xs sm:text-sm font-black text-white drop-shadow-md truncate block leading-tight group-hover/author:text-accent transition-colors">
                       {redComp.author}
                     </span>
                   )}
-                  <span className={`${redComp.author ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5' : 'text-sm sm:text-base font-black text-white'} drop-shadow-md truncate block leading-tight tracking-wide`}>
+                  <span className={`${redComp.author ? 'text-[10px] sm:text-[11px] text-white/80 font-medium mt-0.5' : 'text-sm sm:text-base font-black text-white'} drop-shadow-md truncate block leading-tight tracking-wide group-hover/author:text-accent transition-colors`}>
                     {redComp.name}
                   </span>
                 </div>
-              </div>
+              </button>
             </div>
 
-            {/* Percentage & Standing (Shown after voting) */}
+            {/* Percentage & Standing (Shown only at bottom after voting: selected is larger and highlighted in accent color) */}
             {hasVoted && (
               <div className="absolute bottom-3 right-3.5 z-10 pointer-events-none text-right animate-fade-in">
                 <span
-                  className={`font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md font-display ${
-                    userVotedCorner === 'red' ? 'text-side-a' : 'text-muted'
+                  className={`font-display drop-shadow-md leading-none block transition-all ${
+                    userVotedCorner === 'red'
+                      ? 'font-black text-2xl sm:text-3xl text-accent scale-105'
+                      : 'font-bold text-xl sm:text-2xl text-muted'
                   }`}
                 >
                   {redComp.percentage.toFixed(1)}%
@@ -579,24 +571,33 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
             {hasVoted && userVotedCorner === 'blue' && (
               <div className="absolute top-3 left-3 z-10 animate-fade-in">
                 <span
-                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-on-side-b bg-side-b hover:brightness-110 shadow-md inline-flex items-center gap-1.5 border border-side-b/40 cursor-pointer transition-colors"
+                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-accent-fg bg-accent shadow-md inline-flex items-center gap-1.5 border border-accent/40 cursor-pointer transition-colors"
                   title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
                   <span>Selected</span>
-                  <span className="font-black border-l border-on-side-b/30 pl-1.5 text-on-side-b tabular-nums">
-                    {blueComp.percentage.toFixed(1)}%
-                  </span>
                 </span>
               </div>
             )}
 
-            {/* Top-Right: Zoom inspect button */}
-            <div className="absolute top-3 right-3 z-20">
+            {/* Photo */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={blueComp.photoUrl}
+              alt={blueComp.name}
+              className="w-full h-full object-cover object-center pointer-events-none"
+            />
+
+            {/* Bottom Dark Scrim */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+
+            {/* Entry Author Avatar + Handle + Work Title (click opens photo) */}
+            <div className="absolute bottom-3 left-3.5 right-24 z-10">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   const authorTag = blueComp.author || undefined;
                   setLightboxData({
                     isOpen: true,
@@ -626,27 +627,9 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                     onVote: () => handleVote(blueComp),
                   });
                 }}
-                aria-label={`Inspect ${blueComp.name} photo`}
-                className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-ink/90 hover:text-ink flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-line shadow-md"
+                className="group/author flex items-center gap-2 min-w-0 max-w-full text-left rounded-md px-1.5 py-1 -ml-1.5 -mb-1 bg-surface/50 hover:bg-surface/85 active:scale-95 backdrop-blur-xs transition-all cursor-pointer pointer-events-auto border border-transparent hover:border-line shadow-xs"
+                aria-label={`Inspect ${blueComp.name || blueComp.author || 'competitor'} photo`}
               >
-                <Maximize2 size={14} strokeWidth={2.4} />
-              </button>
-            </div>
-
-            {/* Photo */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={blueComp.photoUrl}
-              alt={blueComp.name}
-              className="w-full h-full object-cover object-center pointer-events-none"
-            />
-
-            {/* Bottom Dark Scrim */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
-
-            {/* Entry Author Avatar + Handle + Work Title */}
-            <div className="absolute bottom-3 left-3.5 right-24 z-10 pointer-events-none">
-              <div className="flex items-center gap-2">
                 {blueComp.author && blueComp.authorAvatar && (
                   <div className="relative w-6 h-6 rounded-full overflow-hidden border border-line shadow-sm shrink-0 ring-1 ring-side-b/40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -659,23 +642,25 @@ export function BattleVoteView({ initialContestId, onBack }: BattleVoteViewProps
                 )}
                 <div className="min-w-0">
                   {blueComp.author && (
-                    <span className="text-xs sm:text-sm font-bold text-ink drop-shadow-md truncate block leading-tight font-display">
+                    <span className="text-xs sm:text-sm font-bold text-ink drop-shadow-md truncate block leading-tight font-display group-hover/author:text-accent transition-colors">
                       {blueComp.author}
                     </span>
                   )}
-                  <span className={`${blueComp.author ? 'text-[10px] sm:text-[11px] text-muted font-medium mt-0.5' : 'text-sm sm:text-base font-bold text-ink'} drop-shadow-md truncate block leading-tight tracking-wide`}>
+                  <span className={`${blueComp.author ? 'text-[10px] sm:text-[11px] text-muted font-medium mt-0.5' : 'text-sm sm:text-base font-bold text-ink'} drop-shadow-md truncate block leading-tight tracking-wide group-hover/author:text-accent transition-colors`}>
                     {blueComp.name}
                   </span>
                 </div>
-              </div>
+              </button>
             </div>
 
-            {/* Percentage & Standing (Shown after voting) */}
+            {/* Percentage & Standing (Shown only at bottom after voting: selected is larger and highlighted in accent color) */}
             {hasVoted && (
               <div className="absolute bottom-3 right-3.5 z-10 pointer-events-none text-right animate-fade-in">
                 <span
-                  className={`font-black text-2xl sm:text-3xl tracking-tight leading-none drop-shadow-md font-display ${
-                    userVotedCorner === 'blue' ? 'text-side-b' : 'text-muted'
+                  className={`font-display drop-shadow-md leading-none block transition-all ${
+                    userVotedCorner === 'blue'
+                      ? 'font-black text-2xl sm:text-3xl text-accent scale-105'
+                      : 'font-bold text-xl sm:text-2xl text-muted'
                   }`}
                 >
                   {blueComp.percentage.toFixed(1)}%

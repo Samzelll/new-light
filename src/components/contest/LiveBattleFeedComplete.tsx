@@ -41,7 +41,6 @@ import { BattleParticipantModal } from '@/components/battle/BattleParticipantMod
 import {
   ChevronRight,
   Check,
-  Maximize2,
   X,
   Award,
   Shield,
@@ -283,27 +282,28 @@ function BattleSlide({
           {/* Затемнение */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-bg/85 pointer-events-none" />
 
-          {/* Верхняя плашка карточки: Бейдж выбора + Кнопка зума */}
+          {/* Верхняя плашка карточки: Бейдж выбора */}
           <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
             <div>
               {userVote === 'red' && (
                 <span
-                  className="px-2.5 py-0.5 rounded-full bg-side-a text-on-accent font-extrabold text-[11px] flex items-center gap-1.5 shadow-lg border border-side-a/40 animate-fade-in transition-colors cursor-pointer"
+                  className="px-2.5 py-0.5 rounded-full bg-accent text-accent-fg font-extrabold text-[11px] flex items-center gap-1.5 shadow-md border border-accent/40 animate-fade-in transition-colors cursor-pointer"
                   title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
                   <span>Selected</span>
-                  <span className="font-black border-l border-on-accent/30 pl-1.5 text-on-accent tabular-nums">
-                    {percentages.red}%
-                  </span>
                 </span>
               )}
             </div>
+          </div>
 
+          {/* Нижняя плашка: Автор + Название работы (нажатие открывает фото) */}
+          <div className="absolute bottom-2.5 left-3 right-20 z-10">
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 onOpenLightbox({
                   isOpen: true,
                   onClose: () => {},
@@ -328,16 +328,9 @@ function BattleSlide({
                   onVote: isReady ? () => onVote('red') : undefined,
                 });
               }}
-              aria-label="Увеличить фото и открыть детали"
-              className="w-8 h-8 rounded-full bg-scrim hover:bg-surface-2 text-ink flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-line shadow-md ml-auto"
+              className="group/author flex items-center gap-2 min-w-0 max-w-full text-left rounded-md px-1.5 py-1 -ml-1 -mb-1 bg-surface/50 hover:bg-surface/85 active:scale-95 backdrop-blur-xs transition-all cursor-pointer pointer-events-auto border border-transparent hover:border-line shadow-xs"
+              aria-label={`Inspect ${battle.red.name || battle.red.author || 'competitor'} photo`}
             >
-              <Maximize2 size={14} strokeWidth={2.4} />
-            </button>
-          </div>
-
-          {/* Нижняя плашка: Автор + Название работы */}
-          <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
-            <div className="flex items-center gap-2">
               {battle.red.author && battle.red.authorAvatar && (
                 <div className="relative w-6 h-6 rounded-full overflow-hidden border border-line-strong shadow-sm shrink-0">
                   <Image
@@ -352,7 +345,7 @@ function BattleSlide({
               )}
               <div className="min-w-0">
                 {battle.red.author && (
-                  <span className="text-xs sm:text-sm font-black text-ink font-display drop-shadow-lg truncate block leading-tight">
+                  <span className="text-xs sm:text-sm font-black text-ink font-display drop-shadow-lg truncate block leading-tight group-hover/author:text-accent transition-colors">
                     {battle.red.author}
                   </span>
                 )}
@@ -362,23 +355,23 @@ function BattleSlide({
                       battle.red.author
                         ? 'text-[10px] sm:text-[11px] text-muted font-medium mt-0.5'
                         : 'text-sm sm:text-base font-black text-ink'
-                    } drop-shadow truncate block leading-tight`}
+                    } drop-shadow truncate block leading-tight group-hover/author:text-accent transition-colors`}
                   >
                     {battle.red.name}
                   </span>
                 )}
               </div>
-            </div>
+            </button>
           </div>
 
-          {/* Процент голосов (отображается после голосования) */}
+          {/* Процент голосов (отображается только внизу после голосования: выбранный больше и выделен акцентным цветом сайта) */}
           {userVote && (
-            <div className="absolute bottom-2.5 right-3 z-10 animate-fade-in">
+            <div className="absolute bottom-2.5 right-3 z-10 animate-fade-in pointer-events-none">
               <div
-                className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
+                className={`transition-all duration-300 backdrop-blur-md shadow-lg shrink-0 tabular-nums border ${
                   userVote === 'red'
-                    ? 'bg-surface/90 text-accent border-accent/40'
-                    : 'bg-surface/80 text-muted border-line'
+                    ? 'px-3 py-1.5 rounded-xl text-sm sm:text-base font-black bg-surface-2/95 text-accent border-accent/50 ring-1 ring-accent/30 shadow-accent/10 scale-105'
+                    : 'px-2.5 py-1 rounded-xl text-xs sm:text-sm font-bold bg-surface/75 text-muted border-line'
                 }`}
               >
                 {percentages.red}%
@@ -448,27 +441,28 @@ function BattleSlide({
           {/* Затемнение */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-bg/85 pointer-events-none" />
 
-          {/* Верхняя плашка карточки: Бейдж выбора + Кнопка зума */}
+          {/* Верхняя плашка карточки: Бейдж выбора */}
           <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between">
             <div>
               {userVote === 'green' && (
                 <span
-                  className="px-2.5 py-0.5 rounded-full bg-side-b text-on-side-b font-extrabold text-[11px] flex items-center gap-1.5 shadow-lg border border-side-b/40 animate-fade-in transition-colors cursor-pointer"
+                  className="px-2.5 py-0.5 rounded-full bg-accent text-accent-fg font-extrabold text-[11px] flex items-center gap-1.5 shadow-md border border-accent/40 animate-fade-in transition-colors cursor-pointer"
                   title="Tap again to deselect"
                 >
                   <Check size={12} strokeWidth={3} />
                   <span>Selected</span>
-                  <span className="font-black border-l border-on-side-b/30 pl-1.5 text-on-side-b tabular-nums">
-                    {percentages.green}%
-                  </span>
                 </span>
               )}
             </div>
+          </div>
 
+          {/* Нижняя плашка: Автор + Название работы (нажатие открывает фото) */}
+          <div className="absolute bottom-2.5 left-3 right-20 z-10">
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 onOpenLightbox({
                   isOpen: true,
                   onClose: () => {},
@@ -493,16 +487,9 @@ function BattleSlide({
                   onVote: isReady ? () => onVote('green') : undefined,
                 });
               }}
-              aria-label="Увеличить фото и открыть детали"
-              className="w-8 h-8 rounded-full bg-scrim hover:bg-surface-2 text-ink flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-line shadow-md ml-auto"
+              className="group/author flex items-center gap-2 min-w-0 max-w-full text-left rounded-md px-1.5 py-1 -ml-1 -mb-1 bg-surface/50 hover:bg-surface/85 active:scale-95 backdrop-blur-xs transition-all cursor-pointer pointer-events-auto border border-transparent hover:border-line shadow-xs"
+              aria-label={`Inspect ${battle.green.name || battle.green.author || 'competitor'} photo`}
             >
-              <Maximize2 size={14} strokeWidth={2.4} />
-            </button>
-          </div>
-
-          {/* Нижняя плашка: Автор + Название работы */}
-          <div className="absolute bottom-2.5 left-3 right-20 z-10 pointer-events-none">
-            <div className="flex items-center gap-2">
               {battle.green.author && battle.green.authorAvatar && (
                 <div className="relative w-6 h-6 rounded-full overflow-hidden border border-line-strong shadow-sm shrink-0">
                   <Image
@@ -517,7 +504,7 @@ function BattleSlide({
               )}
               <div className="min-w-0">
                 {battle.green.author && (
-                  <span className="text-xs sm:text-sm font-black text-ink font-display drop-shadow-lg truncate block leading-tight">
+                  <span className="text-xs sm:text-sm font-black text-ink font-display drop-shadow-lg truncate block leading-tight group-hover/author:text-accent transition-colors">
                     {battle.green.author}
                   </span>
                 )}
@@ -527,23 +514,23 @@ function BattleSlide({
                       battle.green.author
                         ? 'text-[10px] sm:text-[11px] text-muted font-medium mt-0.5'
                         : 'text-sm sm:text-base font-black text-ink'
-                    } drop-shadow truncate block leading-tight`}
+                    } drop-shadow truncate block leading-tight group-hover/author:text-accent transition-colors`}
                   >
                     {battle.green.name}
                   </span>
                 )}
               </div>
-            </div>
+            </button>
           </div>
 
-          {/* Процент голосов (отображается после голосования) */}
+          {/* Процент голосов (отображается только внизу после голосования: выбранный больше и выделен акцентным цветом сайта) */}
           {userVote && (
-            <div className="absolute bottom-2.5 right-3 z-10 animate-fade-in">
+            <div className="absolute bottom-2.5 right-3 z-10 animate-fade-in pointer-events-none">
               <div
-                className={`px-2.5 py-1 rounded-xl backdrop-blur-xs font-black text-xs sm:text-sm shadow-lg shrink-0 tabular-nums border ${
+                className={`transition-all duration-300 backdrop-blur-md shadow-lg shrink-0 tabular-nums border ${
                   userVote === 'green'
-                    ? 'bg-surface/90 text-side-b border-side-b/40'
-                    : 'bg-surface/80 text-muted border-line'
+                    ? 'px-3 py-1.5 rounded-xl text-sm sm:text-base font-black bg-surface-2/95 text-accent border-accent/50 ring-1 ring-accent/30 shadow-accent/10 scale-105'
+                    : 'px-2.5 py-1 rounded-xl text-xs sm:text-sm font-bold bg-surface/75 text-muted border-line'
                 }`}
               >
                 {percentages.green}%

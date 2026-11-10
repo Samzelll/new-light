@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
-import { ChevronRight, ChevronUp, ChevronDown, Check, Maximize2, Sparkles } from 'lucide-react';
+import { ChevronRight, ChevronUp, ChevronDown, Check, Sparkles } from 'lucide-react';
 import { DescriptionSheet } from '../feed/DescriptionSheet';
 import { BattleParticipantModal, BattleParticipantModalProps } from '@/components/battle/BattleParticipantModal';
 import { PinchZoomImage } from '../common/PinchZoomImage';
@@ -361,18 +361,25 @@ export function TikTokBattleView({
               >
                 <div>
                   {userVote === 'red' && (
-                    <span className="px-2.5 py-1 rounded-full bg-side-a text-on-accent font-black text-[11px] flex items-center gap-1 shadow-lg animate-fade-in">
+                    <span className="px-2.5 py-1 rounded-full bg-accent text-accent-fg font-black text-[11px] flex items-center gap-1 shadow-lg animate-fade-in border border-accent/40">
                       <Check size={12} strokeWidth={3} />
                       <span>Selected</span>
                     </span>
                   )}
                 </div>
+              </div>
 
-                {/* 40px circle expand button on scrim */}
+              {/* Author chip: clickable pill on scrim */}
+              <div
+                className={`absolute bottom-2.5 left-3 z-10 transition-opacity duration-300 ${
+                  cleanMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`}
+              >
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     setLightboxData({
                       isOpen: true,
                       onClose: () => setLightboxData(null),
@@ -397,20 +404,9 @@ export function TikTokBattleView({
                       onVote: () => onVote(currentBattle.id, 'red'),
                     });
                   }}
-                  aria-label="Enlarge photo & view details"
-                  className="w-10 h-10 rounded-full bg-scrim text-ink border border-line flex items-center justify-center backdrop-blur-xs transition-all active:scale-95 shadow-md ml-auto hover:border-line-strong"
+                  className="group/author bg-scrim hover:bg-surface-2/90 active:scale-95 px-3 py-1.5 rounded-full backdrop-blur-xs border border-line/60 hover:border-line flex items-center gap-2.5 shadow-lg cursor-pointer pointer-events-auto transition-all text-left"
+                  aria-label={`Inspect ${currentBattle.red.name || currentBattle.red.author || 'competitor'} photo`}
                 >
-                  <Maximize2 size={16} strokeWidth={2.2} />
-                </button>
-              </div>
-
-              {/* Author chip: pill on scrim (bg-scrim px-3 py-1.5 rounded-full backdrop-blur-xs) */}
-              <div
-                className={`absolute bottom-2.5 left-3 z-10 pointer-events-none transition-opacity duration-300 ${
-                  cleanMode ? 'opacity-0' : 'opacity-100'
-                }`}
-              >
-                <div className="bg-scrim px-3 py-1.5 rounded-full backdrop-blur-xs border border-line/60 flex items-center gap-2.5 shadow-lg">
                   {currentBattle.red.authorAvatar ? (
                     <div className="relative w-9 h-9 rounded-full ring-2 ring-side-a overflow-hidden shrink-0 bg-surface-2">
                       {(() => {
@@ -430,17 +426,17 @@ export function TikTokBattleView({
                   ) : null}
                   <div className="min-w-0 pr-1">
                     {currentBattle.red.author && (
-                      <span className="text-[14px] font-semibold text-ink truncate block leading-tight">
+                      <span className="text-[14px] font-semibold text-ink group-hover/author:text-accent transition-colors truncate block leading-tight">
                         {currentBattle.red.author}
                       </span>
                     )}
                     {currentBattle.red.name && (
-                      <span className="font-display text-[16px] text-ink truncate block leading-tight">
+                      <span className="font-display text-[16px] text-ink group-hover/author:text-accent transition-colors truncate block leading-tight">
                         {currentBattle.red.name}
                       </span>
                     )}
                   </div>
-                </div>
+                </button>
               </div>
             </div>
 
@@ -523,18 +519,25 @@ export function TikTokBattleView({
               >
                 <div>
                   {userVote === 'green' && (
-                    <span className="px-2.5 py-1 rounded-full bg-side-b text-on-side-b font-black text-[11px] flex items-center gap-1 shadow-lg animate-fade-in">
+                    <span className="px-2.5 py-1 rounded-full bg-accent text-accent-fg font-black text-[11px] flex items-center gap-1 shadow-lg animate-fade-in border border-accent/40">
                       <Check size={12} strokeWidth={3} />
                       <span>Selected</span>
                     </span>
                   )}
                 </div>
+              </div>
 
-                {/* 40px circle expand button on scrim */}
+              {/* Author chip: clickable pill on scrim */}
+              <div
+                className={`absolute bottom-2.5 left-3 z-10 transition-opacity duration-300 ${
+                  cleanMode ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`}
+              >
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     setLightboxData({
                       isOpen: true,
                       onClose: () => setLightboxData(null),
@@ -559,20 +562,9 @@ export function TikTokBattleView({
                       onVote: () => onVote(currentBattle.id, 'green'),
                     });
                   }}
-                  aria-label="Enlarge photo & view details"
-                  className="w-10 h-10 rounded-full bg-scrim text-ink border border-line flex items-center justify-center backdrop-blur-xs transition-all active:scale-95 shadow-md ml-auto hover:border-line-strong"
+                  className="group/author bg-scrim hover:bg-surface-2/90 active:scale-95 px-3 py-1.5 rounded-full backdrop-blur-xs border border-line/60 hover:border-line flex items-center gap-2.5 shadow-lg cursor-pointer pointer-events-auto transition-all text-left"
+                  aria-label={`Inspect ${currentBattle.green.name || currentBattle.green.author || 'competitor'} photo`}
                 >
-                  <Maximize2 size={16} strokeWidth={2.2} />
-                </button>
-              </div>
-
-              {/* Author chip: pill on scrim */}
-              <div
-                className={`absolute bottom-2.5 left-3 z-10 pointer-events-none transition-opacity duration-300 ${
-                  cleanMode ? 'opacity-0' : 'opacity-100'
-                }`}
-              >
-                <div className="bg-scrim px-3 py-1.5 rounded-full backdrop-blur-xs border border-line/60 flex items-center gap-2.5 shadow-lg">
                   {currentBattle.green.authorAvatar ? (
                     <div className="relative w-9 h-9 rounded-full ring-2 ring-side-b overflow-hidden shrink-0 bg-surface-2">
                       {(() => {
@@ -592,17 +584,17 @@ export function TikTokBattleView({
                   ) : null}
                   <div className="min-w-0 pr-1">
                     {currentBattle.green.author && (
-                      <span className="text-[14px] font-semibold text-ink truncate block leading-tight">
+                      <span className="text-[14px] font-semibold text-ink group-hover/author:text-accent transition-colors truncate block leading-tight">
                         {currentBattle.green.author}
                       </span>
                     )}
                     {currentBattle.green.name && (
-                      <span className="font-display text-[16px] text-ink truncate block leading-tight">
+                      <span className="font-display text-[16px] text-ink group-hover/author:text-accent transition-colors truncate block leading-tight">
                         {currentBattle.green.name}
                       </span>
                     )}
                   </div>
-                </div>
+                </button>
               </div>
             </div>
           </motion.div>

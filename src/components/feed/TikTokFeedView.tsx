@@ -4,7 +4,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMe
 import Image from 'next/image';
 import Link from 'next/link';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
-import { Check, ChevronRight, ChevronUp, ChevronDown, Maximize2, RotateCcw, ArrowUp, X } from 'lucide-react';
+import { Check, ChevronRight, ChevronUp, ChevronDown, RotateCcw, ArrowUp, X } from 'lucide-react';
 import type { Group, Contest } from '@/services/types';
 import { DescriptionSheet } from './DescriptionSheet';
 import { PhotoLightbox } from '../common/PhotoLightbox';
@@ -372,49 +372,44 @@ export function TikTokFeedView({
                           ) : (
                             <span className="w-2" />
                           )}
-
-                          {member.photo && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const authorTag = (member as any).author || `@creator_${idx + 1}`;
-                                setLightboxData({
-                                  photoUrl: member.photo,
-                                  photos: (member as any).photos || [member.photo],
-                                  title: member.title,
-                                  author: authorTag,
-                                  authorAvatar: (member as any).authorAvatar,
-                                  authorBio:
-                                    (member as any).authorBio ||
-                                    `Featured creative work in ${shortTitle}. Captured with sharp depth-of-field and nuanced natural grading.`,
-                                  category: `${shortTitle} · Round ${group.roundNumber || 1}`,
-                                  sponsorName:
-                                    currentContest?.sponsorName || 'Alpha Lab & Vision Partners',
-                                  sponsorTier: 'Official Contest Sponsor',
-                                  prizePool: '$3,000 Award & Professional Exposure',
-                                  socialLinks: {
-                                    instagram: `https://instagram.com/${authorTag.replace('@', '')}`,
-                                    telegram: `https://t.me/${authorTag.replace('@', '')}`,
-                                    twitter: `https://x.com/${authorTag.replace('@', '')}`,
-                                    portfolio: `https://${authorTag.replace('@', '')}.design`,
-                                  },
-                                  isSelected: isSelected,
-                                  percentage: sharePct,
-                                  onVote: () => handleMemberTap(group.id, member.participantId),
-                                });
-                              }}
-                              aria-label={`Inspect ${member.title} full photo`}
-                              className="w-7 h-7 rounded-full bg-scrim hover:bg-surface-2 text-ink flex items-center justify-center backdrop-blur-xs transition-transform active:scale-90 border border-line shadow-md ml-auto"
-                            >
-                              <Maximize2 size={13} strokeWidth={2.4} />
-                            </button>
-                          )}
                         </div>
 
-                        {/* Автор и название работы снизу */}
-                        <div className="absolute bottom-2 left-2 right-2 z-10 pointer-events-none">
-                          <div className="flex items-center gap-1.5 min-w-0">
+                        {/* Автор и название работы снизу — при нажатии открывается фото в полном размере */}
+                        <div className="absolute bottom-2 left-2 right-2 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              const authorTag = (member as any).author || `@creator_${idx + 1}`;
+                              setLightboxData({
+                                photoUrl: member.photo,
+                                photos: (member as any).photos || [member.photo],
+                                title: member.title,
+                                author: authorTag,
+                                authorAvatar: (member as any).authorAvatar,
+                                authorBio:
+                                  (member as any).authorBio ||
+                                  `Featured creative work in ${shortTitle}. Captured with sharp depth-of-field and nuanced natural grading.`,
+                                category: `${shortTitle} · Round ${group.roundNumber || 1}`,
+                                sponsorName:
+                                  currentContest?.sponsorName || 'Alpha Lab & Vision Partners',
+                                sponsorTier: 'Official Contest Sponsor',
+                                prizePool: '$3,000 Award & Professional Exposure',
+                                socialLinks: {
+                                  instagram: `https://instagram.com/${authorTag.replace('@', '')}`,
+                                  telegram: `https://t.me/${authorTag.replace('@', '')}`,
+                                  twitter: `https://x.com/${authorTag.replace('@', '')}`,
+                                  portfolio: `https://${authorTag.replace('@', '')}.design`,
+                                },
+                                isSelected: isSelected,
+                                percentage: sharePct,
+                                onVote: () => handleMemberTap(group.id, member.participantId),
+                              });
+                            }}
+                            className="group/author flex items-center gap-1.5 min-w-0 max-w-full text-left rounded-md px-1.5 py-1 -ml-1 -mb-1 bg-surface/50 hover:bg-surface/85 active:scale-95 backdrop-blur-xs transition-all cursor-pointer pointer-events-auto border border-transparent hover:border-line shadow-xs"
+                            aria-label={`Inspect ${member.title || (member as any).author || 'participant'} photo`}
+                          >
                             {(member as any).authorAvatar && (() => {
                               const resolvedAvatar = resolveImageUrl(
                                 (member as any).authorAvatar,
@@ -434,7 +429,7 @@ export function TikTokFeedView({
                               );
                             })()}
                             <div className="min-w-0">
-                              <span className="text-[11px] sm:text-xs font-black text-ink font-display drop-shadow-md truncate block leading-tight">
+                              <span className="text-[11px] sm:text-xs font-black text-ink font-display drop-shadow-md truncate block leading-tight group-hover/author:text-accent transition-colors">
                                 {(member as any).author || member.title}
                               </span>
                               {member.title && (member as any).author && (
@@ -443,7 +438,7 @@ export function TikTokFeedView({
                                 </span>
                               )}
                             </div>
-                          </div>
+                          </button>
                         </div>
                       </div>
                     </div>
