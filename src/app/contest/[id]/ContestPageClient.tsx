@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from 'next/dynamic';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -10,8 +11,7 @@ import { getContestById, Contest, updateContestStatus } from '@/services/contest
 import { getParticipants, Participant, addBattleParticipant, deleteParticipant } from '@/services/participantService';
 import { castVote, cancelVote } from '@/services/voteService';
 import { supabase } from '@/services/supabase';
-import { BattleDetailsView } from '@/components/battle/BattleDetailsView';
-import { ContestParticipantModal, ContestParticipantModalProps } from '@/components/contest/ContestParticipantModal';
+import type { ContestParticipantModalProps } from '@/components/contest/ContestParticipantModal';
 import { ContestPage as RegistrationContestPage } from '@/components/contest/RegistrationContestPage';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 import {
@@ -20,6 +20,16 @@ import {
   removePersistedBattleVote,
   getBattle,
 } from '@/services/battleDataService';
+
+const BattleDetailsView = dynamic(
+  () => import('@/components/battle/BattleDetailsView').then((m) => m.BattleDetailsView),
+  { ssr: false }
+);
+
+const ContestParticipantModal = dynamic(
+  () => import('@/components/contest/ContestParticipantModal').then((m) => m.ContestParticipantModal),
+  { ssr: false }
+);
 
 const DEFAULT_COVER = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&q=80';
 
@@ -152,11 +162,27 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadData() {
       setLoading(true);
       setError(null);
 
-      const { data: contestData, error: contestError } = await getContestById(id);
+      // Parallelize independent queries instead of waiting sequentially
+      const [contestRes, participantsRes, votesRes] = await Promise.all([
+        getContestById(id),
+        getParticipants(id, 'approved'),
+        Promise.resolve(
+          supabase
+            .from('votes')
+            .select('id, participant_id, voter_id')
+            .eq('contest_id', id)
+        ).catch(() => ({ data: [] as any[] })),
+      ]);
+
+      if (cancelled) return;
+
+      const { data: contestData, error: contestError } = contestRes;
       if (contestError || !contestData) {
         setError(contestError || 'Contest not found');
         setLoading(false);
@@ -164,14 +190,13 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
       }
       setContest(contestData);
 
-      const { data: participantsData } = await getParticipants(id, 'approved');
-      let currentParts = participantsData || [];
+      let currentParts = participantsRes.data || [];
 
       // For battle contests, enrich or synthesize competitors if participant records are empty/fewer than 2
       if (contestData.type === 'battle') {
         try {
           const battleData = await getBattle(id);
-          if (battleData) {
+          if (!cancelled && battleData) {
             if (battleData.userVotedId) {
               setUserVotedParticipantId(battleData.userVotedId);
             }
@@ -200,44 +225,45 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
         }
       }
 
+      if (cancelled) return;
       setParticipants(currentParts);
 
-      // Fetch votes
+      let initialVotes = (votesRes as any)?.data || [];
       try {
-        const { data: votesData } = await supabase
-          .from('votes')
-          .select('id, participant_id, voter_id')
-          .eq('contest_id', id);
-
-        let initialVotes = votesData || [];
-
-        // Check user session
-        if (user && initialVotes.length > 0) {
-          const myVote = initialVotes.find((v: any) => v.voter_id === user.id);
-          if (myVote) setUserVotedParticipantId(myVote.participant_id);
-        }
-
-        // Check local persisted votes (including battle persistent storage)
-        try {
-          const persisted = getPersistedBattleVotes();
-          const localVote = persisted[id] || (typeof window !== 'undefined' ? localStorage.getItem(`contest_vote_${id}`) : null);
-          if (localVote) {
-            setUserVotedParticipantId(localVote);
-            if (!initialVotes.some((v: any) => v.participant_id === localVote)) {
-              initialVotes = [...initialVotes, { id: `local_p_${Date.now()}`, participant_id: localVote, voter_id: user?.id || 'guest' }];
-            }
+        const persisted = getPersistedBattleVotes();
+        const localVote =
+          persisted[id] ||
+          (typeof window !== 'undefined' ? localStorage.getItem(`contest_vote_${id}`) : null);
+        if (localVote) {
+          setUserVotedParticipantId(localVote);
+          if (!initialVotes.some((v: any) => v.participant_id === localVote)) {
+            initialVotes = [
+              ...initialVotes,
+              { id: `local_p_${Date.now()}`, participant_id: localVote, voter_id: user?.id || 'guest' },
+            ];
           }
-        } catch {}
+        }
+      } catch {}
 
-        setVotes(initialVotes);
-      } catch (err) {
-        console.warn('Votes fetch exception:', err);
-      }
-
+      setVotes(initialVotes);
       setLoading(false);
     }
+
     loadData();
-  }, [id, user]);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // Sync user's existing vote if auth hydrates after initial fetch
+  useEffect(() => {
+    if (!user?.id || votes.length === 0) return;
+    const myVote = votes.find((v) => v.voter_id === user.id);
+    if (myVote) {
+      setUserVotedParticipantId(myVote.participant_id);
+    }
+  }, [user?.id, votes]);
 
   const userHasApplied = user ? participants.some((p) => p.user_id === user.id) : false;
 

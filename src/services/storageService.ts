@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { compressImageFile } from '@/utils/imageCompression';
 
 /**
  * Uploads a user's avatar to the 'avatars' bucket.
@@ -9,14 +10,19 @@ export async function uploadAvatar(
   file: File
 ): Promise<{ path: string | null; error: string | null }> {
   try {
-    const fileExt = file.name.split('.').pop() || 'jpg';
+    const { file: optimizedFile } = await compressImageFile(file, {
+      maxWidth: 512,
+      maxHeight: 512,
+      maxSizeBytes: 120 * 1024,
+    });
+    const fileExt = optimizedFile.name.split('.').pop() || 'jpg';
     const filePath = `${userId}/avatar.${fileExt}`;
 
     const { data, error } = await supabase.storage
       .from('avatars')
-      .upload(filePath, file, {
+      .upload(filePath, optimizedFile, {
         upsert: true,
-        contentType: file.type,
+        contentType: optimizedFile.type,
       });
 
     if (error) return { path: null, error: error.message };
@@ -38,14 +44,19 @@ export async function uploadSubmissionPhoto(
   file: File
 ): Promise<{ path: string | null; error: string | null }> {
   try {
-    const fileExt = file.name.split('.').pop() || 'jpg';
+    const { file: optimizedFile } = await compressImageFile(file, {
+      maxWidth: 1600,
+      maxHeight: 1600,
+      maxSizeBytes: 300 * 1024,
+    });
+    const fileExt = optimizedFile.name.split('.').pop() || 'jpg';
     const filePath = `${contestId}/${participantId}/photo_${index}.${fileExt}`;
 
     const { data, error } = await supabase.storage
       .from('submissions')
-      .upload(filePath, file, {
+      .upload(filePath, optimizedFile, {
         upsert: true,
-        contentType: file.type,
+        contentType: optimizedFile.type,
       });
 
     if (error) return { path: null, error: error.message };
@@ -64,14 +75,19 @@ export async function uploadContestCover(
   file: File
 ): Promise<{ path: string | null; error: string | null }> {
   try {
-    const fileExt = file.name.split('.').pop() || 'jpg';
+    const { file: optimizedFile } = await compressImageFile(file, {
+      maxWidth: 1600,
+      maxHeight: 1600,
+      maxSizeBytes: 300 * 1024,
+    });
+    const fileExt = optimizedFile.name.split('.').pop() || 'jpg';
     const filePath = `${contestId}/cover.${fileExt}`;
 
     const { data, error } = await supabase.storage
       .from('contests')
-      .upload(filePath, file, {
+      .upload(filePath, optimizedFile, {
         upsert: true,
-        contentType: file.type,
+        contentType: optimizedFile.type,
       });
 
     if (error) return { path: null, error: error.message };

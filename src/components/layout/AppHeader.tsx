@@ -1,143 +1,151 @@
-"use client";
+'use client';
 
-import React from 'react';
-import Image from 'next/image';
-import { SlidersHorizontal, User } from 'lucide-react';
-import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Search } from 'lucide-react';
+import { useChrome } from '@/components/navigation/ChromeContext';
+import { AvatarButton, BrandMark, FilterButton } from './HeaderParts';
 
-export interface AppHeaderProps {
-  activeTab: 'contests' | 'feed' | 'battles';
-  onTabChange: (tab: 'contests' | 'feed' | 'battles') => void;
-  onOpenFilters: () => void;
-  onOpenDrawer: () => void;
-  hasActiveFilters?: boolean;
-  avatarUrl?: string | null;
-  username?: string;
-}
+export type MainTab = 'contests' | 'feed' | 'battles';
+
+const TABS: { id: MainTab; label: string }[] = [
+  { id: 'contests', label: 'Contests' },
+  { id: 'feed', label: 'Feed' },
+  { id: 'battles', label: 'Battles' },
+];
 
 export function AppHeader({
-  activeTab,
+  mainTab,
   onTabChange,
-  onOpenFilters,
-  onOpenDrawer,
-  hasActiveFilters = false,
-  avatarUrl,
-  username = 'user',
-}: AppHeaderProps) {
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => {
-    setMounted(true);
+}: {
+  mainTab: MainTab;
+  onTabChange: (t: MainTab) => void;
+}) {
+  const router = useRouter();
+  const { openDrawer, openFilters, activeFilterCount } = useChrome();
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [q, setQ] = useState('');
+  const index = Math.max(
+    0,
+    TABS.findIndex((t) => t.id === mainTab)
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const typing =
+        el?.tagName === 'INPUT' ||
+        el?.tagName === 'TEXTAREA' ||
+        Boolean(el?.isContentEditable);
+      if (
+        e.key === '/' &&
+        !typing &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        searchRef.current?.offsetParent
+      ) {
+        e.preventDefault();
+        searchRef.current.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const tabIndex = activeTab === 'contests' ? 0 : activeTab === 'feed' ? 1 : 2;
-
-  const rawResolved = avatarUrl ? resolveImageUrl(avatarUrl, 'avatars') : null;
-  const validAvatarUrl =
-    rawResolved &&
-    (rawResolved.startsWith('http://') ||
-      rawResolved.startsWith('https://') ||
-      rawResolved.startsWith('data:') ||
-      rawResolved.startsWith('/'))
-      ? rawResolved
-      : null;
-
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between px-3 sm:px-6 h-14 bg-bg/95 backdrop-blur-md border-b border-line select-none w-full">
-      {/* Search / Filter button (left) with indicator dot when filters are active */}
-      <button
-        type="button"
-        onClick={onOpenFilters}
-        aria-label="Search and filters"
-        className="w-11 h-11 rounded-full flex items-center justify-center text-accent hover:bg-surface-2 transition-colors relative focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-      >
-        <SlidersHorizontal size={20} strokeWidth={2.2} />
-        {hasActiveFilters && (
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-accent ring-2 ring-bg" />
-        )}
-      </button>
-
-      {/* Header Tabs (center): Contests, Feed, Battles */}
-      <nav
-        className="flex-1 max-w-[280px] sm:max-w-[340px] mx-2 relative grid grid-cols-3 items-center text-center h-full"
-        role="tablist"
-        aria-label="Main navigation"
-      >
-        <button
-          type="button"
-          role="tab"
-          id="tab-contests"
-          aria-selected={activeTab === 'contests'}
-          aria-controls="panel-contests"
-          onClick={() => onTabChange('contests')}
-          className={`w-full py-2.5 px-1 text-[14px] font-semibold transition-colors relative flex items-center justify-center focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
-            activeTab === 'contests' ? 'text-ink font-bold' : 'text-faint hover:text-ink'
-          }`}
-        >
-          Contests
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          id="tab-feed"
-          aria-selected={activeTab === 'feed'}
-          aria-controls="panel-feed"
-          onClick={() => onTabChange('feed')}
-          className={`w-full py-2.5 px-1 text-[14px] font-semibold transition-colors relative flex items-center justify-center focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
-            activeTab === 'feed' ? 'text-ink font-bold' : 'text-faint hover:text-ink'
-          }`}
-        >
-          Feed
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          id="tab-battles"
-          aria-selected={activeTab === 'battles'}
-          aria-controls="panel-battles"
-          onClick={() => onTabChange('battles')}
-          className={`w-full py-2.5 px-1 text-[14px] font-semibold transition-colors relative flex items-center justify-center focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
-            activeTab === 'battles' ? 'text-ink font-bold' : 'text-faint hover:text-ink'
-          }`}
-        >
-          Battles
-        </button>
-
-        {/* Sliding Dot Indicator (replaces bottom underline) */}
-        <div
-          className="absolute bottom-1.5 left-0 h-1.5 w-1/3 flex justify-center pointer-events-none transition-transform duration-300 ease-out"
-          style={{
-            transform: `translateX(${tabIndex * 100}%)`,
-          }}
-          aria-hidden="true"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(196,165,116,0.7)]" />
-        </div>
-      </nav>
-
-      {/* Avatar profile button (right): 40px, bg-surface-2, harmonized border/ring in brass accent */}
-      <button
-        type="button"
-        onClick={onOpenDrawer}
-        aria-label="Open profile menu"
-        className="w-10 h-10 rounded-full bg-surface-2 border border-accent/50 ring-1 ring-accent/30 overflow-hidden relative flex-none shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent hover:border-accent hover:ring-accent/50 transition-all cursor-pointer shadow-sm"
-      >
-        {mounted && validAvatarUrl ? (
-          <Image
-            src={validAvatarUrl}
-            alt={username}
-            fill
-            unoptimized={shouldBeUnoptimized(validAvatarUrl)}
-            className="object-cover"
-            referrerPolicy="no-referrer"
+    <header className="sticky top-0 z-40 w-full select-none border-b border-line bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <div className="mx-auto grid h-14 w-full max-w-[1440px] grid-cols-[44px_1fr_44px] items-center gap-2 px-3 sm:grid-cols-[1fr_auto_1fr] sm:px-6 lg:h-16 lg:px-8">
+        <div className="flex items-center justify-start">
+          <FilterButton
+            className="grid sm:hidden"
+            count={activeFilterCount}
+            onClick={openFilters}
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-surface-2 text-accent font-display font-bold text-sm select-none">
-            {username ? username.charAt(0).toUpperCase() : <User size={18} strokeWidth={2.2} />}
-          </div>
-        )}
-      </button>
+          <BrandMark className="hidden sm:flex" />
+        </div>
+
+        <nav
+          aria-label="Main sections"
+          className="relative mx-auto grid h-full w-full max-w-[280px] grid-cols-3 text-center sm:h-10 sm:w-[264px] sm:max-w-none sm:rounded-full sm:border sm:border-line sm:bg-surface sm:p-1 lg:w-[312px]"
+        >
+          {/* Mobile active dot indicator */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-1.5 left-0 flex w-1/3 justify-center transition-transform duration-200 ease-out motion-reduce:transition-none sm:hidden"
+            style={{ transform: `translateX(${index * 100}%)` }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+          </span>
+
+          {/* Tablet/Desktop sliding pill indicator */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-1 left-1 hidden w-[calc((100%-0.5rem)/3)] rounded-full border border-accent/30 bg-accent/15 transition-transform duration-200 ease-out motion-reduce:transition-none sm:block"
+            style={{ transform: `translateX(${index * 100}%)` }}
+          />
+
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onTabChange(t.id)}
+              aria-current={t.id === mainTab ? 'page' : undefined}
+              className={`relative z-10 text-tab font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 motion-reduce:transition-none sm:rounded-full ${
+                t.id === mainTab
+                  ? 'text-ink sm:text-accent-soft'
+                  : 'text-faint hover:text-ink'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="flex items-center justify-end gap-1.5">
+          <form
+            role="search"
+            className="relative hidden lg:block"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const v = q.trim();
+              router.push(v ? `/search?q=${encodeURIComponent(v)}` : '/search');
+            }}
+          >
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-faint"
+            />
+            <input
+              ref={searchRef}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              aria-label="Search contests"
+              placeholder="Search contests"
+              className="h-10 w-[200px] rounded-full border border-line bg-surface pl-10 pr-9 text-body text-ink outline-none transition-[width,border-color] duration-200 placeholder:text-faint focus:border-accent/60 motion-reduce:transition-none xl:w-[240px] xl:focus:w-[320px]"
+            />
+            <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-line px-1.5 text-caption text-faint">
+              /
+            </kbd>
+          </form>
+
+          <Link
+            href="/search"
+            aria-label="Search"
+            className="hidden h-11 w-11 place-items-center rounded-full text-accent transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 motion-reduce:transition-none sm:grid lg:hidden"
+          >
+            <Search size={20} />
+          </Link>
+
+          <FilterButton
+            className="hidden sm:grid"
+            count={activeFilterCount}
+            onClick={openFilters}
+          />
+
+          <AvatarButton onClick={openDrawer} />
+        </div>
+      </div>
     </header>
   );
 }

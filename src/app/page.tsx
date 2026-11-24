@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { Suspense, useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Search,
   X,
@@ -23,11 +24,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDispatch } from 'react-redux';
-import { setAuth, clearAuth } from '@/features/auth/authSlice';
-import { timeService } from '@/services/mock';
-import { AppHeader } from '@/components/layout/AppHeader';
-import { SideDrawer } from '@/components/layout/SideDrawer';
+import { useColumns } from '@/hooks/useColumns';
+import { useChrome } from '@/components/navigation/ChromeContext';
+import { AppHeader, type MainTab } from '@/components/layout/AppHeader';
 import { TikTokFeedView } from '@/components/feed/TikTokFeedView';
 import { LiveBattleFeedComplete } from '@/components/contest/LiveBattleFeedComplete';
 import type { BattleItem } from '@/types/battle';
@@ -71,16 +70,17 @@ const CONTEST_STATUSES = [
   { id: 'completed', label: 'Finished' },
 ];
 
-export default function HomePage() {
-  const { isAuthenticated, profile } = useAuth();
+function HomePageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { isAuthenticated } = useAuth();
+  const { filtersOpen, closeFilters, setActiveFilterCount } = useChrome();
   const [mounted, setMounted] = useState(false);
 
-  // ── 3 Main Navigation Tabs: 'contests' | 'feed' | 'battles' ──
-  const [mainTab, setMainTab] = useState<'contests' | 'feed' | 'battles'>('contests');
-
-  // Modals state
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  // ── 3 Main Navigation Tabs synced to URL: '/' | '/?tab=feed' | '/?tab=battles' ──
+  const tabParam = searchParams.get('tab');
+  const mainTab: MainTab =
+    tabParam === 'feed' || tabParam === 'battles' ? tabParam : 'contests';
 
   // Catalog Contests state
   const [contests, setContests] = useState<Contest[]>([]);
@@ -120,43 +120,21 @@ export default function HomePage() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Responsive columns for desktop PinGrid
-  const [columnsCount, setColumnsCount] = useState(2);
+  // Responsive columns for PinGrid (2 / 3 / 4 / 5)
+  const columnsCount = useColumns();
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window !== 'undefined') {
-      const updateCols = () => {
-        const w = window.innerWidth;
-        if (w >= 1440) setColumnsCount(4);
-        else if (w >= 900) setColumnsCount(3);
-        else setColumnsCount(2);
-      };
-      updateCols();
-      window.addEventListener('resize', updateCols);
-
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab');
-      if (tabParam === 'feed' || tabParam === 'battles' || tabParam === 'contests') {
-        setMainTab(tabParam);
-      }
-
-      return () => window.removeEventListener('resize', updateCols);
-    }
   }, []);
 
-  const handleTabChange = (tab: 'contests' | 'feed' | 'battles') => {
-    setMainTab(tab);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (tab === 'contests') {
-        url.searchParams.delete('tab');
-      } else {
-        url.searchParams.set('tab', tab);
-      }
-      window.history.replaceState({}, '', url.toString());
-    }
-  };
+  const handleTabChange = useCallback(
+    (tab: MainTab) => {
+      router.replace(tab === 'contests' ? '/' : `/?tab=${tab}`, {
+        scroll: false,
+      });
+    },
+    [router]
+  );
 
   // 1. Load Contests catalog & Subscriptions
   const loadContestsData = useCallback(async () => {
@@ -198,6 +176,19 @@ export default function HomePage() {
   useEffect(() => {
     loadContestsData();
   }, [loadContestsData]);
+
+  // Background route pre-warm: compile & cache /contest/[id] once while user scans the grid
+  const prewarmedContestRouteRef = useRef(false);
+  useEffect(() => {
+    if (prewarmedContestRouteRef.current || contests.length === 0) return;
+    prewarmedContestRouteRef.current = true;
+    const firstId = contests[0]?.id;
+    if (!firstId) return;
+    const timer = window.setTimeout(() => {
+      router.prefetch(`/contest/${firstId}`);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [contests, router]);
 
   useEffect(() => {
     loadBattlesData(true);
@@ -245,17 +236,23 @@ export default function HomePage() {
     loadFeedData();
   }, []);
 
-  // Check if any filter or search query is active
-  const hasActiveFilters = useMemo(() => {
+  // Count active filters for header badge
+  const activeFilterCount = useMemo(() => {
     return (
-      appliedSearch.trim().length > 0 ||
-      onlySubscribed ||
-      sortBy !== 'popular' ||
-      selectedTypes.length < 4 ||
-      selectedStatuses.length < 3 ||
-      selectedTags.length > 0
+      (appliedSearch.trim().length > 0 ? 1 : 0) +
+      (onlySubscribed ? 1 : 0) +
+      (sortBy !== 'popular' ? 1 : 0) +
+      (selectedTypes.length < 4 ? 1 : 0) +
+      (selectedStatuses.length < 3 ? 1 : 0) +
+      selectedTags.length
     );
   }, [appliedSearch, onlySubscribed, sortBy, selectedTypes, selectedStatuses, selectedTags]);
+
+  const hasActiveFilters = activeFilterCount > 0;
+
+  useEffect(() => {
+    setActiveFilterCount(activeFilterCount);
+  }, [activeFilterCount, setActiveFilterCount]);
 
   // Reset filters
   const handleResetFilters = () => {
@@ -270,7 +267,7 @@ export default function HomePage() {
 
   const handleApplyFilters = () => {
     setAppliedSearch(searchQuery.trim());
-    setIsFilterOpen(false);
+    closeFilters();
   };
 
   // Filtered & sorted contests for Tab 1
@@ -622,133 +619,19 @@ export default function HomePage() {
       });
   }, [allBattles, contestsMap, appliedSearch, onlySubscribed, selectedTags, sortBy, subscriptions]);
 
-  const dispatch = useDispatch();
-  const [cycleToast, setCycleToast] = useState<string | null>(null);
-
-  const handleSwitchUser = (role: 'admin' | 'moderator' | 'user' | 'guest' | 'entrant' | 'creator') => {
-    if (role === 'guest') {
-      dispatch(clearAuth());
-      return;
-    }
-
-    if (role === 'admin') {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-admin-01', email: 'admin@opinion.net' },
-          profile: {
-            id: 'usr-admin-01',
-            username: 'admin',
-            displayName: 'Alexander (Admin)',
-            role: 'admin',
-            avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces',
-          } as any,
-        })
-      );
-    } else if (role === 'creator') {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-creator-01', email: 'creator@opinion.net' },
-          profile: {
-            id: 'usr-creator-01',
-            username: 'marcus_creator',
-            displayName: 'Marcus Creator',
-            role: 'creator',
-            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces',
-          } as any,
-        })
-      );
-    } else if (role === 'moderator') {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-mod-01', email: 'mod@opinion.net' },
-          profile: {
-            id: 'usr-mod-01',
-            username: 'elenalens',
-            displayName: 'Elena Lens',
-            role: 'moderator',
-            avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=faces',
-          } as any,
-        })
-      );
-    } else if (role === 'entrant') {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-entrant-01', email: 'photographer@opinion.net' },
-          profile: {
-            id: 'usr-entrant-01',
-            username: 'photographer',
-            displayName: 'Dmitry Sokolov',
-            role: 'user',
-            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces',
-          } as any,
-        })
-      );
-    } else {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-user-01', email: 'user@opinion.net' },
-          profile: {
-            id: 'usr-user-01',
-            username: 'marina_art',
-            displayName: 'Marina Romanova',
-            role: 'user',
-            avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=faces',
-          } as any,
-        })
-      );
-    }
-  };
-
-  const handleAdvanceCycle = async () => {
-    await timeService.devJumpToNextCycle();
-    setCycleToast('Cycle 06:00 UTC simulated! Rounds and scores advanced.');
-    setTimeout(() => setCycleToast(null), 3500);
-  };
-
-  const rawAvatar =
-    profile?.avatar_url || (profile as any)?.avatarUrl || null;
-  const avatarUrl = resolveImageUrl(rawAvatar, 'avatars');
-  const username =
-    profile?.username || (profile as any)?.username || 'user';
-
   return (
-    <div className="w-full min-h-screen bg-bg text-ink flex flex-col items-center selection:bg-accent/30">
-      {/* Dev cycle advancement notification */}
-      {cycleToast && (
-        <div className="fixed top-3 z-50 px-4 py-2 rounded-full bg-accent text-on-accent font-bold text-xs shadow-xl animate-fade-in">
-          {cycleToast}
-        </div>
-      )}
+    <div className="w-full min-h-dvh bg-bg text-ink flex flex-col selection:bg-accent/30">
+      {/* ── Top Header with 3 Tabs: Contests | Feed | Battles ── */}
+      <AppHeader mainTab={mainTab} onTabChange={handleTabChange} />
 
-      {/* Responsive App Container: mobile-first max-w-md, with clean desktop expansion */}
+      {/* Responsive App Container */}
       <div
         className={`w-full flex flex-col bg-bg relative transition-all duration-300 ${
           mainTab === 'contests'
-            ? 'w-full max-w-7xl mx-auto min-h-screen pb-8 md:pb-24 sm:px-4 lg:px-6'
-            : mainTab === 'battles'
-            ? 'w-full max-w-md md:max-w-lg lg:max-w-2xl mx-auto h-[100dvh] pb-0 overflow-hidden'
-            : 'w-full max-w-md md:max-w-lg lg:max-w-2xl mx-auto h-[100dvh] pb-0 overflow-hidden'
+            ? 'max-w-[1440px] mx-auto min-h-0 pb-8 md:pb-24 px-3 sm:px-6 lg:px-8'
+            : 'max-w-md md:max-w-lg lg:max-w-2xl mx-auto h-app pb-0 overflow-hidden'
         }`}
       >
-        {/* ── Top Header with 3 Tabs: Contests | Feed | Battles ── */}
-        <AppHeader
-          activeTab={mainTab}
-          onTabChange={handleTabChange}
-          onOpenFilters={() => setIsFilterOpen(true)}
-          onOpenDrawer={() => setIsDrawerOpen(true)}
-          hasActiveFilters={hasActiveFilters}
-          avatarUrl={mounted ? avatarUrl : null}
-          username={mounted ? username : 'user'}
-        />
-
-        {/* ── Side Drawer ── */}
-        <SideDrawer
-          isOpen={isDrawerOpen}
-          onClose={() => setIsDrawerOpen(false)}
-          profile={mounted ? (profile as any) : null}
-          onSwitchUser={handleSwitchUser}
-          onAdvanceCycle={handleAdvanceCycle}
-        />
 
         {/* ── Active Filter Badges Bar (visible when filters applied) ── */}
         {hasActiveFilters && (
@@ -850,7 +733,7 @@ export default function HomePage() {
                 onLoadMore={handleLoadMoreFeed}
                 activeGroupId={activeGroupId}
                 onActiveGroupChange={setActiveGroupId}
-                modalOpen={isFilterOpen}
+                modalOpen={filtersOpen}
               />
             )}
           </motion.main>
@@ -877,7 +760,7 @@ export default function HomePage() {
                 onVote={handleBattleVote}
                 onResetFilters={handleResetFilters}
                 onLoadMore={handleLoadMoreBattles}
-                modalOpen={isFilterOpen}
+                modalOpen={filtersOpen}
                 activeBattleId={activeBattleId}
                 onActiveBattleChange={setActiveBattleId}
               />
@@ -887,8 +770,8 @@ export default function HomePage() {
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ── SEARCH & FILTER BOTTOM SHEET (Modal) ────────────────────────── */}
         {/* ══════════════════════════════════════════════════════════════════ */}
-        {isFilterOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex flex-col justify-end animate-fade-in">
+        {filtersOpen && (
+          <div className="fixed inset-0 z-50 bg-scrim backdrop-blur-xs flex flex-col justify-end animate-fade-in">
             <div
               className="w-full max-w-md mx-auto bg-surface-2 border-t border-line rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto space-y-5 animate-slide-up"
               role="dialog"
@@ -905,7 +788,7 @@ export default function HomePage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsFilterOpen(false)}
+                  onClick={closeFilters}
                   aria-label="Close filters"
                   className="w-8 h-8 rounded-full text-muted hover:text-ink flex items-center justify-center transition-colors"
                 >
@@ -1139,5 +1022,13 @@ export default function HomePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="min-h-dvh bg-bg" />}>
+      <HomePageContent />
+    </Suspense>
   );
 }

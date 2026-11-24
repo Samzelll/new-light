@@ -42,7 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${manrope.variable} ${lora.variable}`} suppressHydrationWarning>
       <head>
-        {supabaseUrl && <link rel="preconnect" href={supabaseUrl} />}
+        {supabaseUrl && supabaseUrl.startsWith('http') && (
+          <link rel="preconnect" href={supabaseUrl} />
+        )}
         <link rel="preconnect" href="https://images.unsplash.com" />
       </head>
       <body className="bg-bg text-ink font-sans min-h-screen">

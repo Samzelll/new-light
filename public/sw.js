@@ -1,9 +1,12 @@
-const CACHE_NAME = 'opinion-net-static-v2';
-const OFFLINE_URLS = ['/', '/manifest.webmanifest'];
+const CACHE_NAME = 'opinion-net-static-v3';
+const OFFLINE_URLS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_URLS)).then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(OFFLINE_URLS))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -19,55 +22,43 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Only handle GET requests
-  if (event.request.method !== 'GET') {
+  // Only handle same-origin GET requests
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
 
-  // DO NOT cache external API requests (e.g., Supabase, Auth, external CDNs) or local API routes
+  // Never intercept Next.js build chunks, data routes, HMR, or API routes —
+  // stale SW caches on hashed JS chunks cause "Unexpected token '<'" on updates.
   if (
-    url.origin !== self.location.origin ||
-    url.pathname.startsWith('/api') ||
-    url.pathname.startsWith('/_next/data') ||
-    url.hostname.includes('supabase')
+    url.pathname.startsWith('/_next/') ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/__')
   ) {
     return;
   }
 
-  // For static assets (JS, CSS, images, fonts, manifest), try cache first with network update
-  const isStaticAsset =
-    url.pathname.startsWith('/_next/static') ||
-    url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff|woff2|webmanifest)$/);
+  // Static non-Next assets (icons, images, fonts, manifest): Network-first with MIME guard
+  const isStaticAsset = Boolean(
+    url.pathname.match(/\.(png|jpg|jpeg|webp|avif|svg|ico|woff|woff2|webmanifest)$/)
+  );
 
   if (isStaticAsset) {
     event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        const fetchPromise = fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-              const responseClone = networkResponse.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-            }
-            return networkResponse;
-          })
-          .catch(() => cachedResponse);
-
-        return cachedResponse || fetchPromise;
-      })
+      fetch(event.request)
+        .then((networkResponse) => {
+          const contentType = networkResponse.headers.get('content-type') || '';
+          if (
+            networkResponse.ok &&
+            networkResponse.type === 'basic' &&
+            !contentType.includes('text/html')
+          ) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
-
-  // For page navigations, use Network First with Cache Fallback
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-        }
-        return networkResponse;
-      })
-      .catch(() => caches.match(event.request))
-  );
 });

@@ -1,7 +1,10 @@
 // src/features/pin-grid/components/PinCard.tsx
+'use client';
+
 import React, { memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { photoLoader } from '@/perf/imageUrls';
 import { AlertCircle, RotateCcw, ImageOff, Star } from 'lucide-react';
 import type { PinItem, PinStatus } from '../model/types';
@@ -25,6 +28,8 @@ export const PinCard = memo(function PinCard({
   onFail = 'placeholder',
   onClick,
 }: PinCardProps) {
+  const router = useRouter();
+
   // If failed and hide requested, hide card completely
   if (status === 'failed' && onFail === 'hide') {
     return null;
@@ -168,10 +173,20 @@ export const PinCard = memo(function PinCard({
     </article>
   );
 
-  // If pin has an href and no custom onClick, wrap in Link
+  // If pin has an href and no custom onClick, wrap in Link with hover/touch prefetch
   if (pin.href && !onClick) {
+    const warmHref = () => {
+      if (pin.href) router.prefetch(pin.href);
+    };
     return (
-      <Link href={pin.href} className="block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-lg">
+      <Link
+        href={pin.href}
+        prefetch={true}
+        onMouseEnter={warmHref}
+        onTouchStart={warmHref}
+        onFocus={warmHref}
+        className="block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-lg"
+      >
         {cardContent}
       </Link>
     );

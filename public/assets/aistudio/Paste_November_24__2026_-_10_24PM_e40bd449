@@ -1,0 +1,639 @@
+# Opinion Net — Redesign Brief для Google AI Studio
+
+> **Статус:** план согласован с пользователем, все решения ниже **окончательные**.
+> **Стек:** Next.js (App Router) + Tailwind CSS v4 + TypeScript + `lucide-react`.
+> **Цель:** убрать левый `SideNav`, сделать единую навигацию «верхний бар + правый `SideDrawer`», переработать Desktop / Tablet / Mobile.
+
+---
+
+## 0. Как работать с этим файлом (прочитай первым)
+
+1. **Не предлагай план и альтернативы, не переспрашивай.** Всё уже решено в разделе 2. Сразу пиши код.
+2. **Работай фазами** (раздел 4–11). Фазы 1 и 2 выдай **вместе** в одном ответе; дальше — по одной фазе на ответ.
+3. **Формат ответа на каждую фазу:**
+   - первая строка: `Фаза N — файлы: …`;
+   - затем для каждого файла заголовок `### path/to/File.tsx` и **полное содержимое файла** в одном блоке кода (не диффы, не «…остальное без изменений»);
+   - удалённые файлы: `### DELETE path/to/File.tsx`;
+   - в конце: **«Проверь вручную»** (2–5 пунктов) и **«Нужны файлы для следующей фазы»** (список путей).
+4. **Если нужного файла нет в контексте** — не выдумывай его содержимое. Пропусти его и укажи в «Нужны файлы».
+5. **Не трогай:** данные, сервисы, API, бизнес-логику, имена существующих компонентов / экспортов / пропсов (кроме явно указанных здесь).
+6. **Новые зависимости не добавлять.** Только React, Next, Tailwind, `lucide-react`.
+7. **Каждая фаза должна оставлять приложение рабочим** (сборка проходит, ничего не сломано), чтобы любую фазу можно было откатить отдельно.
+8. UI-тексты — **английские** (как сейчас). Комментарии в коде — минимальные, английские.
+
+---
+
+## 1. Неприкосновенное (повторяю: НЕ МЕНЯТЬ)
+
+Палитра **Warm Charcoal & Brass** и шрифты **Manrope + Lora** из `globals.css` / `layout.tsx` остаются как есть.
+
+**Разрешённые утилиты (Tailwind v4 из `@theme`):**
+
+| Назначение | Классы |
+|---|---|
+| Фоны | `bg-bg` · `bg-surface` · `bg-surface-2` · `bg-scrim` |
+| Границы | `border-line` · `border-line-strong` |
+| Текст | `text-ink` · `text-muted` · `text-faint` |
+| Акцент | `text-accent` · `text-accent-soft` · `bg-accent` · `bg-accent/15` · `border-accent/30` |
+| Основная CTA | `bg-accent-solid hover:bg-accent-hover text-ink font-semibold` (если в коде уже есть готовый класс primary-кнопки — используй его) |
+| Дуэль | `side-a` (`#c4a574`) · `side-b` (`#8aa0c4`) |
+| Ошибка | `text-danger` · `bg-danger/10` · `border-danger/30` |
+| Шрифты | `font-sans` (Manrope, по умолчанию) · `font-display` (Lora: названия, цифры, заголовки) |
+| Размеры | `text-caption` 11 · `text-tab`/`text-btn` 13 · `text-body` 14 · `text-title` 17 · `text-heading` 20 · `text-hero` 28 |
+
+**Запрещено:** hex-цвета в классах, `bg-black`, `bg-white`, `red-*`, `emerald-*`, `neutral-*`, `style={{ color/background }}`.
+Допустимые inline-style — только динамические значения (`transform`, `width`).
+**Успех** = `accent` (нового цвета «success» не вводим), **ошибка** = `danger`.
+Оверлеи/затемнение = `bg-scrim` (не `bg-black/80`).
+
+---
+
+## 2. Принятые решения (не обсуждаются)
+
+| Вопрос | Решение |
+|---|---|
+| Брейкпоинты | Только дефолты Tailwind: `sm` 640 · `md` 768 · `lg` 1024 · `xl` 1280. Кастомные пороги 900 / 1440 в JS **удалить**. |
+| Переключение раскладок | **Только CSS-классами.** JS-проверка ширины допустима в одном месте — хук `useColumns` (масонри). |
+| Вкладка главной (`Contests/Feed/Battles`) | Живёт в URL: `/` (= contests), `/?tab=feed`, `/?tab=battles`. Если в коде уже есть URL-параметр — оставь его имя. Если вкладка в `useState` — переведи на `?tab=` через `router.replace(..., { scroll: false })`. Компоненты с `useSearchParams` оборачивай в `<Suspense>`. |
+| Состояние Drawer и Filters | Один контекст `ChromeContext` (раздел 4). |
+| Верхние бары | `AppHeader` — только для `/` (корневой, с вкладками). `PageHeader` — для всех внутренних страниц. `/auth` и `/onboarding` — **без** хедера. |
+| Drawer | Монтируется **один раз** в `AppShell`, доступен везде. |
+| Поиск в хедере | `≥lg` — поле ввода; `sm–lg` — иконка-ссылка на `/search`; `<sm` — нет (есть пункт в Drawer). |
+| Сортировка в Contests | **Не делаем.** Только счётчик «N contests» на desktop. |
+| Hover-строка метаданных на карточке | Только из полей, которые уже есть в объекте карточки. Нет поля — не показывать сегмент. Новых запросов не добавлять. |
+| Фильтры | Один компонент, три формы: bottom sheet (`<sm`), центр-диалог (`sm–lg`), выпадающая панель (`≥lg`). |
+| Feed и Battles на desktop | Split-раскладка (раздел 8) начинается с `lg` (1024). Планшет в портрете — вертикальная раскладка как на mobile. |
+| Master-detail в `/admin` | **Не делаем.** Только унификация цветов + широкий контейнер. |
+| «Up next» в Battles | Фаза 8, опционально, только после прохождения чек-листа (раздел 12). |
+
+---
+
+## 3. Кроссплатформенные правила (применять во ВСЕХ фазах)
+
+- **Mobile-first.** Базовые классы = mobile, дальше `sm: md: lg: xl:`.
+- **Touch первым, мышь/клавиатура — надстройка.** Все интерактивные элементы ≥ 44×44px (`h-11 w-11`). Hover-эффекты только через `hover:` / `group-hover:` (в Tailwind v4 они уже включаются лишь на устройствах с hover — отдельные `@media (hover:hover)` не нужны).
+- **Высота экрана:** `dvh`, а не `vh`. Для Feed/Battles используй готовый класс `.h-app` (раздел 4). Фиксированные/липкие бары учитывают `env(safe-area-inset-*)`.
+- **Hydration-safe:** никаких `window`/`matchMedia` в теле рендера. Только в эффектах или через `useSyncExternalStore`.
+- **Оверлеи (Drawer, Filters, EditProfileSheet):** один хук `useOverlay` (раздел 4): Esc, блокировка скролла, фокус внутрь и возврат фокуса, ловушка Tab, `role="dialog" aria-modal="true"`. Внутри панелей `overscroll-contain`.
+- **Фокус:** `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60` на всех кнопках/ссылках.
+- **Анимации:** 200–250 мс `ease-out`, только `transform`/`opacity`. На все — `motion-reduce:transition-none` / `motion-reduce:animate-none`.
+- **Скролл-стабильность:** `html { scrollbar-gutter: stable; }`, чтобы открытие оверлея не дёргало лейаут.
+- Горизонтального скролла страницы быть не должно ни на одной ширине.
+
+---
+
+## 4. Фаза 1 — Фундамент
+
+**Файлы:** `src/app/globals.css`, `src/app/layout.tsx` (только если нужно), `src/components/navigation/AppShell.tsx`, `SideNav` (удалить), новые: `ChromeContext.tsx`, `PageShell.tsx`, `src/hooks/useOverlay.ts`, `src/hooks/useColumns.ts`.
+
+### 4.1 `globals.css` — что сделать
+1. **Удалить** правила `.desktop-only-nav`, `.app-shell-main { margin-left: 240px; width: calc(100% - 240px) }` и media-блок `@media (min-width:1024px) { .app-shell {...} .app-shell-main {...} }`. Оставить `.app-shell-main` без отступов (или убрать совсем).
+2. **Добавить** (всё остальное в файле не трогать):
+
+```css
+html { scrollbar-gutter: stable; }
+html.overlay-lock, html.overlay-lock body { overflow: hidden; }
+.overlay-panel { overscroll-behavior: contain; }
+
+:root { --header-h: calc(3.5rem + env(safe-area-inset-top, 0px)); }
+@media (min-width: 1024px) {
+  :root { --header-h: calc(4rem + env(safe-area-inset-top, 0px)); }
+}
+.h-app { height: calc(100dvh - var(--header-h)); }
+
+/* sticky колонка под хедером (только desktop) */
+@media (min-width: 1024px) {
+  .lg-sticky { position: sticky; top: calc(var(--header-h) + 1.5rem); align-self: start; }
+  .filters-popover {
+    position: absolute; left: auto; bottom: auto;
+    top: calc(var(--header-h) + 0.5rem);
+    right: max(2rem, calc((100vw - 1440px) / 2 + 2rem));
+    width: 420px;
+    max-height: calc(100dvh - var(--header-h) - 2rem);
+  }
+}
+
+/* тонкий скроллбар в палитре */
+.thin-scroll { scrollbar-width: thin; scrollbar-color: var(--color-line-strong) transparent; }
+```
+
+### 4.2 `AppShell.tsx` (итог)
+```tsx
+'use client';
+import type { ReactNode } from 'react';
+import { ChromeProvider } from './ChromeContext';
+import SideDrawer from './SideDrawer';
+
+export default function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <ChromeProvider>
+      <div className="app-shell relative min-h-dvh">{children}</div>
+      <SideDrawer />
+    </ChromeProvider>
+  );
+}
+```
+Никакого `SideNav`, никакого `isDesktop`. Удалить файл `SideNav` и все его импорты. `SideDrawer` должен получать данные пользователя теми же хуками/сторами, что раньше питали его из `page.tsx` (пропсы сделать необязательными).
+
+### 4.3 `ChromeContext.tsx`
+```tsx
+'use client';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+
+type Chrome = {
+  drawerOpen: boolean; openDrawer: () => void; closeDrawer: () => void;
+  filtersOpen: boolean; openFilters: () => void; closeFilters: () => void;
+  activeFilterCount: number; setActiveFilterCount: (n: number) => void;
+};
+const ChromeContext = createContext<Chrome | null>(null);
+
+export function ChromeProvider({ children }: { children: ReactNode }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [activeFilterCount, setActiveFilterCount] = useState(0);
+  const openDrawer = useCallback(() => { setFiltersOpen(false); setDrawerOpen(true); }, []);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const openFilters = useCallback(() => { setDrawerOpen(false); setFiltersOpen(true); }, []);
+  const closeFilters = useCallback(() => setFiltersOpen(false), []);
+  const value = useMemo(
+    () => ({ drawerOpen, openDrawer, closeDrawer, filtersOpen, openFilters, closeFilters, activeFilterCount, setActiveFilterCount }),
+    [drawerOpen, openDrawer, closeDrawer, filtersOpen, openFilters, closeFilters, activeFilterCount],
+  );
+  return <ChromeContext.Provider value={value}>{children}</ChromeContext.Provider>;
+}
+
+export function useChrome() {
+  const v = useContext(ChromeContext);
+  if (!v) throw new Error('useChrome must be used inside ChromeProvider');
+  return v;
+}
+```
+Состояние самих фильтров остаётся там, где оно есть сейчас (`page.tsx`); `page.tsx` лишь вызывает `setActiveFilterCount(n)` при изменении фильтров.
+
+### 4.4 `PageShell.tsx`
+```tsx
+import type { ReactNode } from 'react';
+const SIZES = { narrow: 'max-w-md', medium: 'max-w-3xl', wide: 'max-w-6xl', full: 'max-w-[1440px]' } as const;
+
+export function PageShell({ size = 'wide', className = '', children }: {
+  size?: keyof typeof SIZES; className?: string; children: ReactNode;
+}) {
+  return <main className={`mx-auto w-full ${SIZES[size]} px-4 pb-16 sm:px-6 lg:px-8 ${className}`}>{children}</main>;
+}
+```
+Класс `.page-container` нигде не использовать (его не существует) — заменить на `PageShell`.
+
+### 4.5 `useOverlay.ts`
+```ts
+'use client';
+import { useEffect, useRef, type RefObject } from 'react';
+
+const FOCUSABLE =
+  'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+export function useOverlay(open: boolean, panelRef: RefObject<HTMLElement | null>, onClose: () => void) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    const previous = document.activeElement as HTMLElement | null;
+    document.documentElement.classList.add('overlay-lock');
+    const items = () => (panel ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)) : []);
+    (items()[0] ?? panel)?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); closeRef.current(); return; }
+      if (e.key !== 'Tab') return;
+      const list = items();
+      if (!list.length) { e.preventDefault(); return; }
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.documentElement.classList.remove('overlay-lock');
+      previous?.focus?.();
+    };
+  }, [open, panelRef]);
+}
+```
+Контейнер панели обязан иметь `tabIndex={-1}`.
+
+### 4.6 `useColumns.ts` (масонри Contests)
+```ts
+'use client';
+import { useSyncExternalStore } from 'react';
+
+const QUERIES = ['(min-width: 640px)', '(min-width: 1024px)', '(min-width: 1440px)'];
+
+function subscribe(cb: () => void) {
+  const list = QUERIES.map((q) => window.matchMedia(q));
+  list.forEach((m) => m.addEventListener('change', cb));
+  return () => list.forEach((m) => m.removeEventListener('change', cb));
+}
+const getSnapshot = () => 2 + QUERIES.filter((q) => window.matchMedia(q).matches).length; // 2 · 3 · 4 · 5
+export const useColumns = () => useSyncExternalStore(subscribe, getSnapshot, () => 2);
+```
+Колонки: `<640` → 2 · `≥640` → 3 · `≥1024` → 4 · `≥1440` → 5. В `page.tsx` / `PinGrid` заменить прежний `columnsCount` (900/1440) на этот хук.
+
+---
+
+## 5. Фаза 2 — Верхние бары и SideDrawer
+
+**Файлы:** `src/components/layout/AppHeader.tsx` (переписать), новые `PageHeader.tsx`, `HeaderParts.tsx`, `src/components/navigation/SideDrawer.tsx` (доработать), `src/app/page.tsx` (подключение).
+
+### 5.1 `HeaderParts.tsx`
+- `AvatarButton({ onClick })` — **вынеси сюда существующую разметку аватара** из текущего `AppHeader` без изменений внешнего вида (круг 40×40, `border-accent/50`). Размер кликабельной зоны — 44px (`p-0.5` вокруг).
+- `FilterButton`, `BrandMark` — ниже. **Display-классы (`grid`, `hidden`, `flex`) передаёт вызывающий код**, внутри компонента их нет (иначе конфликт `hidden`/`grid`).
+
+```tsx
+import Link from 'next/link';
+import { Flame, SlidersHorizontal } from 'lucide-react';
+
+export function BrandMark({ className = '' }: { className?: string }) {
+  return (
+    <Link href="/" aria-label="Opinion Net home"
+      className={`items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${className}`}>
+      <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-accent text-on-accent">
+        <Flame size={18} strokeWidth={2.2} />
+      </span>
+      <span className="hidden leading-tight md:block">
+        <span className="block font-display text-title font-semibold text-ink">Opinion Net</span>
+        <span className="hidden text-caption uppercase tracking-wide text-faint lg:block">Contest platform</span>
+      </span>
+    </Link>
+  );
+}
+
+export function FilterButton({ className = '', count = 0, onClick }: { className?: string; count?: number; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-haspopup="dialog"
+      aria-label={count ? `Filters, ${count} active` : 'Filters'}
+      className={`relative h-11 w-11 place-items-center rounded-full text-accent transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${className}`}>
+      <SlidersHorizontal size={20} strokeWidth={2.2} />
+      {count > 0 && (
+        <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-on-accent">
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+```
+
+### 5.2 `AppHeader.tsx` (корневой бар только для `/`)
+
+**Раскладка**
+
+```
+Desktop ≥1024 (h-16):   [🔥 Opinion Net]      [ Contests | Feed | Battles ]      [🔍 Search  /] [⚙ 2] [avatar]
+Tablet 640–1023 (h-14): [🔥 Opinion Net]      [ Contests | Feed | Battles ]      [🔍] [⚙] [avatar]
+Mobile <640 (h-14):     [⚙]                    Contests  Feed  Battles                       [avatar]
+```
+
+**Правила**
+- Бар: `sticky top-0 z-40`, фон `bg-bg/90 backdrop-blur-md`, `border-b border-line`, верхний отступ `pt-[env(safe-area-inset-top)]`. Внутренний контейнер `max-w-[1440px]` — края выровнены с сеткой контента.
+- Колонки контейнера: mobile `grid-cols-[44px_1fr_44px]`, с `sm` — `grid-cols-[1fr_auto_1fr]` → вкладки центрируются **по экрану**, пустых дыр нет.
+- **Вкладки:** `<sm` — как сейчас (текст + латунная точка 6px снизу). С `sm` — сегмент-«пилюля»: `rounded-full border border-line bg-surface p-1`, ширина `264px` (`lg`: `312px`), 3 равные ячейки, активная подсвечена скользящей подложкой `bg-accent/15 border border-accent/30`, текст активной `text-accent-soft`, неактивных `text-faint hover:text-ink`. Подложка двигается через `translateX(index*100%)` (без измерений).
+- Справа: поле поиска (`≥lg`), иконка-ссылка поиска (`sm–lg`), фильтры (с `sm`; на `<sm` фильтры слева), аватар.
+- Глобальная клавиша `/` фокусирует поле поиска (если оно видимо и фокус не в input/textarea).
+- Бренд ведёт на `/` (то есть на вкладку Contests).
+
+**Скелет (адаптируй под существующие данные аватара):**
+```tsx
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Search } from 'lucide-react';
+import { useChrome } from '@/components/navigation/ChromeContext';
+import { AvatarButton, BrandMark, FilterButton } from './HeaderParts';
+
+export type MainTab = 'contests' | 'feed' | 'battles';
+const TABS: { id: MainTab; label: string }[] = [
+  { id: 'contests', label: 'Contests' },
+  { id: 'feed', label: 'Feed' },
+  { id: 'battles', label: 'Battles' },
+];
+
+export default function AppHeader({ mainTab, onTabChange }: { mainTab: MainTab; onTabChange: (t: MainTab) => void }) {
+  const router = useRouter();
+  const { openDrawer, openFilters, activeFilterCount } = useChrome();
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [q, setQ] = useState('');
+  const index = Math.max(0, TABS.findIndex((t) => t.id === mainTab));
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      const typing = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
+      if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && searchRef.current?.offsetParent) {
+        e.preventDefault();
+        searchRef.current.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  return (
+    <header className="sticky top-0 z-40 select-none border-b border-line bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <div className="mx-auto grid h-14 w-full max-w-[1440px] grid-cols-[44px_1fr_44px] items-center gap-2 px-3 sm:grid-cols-[1fr_auto_1fr] sm:px-6 lg:h-16 lg:px-8">
+        <div className="flex items-center justify-start">
+          <FilterButton className="grid sm:hidden" count={activeFilterCount} onClick={openFilters} />
+          <BrandMark className="hidden sm:flex" />
+        </div>
+
+        <nav aria-label="Main sections"
+          className="relative mx-auto grid h-full w-full max-w-[280px] grid-cols-3 text-center sm:h-10 sm:w-[264px] sm:max-w-none sm:rounded-full sm:border sm:border-line sm:bg-surface sm:p-1 lg:w-[312px]">
+          {/* mobile: dot */}
+          <span aria-hidden className="pointer-events-none absolute bottom-1.5 left-0 flex w-1/3 justify-center transition-transform duration-200 ease-out motion-reduce:transition-none sm:hidden"
+            style={{ transform: `translateX(${index * 100}%)` }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+          </span>
+          {/* sm+: sliding pill */}
+          <span aria-hidden className="pointer-events-none absolute inset-y-1 left-1 hidden w-[calc((100%_-_0.5rem)/3)] rounded-full border border-accent/30 bg-accent/15 transition-transform duration-200 ease-out motion-reduce:transition-none sm:block"
+            style={{ transform: `translateX(${index * 100}%)` }} />
+          {TABS.map((t) => (
+            <button key={t.id} type="button" onClick={() => onTabChange(t.id)}
+              aria-current={t.id === mainTab ? 'page' : undefined}
+              className={`relative z-10 text-tab font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:rounded-full ${
+                t.id === mainTab ? 'text-ink sm:text-accent-soft' : 'text-faint hover:text-ink'}`}>
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="flex items-center justify-end gap-1.5">
+          <form role="search" className="relative hidden lg:block"
+            onSubmit={(e) => { e.preventDefault(); const v = q.trim(); router.push(v ? `/search?q=${encodeURIComponent(v)}` : '/search'); }}>
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
+            <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" placeholder="Search contests"
+              className="h-10 w-[200px] rounded-full border border-line bg-surface pl-10 pr-9 text-body text-ink outline-none transition-[width,border-color] duration-200 placeholder:text-faint focus:border-accent/60 xl:w-[240px] xl:focus:w-[320px]" />
+            <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-line px-1.5 text-caption text-faint">/</kbd>
+          </form>
+          <Link href="/search" aria-label="Search"
+            className="hidden h-11 w-11 place-items-center rounded-full text-accent transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:grid lg:hidden">
+            <Search size={20} />
+          </Link>
+          <FilterButton className="hidden sm:grid" count={activeFilterCount} onClick={openFilters} />
+          <AvatarButton onClick={openDrawer} />
+        </div>
+      </div>
+    </header>
+  );
+}
+```
+
+### 5.3 `PageHeader.tsx` (внутренние страницы)
+
+**Props:** `{ title?: string; backHref?: string; actions?: ReactNode; overlay?: boolean }`.
+- Слева круглая кнопка «назад» (`ArrowLeft`): если есть `backHref` — `router.push`, иначе `router.back()` при наличии истории, иначе `/`. С `sm` рядом `BrandMark` (иконка + название с `md`).
+- Заголовок (`font-display text-title truncate`) — слева на mobile, по центру с `sm`.
+- Справа: `actions` + `AvatarButton` (открывает Drawer).
+- Обычный режим: `sticky top-0 z-40`, те же стили бара, что у `AppHeader` (`h-14 lg:h-16`, `max-w-[1440px]`, safe-area).
+- `overlay` (для страниц с обложкой): на `<lg` бар **прозрачный поверх обложки** (`absolute inset-x-0 top-0`, `bg-linear-to-b from-bg/70 to-transparent`), кнопки — полупрозрачные круги `bg-bg/60 backdrop-blur-md border border-line/60`; с `lg` превращается в обычный липкий бар (`lg:sticky lg:bg-none lg:bg-bg/90 lg:border-b lg:border-line`, круги без фона). Корневой элемент страницы должен быть `relative`.
+
+### 5.4 `SideDrawer.tsx` — доработка (содержимое пунктов НЕ менять)
+- Монтируется из `AppShell`, открытие/закрытие через `useChrome()`; хук `useOverlay`.
+- Панель: `fixed inset-y-0 right-0 z-[60] flex w-[min(23rem,calc(100vw-1.25rem))] flex-col border-l border-line bg-surface-2 overlay-panel lg:w-[24rem]`, `role="dialog" aria-modal="true" aria-label="Opinion Net menu" tabIndex={-1}`, выезд `translate-x` 220 мс. Затемнение: `fixed inset-0 z-[59] bg-scrim`, клик закрывает.
+- Структура: **шапка** (заголовок «OPINION NET MENU» + кнопка закрытия) → **прокручиваемое тело** `flex-1 overflow-y-auto thin-scroll` (профиль-карточка, `Navigate`, `Management & Tools`, dev switcher) → **закреплённый низ** `border-t border-line p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]`. Если Sign out уже есть — перенести в низ; если нет — **не добавлять**. Это лечит обрезание нижних пунктов («Admin & Post-Production»).
+- **Активный пункт:** `aria-current="page"`, `bg-surface text-ink`, иконка `text-accent`, слева латунная метка (`before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-accent`). Неактивные: `text-muted hover:bg-surface/60 hover:text-ink`.
+- Закрывать Drawer при смене маршрута: эффект на `[pathname, searchParams]` → `closeDrawer()`.
+- Определение активного пункта:
+```ts
+function isActive(href: string, pathname: string, tab: string | null) {
+  const [path, query] = href.split('?');
+  if (path === '/') return pathname === '/' && (tab ?? 'contests') === (new URLSearchParams(query).get('tab') ?? 'contests');
+  if (pathname !== path && !pathname.startsWith(path + '/')) return false;
+  return query ? new URLSearchParams(query).get('tab') === tab : tab === null;
+}
+```
+Пункты Drawer ведут на: `Explore Contests` → `/`, `Live Battles` → `/?tab=battles`, `Media Feed` → `/?tab=feed`; остальные `href` оставить как есть.
+
+### 5.5 `page.tsx` — подключение
+- Рендерит `<AppHeader mainTab onTabChange />` (вместо прежнего хедера); `SideDrawer` отсюда **убрать** (он в `AppShell`).
+- `mainTab` читается из `useSearchParams()`, `onTabChange` делает `router.replace(tab === 'contests' ? '/' : `/?tab=${tab}`, { scroll: false })`.
+
+---
+
+## 6. Фаза 3 — Contests (`page.tsx`, `PinGrid.tsx`, `PinCard.tsx`)
+
+- Контейнер вкладки: `mx-auto w-full max-w-[1440px] px-3 pb-8 sm:px-6 md:pb-24 lg:px-8`.
+- Отступы сетки: `gap-1.5 sm:gap-2.5 lg:gap-4` (и в `PinGrid`, и между колонками). Колонки — через `useColumns`.
+- **Счётчик (только `≥lg`)**, над сеткой:
+```tsx
+<p className="hidden pb-4 pt-6 text-body text-muted lg:block">
+  <span className="mr-2 font-display text-heading text-ink">{count}</span>contests
+</p>
+```
+- **Бейджи на карточке** (`LIVE`, `BATTLE`, `CONTEST`): подложка `bg-scrim ring-1 ring-accent/30 text-accent-soft` — читаются на любом фото (сейчас полупрозрачные и теряются на светлых обложках). Пульсирующая точка `LIVE` остаётся.
+- **Hover (только desktop, через `hover:` / `group-hover:`):** рамка `hover:border-accent/60`, зум фото `group-hover:scale-[1.03]` (вместо 1.05) + `motion-reduce:transform-none`, в нижней плашке раскрывается строка метаданных (участники · осталось · приз):
+```tsx
+<div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-200 group-hover:grid-rows-[1fr] motion-reduce:transition-none">
+  <div className="overflow-hidden"><p className="pt-1 text-caption text-muted">{metaLine}</p></div>
+</div>
+```
+  Плашка **обязана** быть `absolute inset-x-0 bottom-0` (overlay). Если сейчас она «в потоке» и раскрытие изменит высоту карточки (дёрнет масонри) — **не добавляй** эту строку вообще.
+- Карточка-ссылка получает `focus-visible:ring-2 focus-visible:ring-accent/60`.
+- Mobile/Tablet визуально не меняются (кроме бейджей).
+
+---
+
+## 7. Фаза 4 — Фильтры
+
+Один компонент `FilterPanel`, рендерится в `page.tsx`, открыт при `filtersOpen` из `useChrome()`. **Логику фильтров не переписывать** — только обёртка. Хук `useOverlay`. Футер панели прижат (`sticky bottom-0 bg-surface-2`): кнопки «Reset» (secondary, `border-line-strong`) и «Show N contests» (primary; если счётчика нет — «Apply»).
+
+```tsx
+{filtersOpen && (
+  <div className="fixed inset-0 z-50 bg-scrim animate-fade-in sm:flex sm:items-center sm:justify-center lg:block lg:bg-bg/40"
+    onMouseDown={(e) => { if (e.target === e.currentTarget) closeFilters(); }}>
+    <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Filters" tabIndex={-1}
+      className="overlay-panel filters-popover absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-line bg-surface-2 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] thin-scroll
+                 sm:static sm:w-full sm:max-w-lg sm:rounded-3xl sm:border sm:pb-5
+                 lg:rounded-2xl lg:border lg:shadow-2xl">
+      <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line-strong sm:hidden" />
+      {/* existing filter controls unchanged */}
+    </div>
+  </div>
+)}
+```
+- `<sm`: bottom sheet с drag-handle · `sm–lg`: центр-диалог до 512px · `≥lg`: выпадающая панель 420px под хедером у правого края контейнера (позиционирование — в `.filters-popover` из `globals.css`; на `<lg` этот класс ничего не делает).
+- Клик по фону и Esc закрывают. Счётчик активных фильтров → `setActiveFilterCount`.
+
+---
+
+## 8. Фаза 5 — Feed и Battles
+
+**Общее.** Корневая обёртка вкладки: `h-app` (а не `h-[100dvh]`), `overflow-hidden`, snap-скроллер внутри. Существующие `ArrowUp/ArrowDown` оставить. Prev/Next вызывают ту же функцию перехода между слайдами, что и клавиши.
+
+### 8.1 Feed (`TikTokFeedView.tsx`)
+
+| Диапазон | Раскладка |
+|---|---|
+| `<sm` | **Без изменений** (snap, 2×2). |
+| `sm–lg` | Колонка `max-w-md md:max-w-lg` по центру; над сеткой тонкая полоса контекста `hidden sm:flex lg:hidden items-center justify-between px-1 pb-1.5 text-caption text-muted`: слева название (`font-display`, truncate), справа «Group 7 of 20 · 4h 22m». |
+| `≥lg` | Split: слева сетка 2×2, справа панель контекста. |
+
+**`≥lg` скелет слайда:**
+```tsx
+<section className="h-full snap-start lg:flex lg:items-center lg:justify-center lg:gap-8 lg:px-8">
+  <div className="grid h-full min-w-0 grid-cols-2 grid-rows-2 gap-1.5 sm:gap-2 lg:aspect-[11/10] lg:max-w-[62%] lg:gap-3 lg:py-4">
+    {/* 4 карточки — как сейчас */}
+  </div>
+  <aside className="hidden w-[340px] shrink-0 flex-col gap-4 rounded-2xl border border-line bg-surface p-5 lg:flex xl:w-[380px]">
+    {/* панель контекста */}
+  </aside>
+</section>
+```
+**Панель контекста (сверху вниз):** статус-пилюля (`Live`) → название `font-display text-heading text-ink` → категория `text-muted` → разделитель `border-line` → пары «Group `7 / 20`», «Ends in …», «Your votes `X of 20 groups`» (цифры — `font-display text-title`) → прогресс-бар (`h-1.5 rounded-full bg-surface-2`, заливка `bg-accent`) → блок приза `rounded-xl border border-accent/25 bg-accent/10 p-3` (если есть) → ссылка «Open contest» (secondary-кнопка на `/contest/[contestId]`) → внизу ряд кнопок **Prev / Next** (`h-10 rounded-full border border-line-strong`, иконки `ChevronUp/ChevronDown`) + подсказка `↑ ↓` (`text-caption text-faint`). **Используй только данные, которые уже есть в группе/конкурсе; отсутствующие поля просто не показывай.**
+Инвариант: на 1280×720 страница не скроллится, панель не перекрывает сетку.
+
+### 8.2 Battles (`LiveBattleFeedComplete.tsx`)
+
+| Диапазон | Раскладка |
+|---|---|
+| `<lg` | **Вертикальный 50/50** как сейчас (контейнер `max-w-md md:max-w-lg`). |
+| `≥lg` | Side A и Side B **бок о бок** с вертикальной осью `VS`, под ними информационная полоса. |
+
+```
+┌───────────────┐       ┌───────────────┐
+│    Side A     │ ─VS── │    Side B     │
+└───────────────┘       └───────────────┘
+NEON TOKYO · 1v1 Duel   A 62% ━━━━ 38% B   ‹ Prev   Next ›   Open duel ›
+```
+
+**`≥lg` скелет слайда:**
+```tsx
+<section className="flex h-full snap-start flex-col lg:items-center lg:justify-center lg:gap-5 lg:px-8 lg:py-4">
+  <div className="relative flex min-h-0 w-full flex-1 flex-col gap-1.5 lg:max-h-[760px] lg:max-w-[1180px] lg:flex-row lg:gap-0">
+    {/* Card A:  flex-1 min-h-0 min-w-0 h-1/2 lg:h-full w-full lg:w-auto  + lg:rounded-3xl */}
+    {/* Axis: */}
+    <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 lg:pointer-events-auto lg:relative lg:left-auto lg:top-auto lg:flex lg:w-16 lg:translate-x-0 lg:translate-y-0 lg:items-center lg:justify-center">
+      <span aria-hidden className="absolute inset-y-0 left-1/2 hidden w-px bg-line lg:block" />
+      <span className="relative grid h-9 w-9 place-items-center rounded-full bg-accent text-caption font-bold text-on-accent animate-pulse motion-reduce:animate-none lg:h-12 lg:w-12 lg:text-btn">VS</span>
+    </div>
+    {/* Card B: те же классы, что у A */}
+  </div>
+  <footer className="hidden h-[4.5rem] w-full max-w-[1180px] shrink-0 items-center gap-6 rounded-2xl border border-line bg-surface px-5 lg:flex">
+    {/* title + split bar + Prev/Next + Open duel */}
+  </footer>
+</section>
+```
+- Выбранная карточка на `≥lg`: `lg:scale-[0.97]` (вместо `0.88` — рядом стоящие карточки не должны «разъезжаться»), кольцо и свечение — `side-a` / `side-b`, как сейчас.
+- Ссылка `NEON TOKYO · 1v1 Duel ›` в правом нижнем углу на `≥lg` скрывается (`lg:hidden`) — она переезжает в футер.
+- **Футер:** слева название (`font-display text-title truncate`) + пилюля `1v1 Duel`; по центру шкала `h-2 rounded-full bg-surface-2 overflow-hidden flex` (`bg-side-a` / `bg-side-b`, подписи `A 62%` / `38% B`; **если проценты до голосования скрыты** — нейтральная шкала `bg-line` и подпись «Vote to see results» `text-muted`); справа Prev/Next и «Open duel ›».
+- Логика голосования, загрузки изображений и snap-скролла **не меняется**.
+
+---
+
+## 9. Фаза 6 — Внутренние страницы
+
+**Общее правило:** каждая страница рендерит `<PageHeader …/>` первой строкой; собственные локальные `<header>` («Back to Home», разномастные шапки) удалить, их действия переносятся в `actions`. Ширины — только `PageShell` / значения ниже.
+
+### 9.1 `/contest/[id]` — стандартный и вечный (`ContestPageClient.tsx`)
+- Корень страницы `relative`. `<PageHeader overlay actions={Share · Bookmark · More}/>`: кнопки, плававшие поверх обложки, переезжают в `actions`.
+- `<lg`: визуально как сейчас (обложка `h-[280px] sm:h-[320px]`, градиент вниз, блок с `-mt-8`), контейнер `mx-auto max-w-lg sm:max-w-xl`. **Порядок блоков на mobile не менять.**
+- `≥lg`: `mx-auto max-w-6xl px-8 pt-6 lg:grid lg:grid-cols-12 lg:gap-8`:
+  - **Левая колонка** `lg:col-span-7 lg-sticky`: обложка (`lg:h-[420px] lg:rounded-3xl lg:border lg:border-line`, градиент и `-mt-8` только `<lg`), статус, заголовок (`lg:text-[34px]`), описание.
+  - **Правая колонка** `lg:col-span-5`: приз → статистика (3 колонки) → правила (все) → CTA (`Add entry` + `Subscribe`) → `Popular entries`.
+- В DOM: `<div className="lg:col-span-7 lg-sticky">…</div><div className="lg:col-span-5">…</div>` — на mobile порядок остаётся прежним (обложка, заголовок, описание, приз, статистика, правила, CTA, entries).
+
+### 9.2 Дуэль (`BattleDetailsView.tsx`)
+- Контейнер `max-w-xl lg:max-w-4xl`, `PageHeader title="1v1 Duel"` (кнопки верхней панели → `actions`).
+- Заголовок `lg:text-4xl`, две карточки `grid-cols-2` остаются (`aspect-[4/5]`), на `≥lg` просто крупнее; шкала голосов под ними `lg:max-w-3xl mx-auto`.
+
+### 9.3 Регистрация (`RegistrationContestPage.tsx`)
+- Контейнер: `<lg` `max-w-md sm:max-w-xl`; `≥lg` `max-w-6xl lg:grid lg:grid-cols-12 lg:gap-8`.
+- **Слева** (`lg:col-span-7`): обложка (`lg:h-72 lg:rounded-3xl`), `QuickFacts` (`lg:hidden` версия), быстрые правила, участники: `flex overflow-x-auto lg:grid lg:grid-cols-3 lg:overflow-visible xl:grid-cols-4 lg:gap-3`.
+- **Справа** (`lg:col-span-5 lg-sticky`, `hidden lg:block`): карточка `rounded-2xl border border-line bg-surface p-5` со второй копией `QuickFacts`, кнопкой `Register entry` (primary, на всю ширину) и «Read rules» (secondary → открывает `RulesSheet`).
+- `.cta-bar` на `≥lg` скрыть (`lg:hidden`). `RulesSheet`: bottom sheet `<sm`, центр-диалог `≥sm` (по образцу раздела 7, через `useOverlay`).
+
+### 9.4 `/profile`
+- `PageHeader title="Profile"`: кнопки выхода/редактирования → `actions`.
+- Контейнер `<lg`: `max-w-md sm:max-w-xl`; `≥lg`: `max-w-6xl lg:grid lg:grid-cols-12 lg:gap-8`.
+- Слева `lg:col-span-4 lg-sticky`: `ProfileHeader`, `StatsRow`, `TrustTierCard`. Справа `lg:col-span-8`: `ProfileTabs` + содержимое (карточки → `lg:grid-cols-2 xl:grid-cols-3 gap-3`; строки-списки (Votes) → одна колонка).
+- `EditProfileSheet`: bottom sheet `<sm`, центр-диалог `≥sm`, `useOverlay`.
+
+### 9.5 `/rules`
+`PageHeader title="Rules & Prizes"`. `<lg` как сейчас; `≥lg` `max-w-5xl lg:grid lg:grid-cols-12 lg:gap-8`: правила `col-span-7`, призовой фонд `col-span-5 lg-sticky`. DOM-порядок: правила, затем призы.
+
+### 9.6 `/auth`, `/onboarding`
+Без хедера. Обёртка `grid min-h-dvh place-items-center px-4`, карточка остаётся (`max-w-sm` / `max-w-md`). Над карточкой `BrandMark`. Фон страницы: `bg-bg` + мягкое латунное свечение сверху:
+`bg-[radial-gradient(60%_50%_at_50%_0%,color-mix(in_srgb,var(--color-accent)_10%,transparent),transparent)]`.
+
+### 9.7 `/apply/[id]`
+`PageHeader title="Apply"`, контейнер `max-w-2xl` → `max-w-3xl`. Сетки полей и превью фото не менять.
+
+---
+
+## 10. Фаза 7 — `/search`, `/create`, `/admin` (унификация)
+
+**Таблица замен (искать по всем трём файлам и подфайлам):**
+
+| Было | Стало |
+|---|---|
+| `#000000`, `#0b0b0d`, `bg-black` | `bg-bg` |
+| `#141414`, `#141418`, `#18181c` | `bg-surface` (инпуты, треки — `bg-surface-2`) |
+| `#333333`, `neutral-800`, `neutral-700` | `border-line` (акцентные границы — `border-line-strong`) |
+| `#E85102`, `#ff6a2b` (заливка) | `bg-accent-solid hover:bg-accent-hover text-ink` |
+| оранжевый текст / иконки | `text-accent` |
+| `white`, `neutral-100/200` | `text-ink` |
+| `neutral-400/500` | `text-muted` / `text-faint` |
+| `red-*` | `text-danger`, `bg-danger/10`, `border-danger/30` |
+| `emerald-*`, `green-*` | `text-accent`, `bg-accent/10`, `border-accent/30` |
+| `style={{ … цвета … }}` | Tailwind-классы выше |
+| `.page-container` | `PageShell` |
+
+**Фокус инпутов везде:** `focus:border-accent/60 focus:outline-none`, фон `bg-surface-2`, плейсхолдер `placeholder:text-faint`.
+
+- **`/search`:** `PageHeader title="Search"`; контейнер `PageShell size="full"`. Поле `h-12 w-full max-w-2xl rounded-2xl border border-line bg-surface-2 pl-12 pr-4 text-body`, инициализируется из `?q=`. Результаты — тем же `PinGrid` + `useColumns`, что и Contests. Пустое состояние — центрированный текст `text-muted`.
+- **`/create`:** `PageHeader title="Create"`. `<lg`: `max-w-2xl`; `≥lg`: `max-w-5xl`, карточки **Side A и Side B рядом** (`lg:grid lg:grid-cols-2 lg:gap-4`); `≥xl`: `max-w-6xl xl:grid xl:grid-cols-12 xl:gap-8` — форма `xl:col-span-7`, справа `xl:col-span-5 lg-sticky` **превью** карточки конкурса (собирается из текущего состояния формы теми же классами, что `PinCard`; нет изображения — плейсхолдер `bg-surface-2`).
+- **`/admin`:** `PageHeader title="Admin"`; контейнер `PageShell size="full"`. Табы — сегмент-«пилюля» в стиле хедера (`rounded-full border border-line bg-surface p-1`, активный `bg-accent/15 text-accent-soft`). Существующие `md:flex-row` / `sm:flex-row` раскладки карточек оставить. Логику модерации не трогать.
+
+---
+
+## 11. Фаза 8 — опционально: «Up next» в Battles
+
+Делать **только** после прохождения всего чек-листа (раздел 12). На `≥1440` (`2xl:`-аналог через `min-[1440px]:`) справа от дуэли колонка `w-64` «Up next»: 3 следующие дуэли, каждая — две миниатюры 40×40 + название (`font-display text-body truncate`) + `text-caption text-muted`; клик прокручивает ленту к этой дуэли. Данные — из уже загруженного массива дуэлей (если подгрузка постраничная — показываем только загруженные). Скрыта на `<1440`.
+
+---
+
+## 12. Чек-лист приёмки (выдай его в конце финальной фазы и пройди мысленно)
+
+**Ширины для проверки:** 390×844 · 768×1024 · 820×1180 · 1024×768 · 1280×720 · 1440×900 · 1920×1080.
+
+- [ ] Левого сайдбара и отступа 240px нет нигде; бренд «Opinion Net» виден в хедере с `sm` и шире.
+- [ ] Вкладки в хедере центрированы **по экрану**, на 1280–1920 нет пустых дыр; подложка плавно двигается; `prefers-reduced-motion` отключает анимацию.
+- [ ] Drawer открывается аватаром **с любой страницы** (кроме `/auth`, `/onboarding`), закрывается Esc / кликом по фону / при смене маршрута; нижние пункты достижимы прокруткой; активный пункт подсвечен.
+- [ ] Фильтры: bottom sheet (390) → диалог (768) → выпадающая панель под кнопкой (1280+). Esc закрывает, фокус возвращается на кнопку.
+- [ ] Contests: колонок 2 / 3 / 4 / 5 по ширинам; бейджи читаются на светлых фото; на 1920 контент по центру, `max-w-1440`.
+- [ ] Feed (`≥1024`): сетка + панель контекста без скролла страницы на 1280×720; Prev/Next и `↑ ↓` работают.
+- [ ] Battles (`≥1024`): карточки бок о бок, ось `VS`, футер со шкалой; на `<1024` вертикальный 50/50 как раньше.
+- [ ] `/contest/[id]`, регистрация, `/profile`, `/rules`: на `≥1024` две колонки; на mobile порядок блоков прежний.
+- [ ] `/search`, `/create`, `/admin`: в коде не осталось hex-цветов, `red-*`, `emerald-*`, `neutral-*`, `.page-container`.
+- [ ] Нигде нет горизонтального скролла страницы; нет `window.innerWidth` в рендере; сборка (`next build`) проходит без ошибок типов.
+- [ ] Палитра и шрифты не изменены.
+
+---
+
+## 13. Карта файлов по фазам (что просить у пользователя)
+
+| Фаза | Нужны файлы |
+|---|---|
+| 1 + 2 | `src/app/globals.css`, `src/app/layout.tsx`, `src/app/page.tsx`, `AppShell.tsx`, `SideNav`, `AppHeader.tsx`, `SideDrawer.tsx` |
+| 3 | `PinGrid.tsx`, `PinCard.tsx` (+ актуальный `page.tsx`) |
+| 4 | актуальный `page.tsx` (блок фильтров) |
+| 5 | `TikTokFeedView.tsx`, `LiveBattleFeedComplete.tsx` |
+| 6 | `ContestPageClient.tsx`, `BattleDetailsView.tsx`, `RegistrationContestPage.tsx` (+ `RulesSheet`), `profile/page.tsx` (+ `ProfileHeader`, `StatsRow`, `TrustTierCard`, `ProfileTabs`, `EditProfileSheet`), `rules/page.tsx`, `auth/page.tsx`, `onboarding/page.tsx`, `ApplyClient.tsx` |
+| 7 | `search/page.tsx`, `create/page.tsx`, `admin/page.tsx` (+ их подкомпоненты) |
+| 8 | актуальный `LiveBattleFeedComplete.tsx` |
+
+---
+
+**Начни с Фаз 1 и 2.** Сначала список файлов, которых тебе не хватает (если не хватает), затем — код по формату из раздела 0.

@@ -403,6 +403,7 @@ export function ContestPage({ contest, participants = [], userHasApplied = false
             src={coverUrl}
             alt={contest.title}
             fill
+            sizes="(max-width: 640px) 100vw, 448px"
             className="object-cover"
             priority
             unoptimized={shouldBeUnoptimized(coverUrl)}
@@ -504,7 +505,7 @@ export function ContestPage({ contest, participants = [], userHasApplied = false
                 aria-label="Contest entries thumbnails"
               >
                 {participantPhotos.length > 0 ? (
-                  participantPhotos.map((entry) => (
+                  participantPhotos.map((entry, idx) => (
                     <div
                       key={entry.id}
                       className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-line bg-surface group"
@@ -514,6 +515,8 @@ export function ContestPage({ contest, participants = [], userHasApplied = false
                         src={entry.photo!}
                         alt={entry.name}
                         fill
+                        priority={idx < 4}
+                        sizes="64px"
                         className="object-cover group-hover:scale-105 transition-transform"
                       />
                     </div>
