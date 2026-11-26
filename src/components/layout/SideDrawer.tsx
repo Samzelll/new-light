@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useDispatch } from 'react-redux';
 import {
   X,
   User,
@@ -14,7 +13,8 @@ import {
   PlusCircle,
   Shield,
   FastForward,
-  Users,
+  LogIn,
+  LogOut,
   Search,
   Swords,
   Flame,
@@ -22,13 +22,11 @@ import {
   Bookmark,
 } from 'lucide-react';
 import type { Profile } from '@/services/types';
-import type { Profile as AuthProfile } from '@/features/contests/types';
 import { timeService } from '@/services/mock/timeService';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
 import { useChrome } from '@/components/navigation/ChromeContext';
 import { useOverlay } from '@/hooks/useOverlay';
 import { useAuth } from '@/hooks/useAuth';
-import { setAuth, clearAuth } from '@/features/auth/authSlice';
 
 export interface SideDrawerProps {
   isOpen?: boolean;
@@ -60,8 +58,7 @@ export function SideDrawer({
   onAdvanceCycle: propOnAdvanceCycle,
 }: SideDrawerProps = {}) {
   const { drawerOpen, closeDrawer } = useChrome();
-  const { profile: authProfile } = useAuth();
-  const dispatch = useDispatch();
+  const { profile: authProfile, signInWithGoogle, logout } = useAuth();
   const pathname = usePathname() || '/';
   const searchParams = useSearchParams();
   const currentTab = searchParams.get('tab');
@@ -96,89 +93,15 @@ export function SideDrawer({
     (activeProfile.role === 'admin' || activeProfile.role === 'moderator');
   const showDevTools = process.env.NODE_ENV === 'development';
 
-  const handleSwitchUser = (
-    role: 'guest' | 'user' | 'entrant' | 'moderator' | 'admin' | 'creator'
-  ) => {
+  const handleAuthAction = async () => {
     if (propOnSwitchUser) {
-      propOnSwitchUser(role);
+      propOnSwitchUser(activeProfile ? 'guest' : 'user');
       return;
     }
-
-    if (role === 'guest') {
-      dispatch(clearAuth());
-      return;
-    }
-
-    if (role === 'admin') {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-admin-01', email: 'admin@opinion.net' },
-          profile: {
-            id: 'usr-admin-01',
-            username: 'admin',
-            displayName: 'Alexander (Admin)',
-            role: 'admin',
-            avatarUrl:
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces',
-          } as unknown as AuthProfile,
-        })
-      );
-    } else if (role === 'creator') {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-creator-01', email: 'creator@opinion.net' },
-          profile: {
-            id: 'usr-creator-01',
-            username: 'marcus_creator',
-            displayName: 'Marcus Creator',
-            role: 'creator',
-            avatarUrl:
-              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces',
-          } as unknown as AuthProfile,
-        })
-      );
-    } else if (role === 'moderator') {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-mod-01', email: 'mod@opinion.net' },
-          profile: {
-            id: 'usr-mod-01',
-            username: 'elenalens',
-            displayName: 'Elena Lens',
-            role: 'moderator',
-            avatarUrl:
-              'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=faces',
-          } as unknown as AuthProfile,
-        })
-      );
-    } else if (role === 'entrant') {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-entrant-01', email: 'photographer@opinion.net' },
-          profile: {
-            id: 'usr-entrant-01',
-            username: 'photographer',
-            displayName: 'Dmitry Sokolov',
-            role: 'user',
-            avatarUrl:
-              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces',
-          } as unknown as AuthProfile,
-        })
-      );
+    if (activeProfile) {
+      await logout();
     } else {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-user-01', email: 'user@opinion.net' },
-          profile: {
-            id: 'usr-user-01',
-            username: 'marina_art',
-            displayName: 'Marina Romanova',
-            role: 'user',
-            avatarUrl:
-              'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=faces',
-          } as unknown as AuthProfile,
-        })
-      );
+      await signInWithGoogle();
     }
   };
 
@@ -501,64 +424,18 @@ export function SideDrawer({
           )}
         </div>
 
-        {/* Pinned Footer (Dev Tools Role Switcher in dev mode) */}
-        {showDevTools && (
-          <div className="shrink-0 space-y-3 border-t border-line bg-surface-2 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <div className="flex items-center justify-between text-[11px] text-faint">
-              <span className="flex items-center gap-1 font-bold">
-                <Users size={12} />
-                <span>Dev Switcher</span>
-              </span>
-              <span className="tabular-nums">06:00 UTC</span>
-            </div>
+        {/* Pinned Footer (Account + Dev Cycle Control) */}
+        <div className="shrink-0 space-y-2.5 border-t border-line bg-surface-2 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={handleAuthAction}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink transition-colors hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          >
+            {activeProfile ? <LogOut size={14} /> : <LogIn size={14} />}
+            <span>{activeProfile ? 'Sign Out' : 'Continue with Google'}</span>
+          </button>
 
-            <div className="grid grid-cols-4 gap-1 text-[11px]">
-              <button
-                type="button"
-                onClick={() => handleSwitchUser('admin')}
-                className={`rounded-lg border p-1.5 text-center font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
-                  activeProfile?.role === 'admin'
-                    ? 'border-accent bg-accent text-on-accent'
-                    : 'border-line bg-surface text-muted hover:text-ink'
-                }`}
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSwitchUser('creator')}
-                className={`rounded-lg border p-1.5 text-center font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
-                  activeProfile?.role === 'creator'
-                    ? 'border-accent bg-accent text-on-accent'
-                    : 'border-line bg-surface text-muted hover:text-ink'
-                }`}
-              >
-                Creator
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSwitchUser('user')}
-                className={`rounded-lg border p-1.5 text-center font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
-                  activeProfile?.role === 'user'
-                    ? 'border-accent bg-accent text-on-accent'
-                    : 'border-line bg-surface text-muted hover:text-ink'
-                }`}
-              >
-                User
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSwitchUser('guest')}
-                className={`rounded-lg border p-1.5 text-center font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
-                  !activeProfile
-                    ? 'border-accent bg-accent text-on-accent'
-                    : 'border-line bg-surface text-muted hover:text-ink'
-                }`}
-              >
-                Guest
-              </button>
-            </div>
-
+          {showDevTools && (
             <button
               type="button"
               onClick={handleAdvanceCycle}
@@ -567,8 +444,8 @@ export function SideDrawer({
               <FastForward size={14} />
               <span>Advance to 06:00 UTC</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
     </>
   );

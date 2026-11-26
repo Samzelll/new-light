@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '@/lib/firebase';
 
 export interface UserTrust {
   user_id: string;
@@ -10,29 +11,33 @@ export interface UserTrust {
   level: 'new' | 'regular' | 'trusted' | 'senior';
 }
 
-/**
- * Fetches the trust score record for a specific user.
- */
-export async function getTrustData(userId: string): Promise<{ data: UserTrust | null; error: string | null }> {
-  const { data, error } = await supabase
-    .from('user_trust')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
-
-  return { data, error: error?.message ?? null };
+export async function getTrustData(
+  userId: string
+): Promise<{ data: UserTrust | null; error: string | null }> {
+  try {
+    const snap = await getDoc(doc(db, 'user_trust', userId));
+    if (snap.exists()) {
+      return { data: snap.data() as UserTrust, error: null };
+    }
+    return {
+      data: {
+        user_id: userId,
+        score: 1.0,
+        level: 'new',
+        days_active: 1,
+        contests_voted: 0,
+        vote_diversity: 0,
+        last_updated: new Date().toISOString(),
+      },
+      error: null,
+    };
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, `user_trust/${userId}`);
+  }
 }
 
-/**
- * Fetches the trust score record for the currently logged-in user.
- */
 export async function getMyTrust(): Promise<{ data: UserTrust | null; error: string | null }> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: 'User is not authenticated' };
-
-    return getTrustData(user.id);
-  } catch (err: any) {
-    return { data: null, error: err.message || 'An error occurred fetching trust info' };
-  }
+  const user = auth.currentUser;
+  if (!user) return { data: null, error: null };
+  return getTrustData(user.uid);
 }

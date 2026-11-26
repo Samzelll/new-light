@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { getParticipantById } from '@/services/participantService';
-import { supabase } from '@/services/supabase';
+import { getStageResultsForParticipant } from '@/services/groupService';
 import { formatPercentage } from '@/utils/formatters';
 import { SwipeablePhotoGallery } from '@/components/common/SwipeablePhotoGallery';
 import { ContestParticipantModal } from '@/components/contest/ContestParticipantModal';
@@ -51,10 +51,7 @@ export default function ParticipantPageClient({ params }: { params?: { id?: stri
       }
       setParticipant(data);
 
-      const { data: resultsData } = await supabase
-        .from('stage_results')
-        .select('*, contest_stages(stage_number, title)')
-        .eq('participant_id', participantId);
+      const { data: resultsData } = await getStageResultsForParticipant(participantId);
       if (resultsData) setResults(resultsData);
     } catch (err: any) {
       setError(err.message || 'Unable to load participant details.');

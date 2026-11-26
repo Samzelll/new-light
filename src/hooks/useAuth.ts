@@ -2,7 +2,12 @@
 
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store';
-import { signUpWithPassword as apiSignUp, signInWithPassword as apiSignIn, signOut as apiSignOut } from '@/services/authService';
+import {
+  signInWithGoogle as apiSignInWithGoogle,
+  signOut as apiSignOut,
+} from '@/services/authService';
+import { ensureProfileExists } from '@/services/profileService';
+import { resolveImageUrl } from '@/services/storageService';
 import { clearAuth, setAuth } from '@/features/auth/authSlice';
 
 export function useAuth() {
@@ -11,32 +16,32 @@ export function useAuth() {
     (state: RootState) => state.auth
   );
 
-  const signUp = async (email: string, password: string) => {
-    const { user: authedUser, error } = await apiSignUp(email, password);
+  const signInWithGoogle = async () => {
+    const { user: authedUser, error } = await apiSignInWithGoogle();
     if (!error && authedUser) {
-      const defaultProfile = {
-        id: authedUser.id,
-        username: authedUser.email.split('@')[0],
-        role: 'user' as const,
-        avatar_url: null,
-      };
-      dispatch(setAuth({ user: authedUser, profile: defaultProfile }));
+      try {
+        const ensured = await ensureProfileExists(
+          authedUser.id,
+          authedUser.email,
+          authedUser.displayName,
+          authedUser.photoURL
+        );
+        dispatch(
+          setAuth({
+            user: authedUser,
+            profile: {
+              ...ensured,
+              avatar_url: ensured.avatar_url
+                ? resolveImageUrl(ensured.avatar_url, 'avatars')
+                : null,
+            },
+          })
+        );
+      } catch (err) {
+        console.error('Failed ensuring profile on Google sign-in:', err);
+      }
     }
-    return { error };
-  };
-
-  const login = async (email: string, password: string) => {
-    const { user: authedUser, error } = await apiSignIn(email, password);
-    if (!error && authedUser) {
-      const defaultProfile = {
-        id: authedUser.id,
-        username: authedUser.email.split('@')[0],
-        role: 'user' as const,
-        avatar_url: null,
-      };
-      dispatch(setAuth({ user: authedUser, profile: defaultProfile }));
-    }
-    return { error };
+    return { user: authedUser, error };
   };
 
   const logout = async () => {
@@ -52,8 +57,7 @@ export function useAuth() {
     profile,
     isAuthenticated,
     isInitialized,
-    signUp,
-    login,
+    signInWithGoogle,
     logout,
   };
 }

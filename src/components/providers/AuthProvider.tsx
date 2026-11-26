@@ -1,105 +1,95 @@
 "use client";
 
 import { useEffect, ReactNode } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useRouter, usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { useDispatch } from 'react-redux';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, testConnection } from '@/lib/firebase';
 import { setAuth, clearAuth, setInitialized } from '@/features/auth/authSlice';
-import { RootState } from '@/lib/store';
+import { ensureProfileExists } from '@/services/profileService';
+import { ensureSeedDataInFirestore } from '@/services/seedData';
 import { resolveImageUrl } from '@/services/storageService';
+import type { Profile as AuthProfile } from '@/features/contests/types';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const { isAuthenticated, isInitialized } = useSelector((state: RootState) => state.auth);
-
 
   useEffect(() => {
     let isMounted = true;
 
-    async function syncUserSession(user: any) {
-      if (!user) {
-        if (isMounted) dispatch(clearAuth());
+    testConnection().catch(() => {});
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        if (isMounted) {
+          dispatch(clearAuth());
+          dispatch(setInitialized());
+        }
         return;
       }
 
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        const profile = await ensureProfileExists(
+          firebaseUser.uid,
+          firebaseUser.email || '',
+          firebaseUser.displayName,
+          firebaseUser.photoURL
+        );
+
+        if (profile.role === 'admin') {
+          ensureSeedDataInFirestore().catch(() => {});
+        }
 
         if (isMounted) {
-          const resolvedProfile = profile
-            ? {
-                ...profile,
-                avatar_url: profile.avatar_url
-                  ? resolveImageUrl(profile.avatar_url, 'avatars')
-                  : null,
-              }
-            : {
-                id: user.id,
-                username: user.email?.split('@')[0] || 'user',
-                role: 'user',
-                avatar_url: null,
-              };
+          const resolvedProfile: AuthProfile = {
+            ...profile,
+            avatar_url: profile.avatar_url
+              ? resolveImageUrl(profile.avatar_url, 'avatars')
+              : null,
+          };
 
           dispatch(
             setAuth({
-              user: { id: user.id, email: user.email || '' },
+              user: {
+                id: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+              },
               profile: resolvedProfile,
             })
           );
         }
       } catch (err) {
-        console.error('Error fetching profile:', err);
+        console.error('Error syncing Firebase user profile:', err);
         if (isMounted) {
           dispatch(
             setAuth({
-              user: { id: user.id, email: user.email || '' },
+              user: {
+                id: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL,
+              },
               profile: {
-                id: user.id,
-                username: user.email?.split('@')[0] || 'user',
+                id: firebaseUser.uid,
+                username: firebaseUser.email?.split('@')[0] || 'user',
+                display_name: firebaseUser.displayName || null,
                 role: 'user',
-                avatar_url: null,
+                avatar_url: firebaseUser.photoURL || null,
               },
             })
           );
         }
-      }
-    }
-
-    // Initial session check from local storage
-    supabase.auth.getSession().then(({ data: { session } }: any) => {
-      if (session?.user) {
-        syncUserSession(session.user).finally(() => {
-          if (isMounted) dispatch(setInitialized());
-        });
-      } else {
+      } finally {
         if (isMounted) {
-          dispatch(clearAuth());
           dispatch(setInitialized());
         }
       }
     });
 
-    // Listen to real-time auth changes (sign in, sign out, token refresh)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event: string, session: any) => {
-      if (session?.user) {
-        await syncUserSession(session.user);
-      } else {
-        if (isMounted) dispatch(clearAuth());
-      }
-      if (isMounted) dispatch(setInitialized());
-    });
-
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, [dispatch]);
 

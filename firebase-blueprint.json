@@ -1,0 +1,289 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "Public user profile without PII (email is isolated in UserPrivate).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "display_name": { "type": "string", "maxLength": 100 },
+        "avatar_url": { "type": "string", "maxLength": 250000 },
+        "bio": { "type": "string", "maxLength": 500 },
+        "role": { "type": "string", "enum": ["user", "creator", "moderator", "admin", "developer"] },
+        "show_participations": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time", "maxLength": 64 },
+        "updated_at": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["id", "username", "role", "show_participations", "created_at"]
+    },
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Owner-only PII record storing authenticated email address.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "created_at": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["uid", "email", "created_at"]
+    },
+    "UserTrust": {
+      "title": "UserTrust",
+      "description": "Reputation and trust weighting score for a user.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "score": { "type": "number" },
+        "level": { "type": "string", "enum": ["new", "regular", "trusted", "senior"] },
+        "days_active": { "type": "number" },
+        "contests_voted": { "type": "number" },
+        "vote_diversity": { "type": "number" },
+        "last_updated": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["user_id", "score", "level", "last_updated"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Contest category metadata.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "slug": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "icon_url": { "type": "string", "maxLength": 1000 },
+        "sort_order": { "type": "number" }
+      },
+      "required": ["id", "name", "slug", "sort_order"]
+    },
+    "Contest": {
+      "title": "Contest",
+      "description": "Voting contest, 1v1 battle, race, or eternal hall of fame.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "rules": { "type": "string", "maxLength": 4000 },
+        "prize": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "enum": ["battle", "race", "standard", "eternal"] },
+        "status": { "type": "string", "enum": ["draft", "registration", "voting", "active", "completed", "paused", "blocked"] },
+        "visibility": { "type": "string", "enum": ["public", "private"] },
+        "feed_listing_status": { "type": "string", "enum": ["none", "pending", "approved", "rejected"] },
+        "category_id": { "type": "string", "maxLength": 128 },
+        "cover_url": { "type": "string", "maxLength": 400000 },
+        "max_participants": { "type": "number" },
+        "group_size": { "type": "number" },
+        "registration_start": { "type": "string", "maxLength": 64 },
+        "registration_end": { "type": "string", "maxLength": 64 },
+        "voting_start": { "type": "string", "maxLength": 64 },
+        "voting_end": { "type": "string", "maxLength": 64 },
+        "created_by": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "is_featured": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time", "maxLength": 64 },
+        "updated_at": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["id", "title", "type", "status", "visibility", "group_size", "created_by", "is_featured", "created_at", "updated_at"]
+    },
+    "Participant": {
+      "title": "Participant",
+      "description": "Contest or battle entry submission.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "contest_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "user_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "submission_data": { "type": "object" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "eliminated"] },
+        "admin_note": { "type": "string", "maxLength": 500 },
+        "submitted_at": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["id", "contest_id", "user_id", "submission_data", "status", "submitted_at"]
+    },
+    "Vote": {
+      "title": "Vote",
+      "description": "User vote in a contest, battle, or group match.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 256 },
+        "contest_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "stage_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "group_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "voter_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "participant_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "trust_weight": { "type": "number" },
+        "created_at": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["id", "contest_id", "stage_id", "group_id", "voter_id", "participant_id", "trust_weight", "created_at"]
+    },
+    "EternalVote": {
+      "title": "EternalVote",
+      "description": "User vote in an eternal Hall of Fame contest.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 256 },
+        "contest_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "voter_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "participant_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "trust_weight": { "type": "number" },
+        "voted_at": { "type": "string", "format": "date-time", "maxLength": 64 },
+        "updated_at": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["id", "contest_id", "voter_id", "participant_id", "trust_weight", "voted_at", "updated_at"]
+    },
+    "ContestSubscription": {
+      "title": "ContestSubscription",
+      "description": "User subscription/bookmark for a contest.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 256 },
+        "user_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "contest_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "created_at": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["user_id", "contest_id", "created_at"]
+    },
+    "ContestStage": {
+      "title": "ContestStage",
+      "description": "Stage within a multi-round tournament contest.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "contest_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "stage_number": { "type": "number" },
+        "title": { "type": "string", "maxLength": 160 },
+        "status": { "type": "string", "enum": ["pending", "active", "completed"] }
+      },
+      "required": ["id", "contest_id", "stage_number", "status"]
+    },
+    "ContestGroup": {
+      "title": "ContestGroup",
+      "description": "Voting group inside a contest stage.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "stage_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "contest_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "group_number": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "active", "completed"] }
+      },
+      "required": ["id", "stage_id", "contest_id", "group_number", "status"]
+    },
+    "GroupMember": {
+      "title": "GroupMember",
+      "description": "Membership mapping a participant to a contest group.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "group_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "stage_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "contest_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "participant_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" }
+      },
+      "required": ["id", "group_id", "stage_id", "contest_id", "participant_id"]
+    },
+    "StageResult": {
+      "title": "StageResult",
+      "description": "Final ranked result for a participant in a stage.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "stage_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "group_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "participant_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "vote_percentage": { "type": "number" },
+        "rank_in_group": { "type": "number" },
+        "passed": { "type": "boolean" }
+      },
+      "required": ["id", "stage_id", "group_id", "participant_id", "vote_percentage", "rank_in_group", "passed"]
+    },
+    "FraudFlag": {
+      "title": "FraudFlag",
+      "description": "Admin moderation flag for suspicious voting or entry activity.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "participant_id": { "type": "string", "maxLength": 128 },
+        "reason": { "type": "string", "maxLength": 500 },
+        "reviewed": { "type": "boolean" },
+        "admin_action": { "type": "string", "maxLength": 64 },
+        "created_at": { "type": "string", "format": "date-time", "maxLength": 64 }
+      },
+      "required": ["id", "participant_id", "reason", "reviewed", "created_at"]
+    },
+    "UserDailyLog": {
+      "title": "UserDailyLog",
+      "description": "Daily vote activity log for trust progression.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 256 },
+        "user_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "log_date": { "type": "string", "maxLength": 16 },
+        "votes_cast": { "type": "number" }
+      },
+      "required": ["user_id", "log_date", "votes_cast"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": { "$ref": "#/entities/Profile" },
+      "description": "Public user profiles (PII-free)."
+    },
+    "/users_private/{userId}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Owner-only private PII records."
+    },
+    "/user_trust/{userId}": {
+      "schema": { "$ref": "#/entities/UserTrust" },
+      "description": "User trust score and tier metrics."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Contest category catalog."
+    },
+    "/contests/{contestId}": {
+      "schema": { "$ref": "#/entities/Contest" },
+      "description": "Contests, 1v1 battles, races, and eternal hall of fame entries."
+    },
+    "/participants/{participantId}": {
+      "schema": { "$ref": "#/entities/Participant" },
+      "description": "Contest participant submissions."
+    },
+    "/votes/{voteId}": {
+      "schema": { "$ref": "#/entities/Vote" },
+      "description": "Individual weighted votes keyed deterministically per user and match."
+    },
+    "/eternal_votes/{voteId}": {
+      "schema": { "$ref": "#/entities/EternalVote" },
+      "description": "Votes in eternal hall of fame contests."
+    },
+    "/contest_subscriptions/{subscriptionId}": {
+      "schema": { "$ref": "#/entities/ContestSubscription" },
+      "description": "User contest follows/subscriptions."
+    },
+    "/contest_stages/{stageId}": {
+      "schema": { "$ref": "#/entities/ContestStage" },
+      "description": "Multi-stage tournament stages."
+    },
+    "/contest_groups/{groupId}": {
+      "schema": { "$ref": "#/entities/ContestGroup" },
+      "description": "Stage voting groups."
+    },
+    "/group_members/{memberId}": {
+      "schema": { "$ref": "#/entities/GroupMember" },
+      "description": "Participants assigned to groups."
+    },
+    "/stage_results/{resultId}": {
+      "schema": { "$ref": "#/entities/StageResult" },
+      "description": "Published stage rankings."
+    },
+    "/fraud_flags/{flagId}": {
+      "schema": { "$ref": "#/entities/FraudFlag" },
+      "description": "Moderation fraud flags."
+    },
+    "/user_daily_log/{logId}": {
+      "schema": { "$ref": "#/entities/UserDailyLog" },
+      "description": "Daily user voting counters."
+    }
+  }
+}

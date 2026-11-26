@@ -27,6 +27,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { createContest, getCategories } from '@/services/contestService';
 import { addBattleParticipants } from '@/services/participantService';
+import { uploadContestCover, uploadSubmissionPhoto } from '@/services/storageService';
 import type { ContestType, ContestStatus } from '@/constants/contestTypes';
 
 interface CategoryItem {
@@ -82,20 +83,23 @@ export default function CreateContestPage() {
     loadCats();
   }, []);
 
-  // Handle image file upload into Data URL
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'cover' | 'red' | 'green') => {
+  // Handle image file upload into bounded Data URL for Firestore
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    target: 'cover' | 'red' | 'green'
+  ) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const dataUrl = uploadEvent.target?.result as string;
-        if (dataUrl) {
-          if (target === 'cover') setCoverUrl(dataUrl);
-          if (target === 'red') setRedPhoto(dataUrl);
-          if (target === 'green') setGreenPhoto(dataUrl);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    const res =
+      target === 'cover'
+        ? await uploadContestCover('new', file)
+        : await uploadSubmissionPhoto('new', target, 0, file);
+    if (res.path) {
+      if (target === 'cover') setCoverUrl(res.path);
+      if (target === 'red') setRedPhoto(res.path);
+      if (target === 'green') setGreenPhoto(res.path);
+    } else if (res.error) {
+      setFormNotice({ type: 'error', message: res.error });
     }
   };
 

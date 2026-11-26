@@ -1,125 +1,94 @@
-import { supabase } from './supabase';
 import { compressImageFile } from '@/utils/imageCompression';
 
+function fileToDataUrl(file: File | Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to read image data'));
+      }
+    };
+    reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 /**
- * Uploads a user's avatar to the 'avatars' bucket.
- * Destination path: {userId}/avatar.{ext}
+ * Compresses a user's avatar to a compact data URL stored directly in Firestore
+ * (100% compatible with Firebase free Spark tier without paid Storage buckets).
  */
 export async function uploadAvatar(
-  userId: string,
+  _userId: string,
   file: File
 ): Promise<{ path: string | null; error: string | null }> {
   try {
     const { file: optimizedFile } = await compressImageFile(file, {
-      maxWidth: 512,
-      maxHeight: 512,
+      maxWidth: 400,
+      maxHeight: 400,
       maxSizeBytes: 120 * 1024,
     });
-    const fileExt = optimizedFile.name.split('.').pop() || 'jpg';
-    const filePath = `${userId}/avatar.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, optimizedFile, {
-        upsert: true,
-        contentType: optimizedFile.type,
-      });
-
-    if (error) return { path: null, error: error.message };
-    const publicUrl = getPublicUrl('avatars', data?.path || filePath);
-    return { path: publicUrl || data?.path || filePath, error: null };
+    const dataUrl = await fileToDataUrl(optimizedFile);
+    return { path: dataUrl, error: null };
   } catch (err: any) {
-    return { path: null, error: err.message || 'An error occurred during upload' };
+    return { path: null, error: err?.message || 'An error occurred preparing avatar' };
   }
 }
 
 /**
- * Uploads a participant application photo to the 'submissions' bucket.
- * Destination path: {contestId}/{participantId}/photo_{index}.{ext}
+ * Compresses a participant submission photo to a compact data URL for Firestore.
  */
 export async function uploadSubmissionPhoto(
-  contestId: string,
-  participantId: string,
-  index: number,
+  _contestId: string,
+  _participantId: string,
+  _index: number,
   file: File
 ): Promise<{ path: string | null; error: string | null }> {
   try {
     const { file: optimizedFile } = await compressImageFile(file, {
-      maxWidth: 1600,
-      maxHeight: 1600,
-      maxSizeBytes: 300 * 1024,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      maxSizeBytes: 240 * 1024,
     });
-    const fileExt = optimizedFile.name.split('.').pop() || 'jpg';
-    const filePath = `${contestId}/${participantId}/photo_${index}.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('submissions')
-      .upload(filePath, optimizedFile, {
-        upsert: true,
-        contentType: optimizedFile.type,
-      });
-
-    if (error) return { path: null, error: error.message };
-    return { path: data.path, error: null };
+    const dataUrl = await fileToDataUrl(optimizedFile);
+    return { path: dataUrl, error: null };
   } catch (err: any) {
-    return { path: null, error: err.message || 'An error occurred during upload' };
+    return { path: null, error: err?.message || 'An error occurred preparing photo' };
   }
 }
 
 /**
- * Uploads a contest cover image to the 'contests' bucket.
- * Destination path: {contestId}/cover.{ext}
+ * Compresses a contest cover image to a compact data URL for Firestore.
  */
 export async function uploadContestCover(
-  contestId: string,
+  _contestId: string,
   file: File
 ): Promise<{ path: string | null; error: string | null }> {
   try {
     const { file: optimizedFile } = await compressImageFile(file, {
-      maxWidth: 1600,
-      maxHeight: 1600,
-      maxSizeBytes: 300 * 1024,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      maxSizeBytes: 240 * 1024,
     });
-    const fileExt = optimizedFile.name.split('.').pop() || 'jpg';
-    const filePath = `${contestId}/cover.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('contests')
-      .upload(filePath, optimizedFile, {
-        upsert: true,
-        contentType: optimizedFile.type,
-      });
-
-    if (error) return { path: null, error: error.message };
-    return { path: data.path, error: null };
+    const dataUrl = await fileToDataUrl(optimizedFile);
+    return { path: dataUrl, error: null };
   } catch (err: any) {
-    return { path: null, error: err.message || 'An error occurred during upload' };
+    return { path: null, error: err?.message || 'An error occurred preparing cover image' };
   }
 }
 
-/**
- * Returns the public URL for a file stored in a Supabase Storage bucket.
- *
- * For Supabase-hosted files, we append Supabase's Image Transformation
- * query params so the CDN returns a properly resized, compressed image
- * (WebP/AVIF) — the user only streams what they need, never the full original.
- *
- * For external URLs (Unsplash, etc.) the URL is passed through unchanged.
- */
 export function getPublicUrl(
-  bucketName: 'avatars' | 'submissions' | 'contests',
+  _bucketName: 'avatars' | 'submissions' | 'contests',
   path: string,
-  options?: {
+  _options?: {
     width?: number;
     height?: number;
     quality?: number;
-    /** 'origin' | 'cover' | 'fill' | 'inside' | 'outside' (default: 'cover') */
     resize?: 'origin' | 'cover' | 'fill' | 'inside' | 'outside';
   }
 ): string {
   if (!path) return '';
-
-  // Pass-through for absolute external URLs (Unsplash CDN, data-URIs, etc.) or local assets
   if (
     path.startsWith('http://') ||
     path.startsWith('https://') ||
@@ -128,34 +97,9 @@ export function getPublicUrl(
   ) {
     return path;
   }
-
-  // Use Supabase's built-in image transformation API for resize + compression
-  const transformOptions = options
-    ? {
-        width: options.width,
-        height: options.height,
-        quality: options.quality ?? 80,
-        resize: options.resize ?? 'cover',
-      }
-    : undefined;
-
-  if (transformOptions) {
-    const { data } = supabase.storage
-      .from(bucketName)
-      .getPublicUrl(path, { transform: transformOptions as any });
-    return data?.publicUrl || '';
-  }
-
-  const { data } = supabase.storage.from(bucketName).getPublicUrl(path);
-  return data?.publicUrl || '';
+  return '';
 }
 
-/**
- * Safely resolves an image path or URL into a format guaranteed to be valid for Next.js <Image>.
- * - Keeps absolute URLs ('http://', 'https://', 'data:') and root-relative paths ('/...').
- * - Resolves Supabase storage paths (e.g. "usr-admin-01/avatar.jpg" or "contests/cover.jpg") to public URLs.
- * - Always returns a valid string starting with '/', 'http://', 'https://', or 'data:', or fallback.
- */
 export function resolveImageUrl(
   path?: string | null,
   bucket: 'avatars' | 'submissions' | 'contests' = 'avatars',
@@ -165,7 +109,6 @@ export function resolveImageUrl(
   const trimmed = path.trim();
   if (!trimmed) return fallback;
 
-  // Already valid URL or absolute path
   if (
     trimmed.startsWith('http://') ||
     trimmed.startsWith('https://') ||
@@ -175,38 +118,15 @@ export function resolveImageUrl(
     return trimmed;
   }
 
-  // Determine bucket if path has bucket prefix
-  let targetBucket = bucket;
-  let targetPath = trimmed;
-  if (trimmed.startsWith('avatars/')) {
-    targetBucket = 'avatars';
-    targetPath = trimmed.replace(/^avatars\//, '');
-  } else if (trimmed.startsWith('submissions/')) {
-    targetBucket = 'submissions';
-    targetPath = trimmed.replace(/^submissions\//, '');
-  } else if (trimmed.startsWith('contests/')) {
-    targetBucket = 'contests';
-    targetPath = trimmed.replace(/^contests\//, '');
-  }
-
-  const publicUrl = getPublicUrl(targetBucket, targetPath);
-  if (
-    publicUrl &&
-    (publicUrl.startsWith('http://') ||
-      publicUrl.startsWith('https://') ||
-      publicUrl.startsWith('data:') ||
-      publicUrl.startsWith('/'))
-  ) {
-    return publicUrl;
-  }
-
-  return fallback || (targetBucket === 'avatars'
-    ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces'
-    : 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800');
+  return (
+    fallback ||
+    (bucket === 'avatars'
+      ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces'
+      : 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800')
+  );
 }
 
 const OPTIMIZED_HOST_SUFFIXES = [
-  '.supabase.co',
   'images.unsplash.com',
   'plus.unsplash.com',
   'picsum.photos',
@@ -219,13 +139,10 @@ const OPTIMIZED_HOST_SUFFIXES = [
   '.githubusercontent.com',
   '.cloudinary.com',
   '.imgur.com',
+  '.firebasestorage.app',
+  'firebasestorage.googleapis.com',
 ];
 
-/**
- * Checks if a given image URL belongs to a configured Next.js remote domain.
- * If not, unoptimized: true should be passed to Next.js <Image> to prevent
- * runtime crashes when users or admins link arbitrary external images.
- */
 export function shouldBeUnoptimized(src?: string | null): boolean {
   if (!src || typeof src !== 'string') return false;
   if (src.startsWith('/') || src.startsWith('data:')) return false;
@@ -241,23 +158,10 @@ export function shouldBeUnoptimized(src?: string | null): boolean {
   }
 }
 
-/**
- * Convenience helpers for common image sizes.
- * These produce correctly-sized thumbnails directly from the CDN.
- */
 export const imgUrl = {
-  avatar: (path: string) =>
-    getPublicUrl('avatars', path, { width: 128, height: 128, resize: 'cover' }),
-
-  avatarLarge: (path: string) =>
-    getPublicUrl('avatars', path, { width: 256, height: 256, resize: 'cover' }),
-
-  contestCover: (path: string, width = 640) =>
-    getPublicUrl('contests', path, { width, resize: 'cover', quality: 85 }),
-
-  submission: (path: string, width = 800) =>
-    getPublicUrl('submissions', path, { width, resize: 'cover', quality: 85 }),
-
-  submissionThumb: (path: string) =>
-    getPublicUrl('submissions', path, { width: 400, height: 400, resize: 'cover', quality: 75 }),
+  avatar: (path: string) => getPublicUrl('avatars', path, { width: 128, height: 128, resize: 'cover' }),
+  avatarLarge: (path: string) => getPublicUrl('avatars', path, { width: 256, height: 256, resize: 'cover' }),
+  contestCover: (path: string, width = 640) => getPublicUrl('contests', path, { width, resize: 'cover', quality: 85 }),
+  submission: (path: string, width = 800) => getPublicUrl('submissions', path, { width, resize: 'cover', quality: 85 }),
+  submissionThumb: (path: string) => getPublicUrl('submissions', path, { width: 400, height: 400, resize: 'cover', quality: 75 }),
 };

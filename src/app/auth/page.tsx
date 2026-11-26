@@ -3,86 +3,32 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Mail, KeyRound, Flame } from 'lucide-react';
+import { ArrowLeft, Flame, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDispatch } from 'react-redux';
-import { setAuth } from '@/features/auth/authSlice';
 
 export default function AuthPage() {
   const router = useRouter();
-  const dispatch = useDispatch();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isInitialized, signInWithGoogle } = useAuth();
 
-  const [step, setStep] = useState<'email' | 'otp'>('email');
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [timer, setTimer] = useState(600); // 10 minutes in seconds
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isInitialized && isAuthenticated) {
       router.push('/profile');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isInitialized, router]);
 
-  // 10-minute timer for OTP
-  useEffect(() => {
-    if (step !== 'otp') return;
-    const interval = setInterval(() => {
-      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [step]);
-
-  const handleSendCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address');
-      return;
-    }
+  const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError(null);
-    setTimeout(() => {
+    const { error: authError } = await signInWithGoogle();
+    if (authError) {
+      setError(authError);
       setIsLoading(false);
-      setStep('otp');
-      setTimer(600);
-    }, 400);
-  };
-
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length < 6) {
-      setError('Please enter a 6-digit verification code');
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-
-    // Mock adapter verification: accepts 000000 or any 6-digit code
-    setTimeout(() => {
-      setIsLoading(false);
-      const username = email.split('@')[0];
-      dispatch(
-        setAuth({
-          user: { id: `usr-${Date.now()}`, email },
-          profile: {
-            id: `usr-${Date.now()}`,
-            username,
-            displayName: username.charAt(0).toUpperCase() + username.slice(1),
-            role: 'user',
-            avatarUrl: null,
-          } as any,
-        })
-      );
+    } else {
       router.push('/profile');
-    }, 450);
-  };
-
-  const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
   };
 
   return (
@@ -105,10 +51,8 @@ export default function AuthPage() {
           <h1 className="text-xl font-bold uppercase tracking-tight text-ink font-display">
             Opinion <span className="text-accent">Net</span>
           </h1>
-          <p className="text-xs text-muted mt-1">
-            {step === 'email'
-              ? 'Sign in with a one-time email code'
-              : `Code sent to ${email}`}
+          <p className="text-xs text-muted mt-1.5">
+            Sign in with your Google account to vote, submit entries, and track your trust rank.
           </p>
         </div>
 
@@ -118,88 +62,27 @@ export default function AuthPage() {
           </div>
         )}
 
-        {step === 'email' ? (
-          <form onSubmit={handleSendCode} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-muted">
-                Your email address
-              </label>
-              <div className="relative">
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-2 border border-line text-ink placeholder-faint text-sm focus:outline-none focus:border-accent transition-colors"
-                />
-                <Mail size={16} className="absolute left-3.5 top-3.5 text-muted" />
-              </div>
-            </div>
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+            className="w-full py-3.5 px-4 rounded-full bg-accent-solid hover:bg-accent-hover disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2.5 cursor-pointer"
+          >
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27c3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10c5.35 0 9.25-3.67 9.25-9.09c0-1.15-.15-1.81-.15-1.81"
+              />
+            </svg>
+            <span>{isLoading ? 'Connecting...' : 'Continue with Google'}</span>
+          </button>
 
-            <button
-              type="submit"
-              disabled={isLoading || !email}
-              className="w-full py-3.5 rounded-full bg-accent-solid hover:bg-accent-hover disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all active:scale-[0.99]"
-            >
-              {isLoading ? 'Sending...' : 'Get verification code'}
-            </button>
-
-            <p className="text-[11px] text-faint text-center leading-relaxed">
-              We will send a 6-digit code. No passwords required.
-            </p>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="otp" className="block text-xs font-bold uppercase tracking-wider text-muted">
-                  6-digit code
-                </label>
-                <span className="text-[11px] font-bold text-muted tabular-nums">
-                  Expires in: {formatTimer(timer)}
-                </span>
-              </div>
-              <div className="relative">
-                <input
-                  id="otp"
-                  type="text"
-                  maxLength={6}
-                  required
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  className="w-full text-center tracking-[0.35em] text-lg font-bold py-3 rounded-xl bg-surface-2 border border-line text-ink placeholder-faint focus:outline-none focus:border-accent transition-colors"
-                />
-                <KeyRound size={16} className="absolute left-3.5 top-3.5 text-muted" />
-              </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-surface-2 border border-line text-[11px] text-muted text-center">
-              💡 For quick testing enter <span className="text-accent font-bold">000000</span>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading || otp.length < 6}
-              className="w-full py-3.5 rounded-full bg-accent-solid hover:bg-accent-hover disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all active:scale-[0.99]"
-            >
-              {isLoading ? 'Verifying...' : 'Sign In'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setStep('email');
-                setOtp('');
-              }}
-              className="w-full text-center text-xs text-muted hover:text-ink transition-colors"
-            >
-              Use a different email
-            </button>
-          </form>
-        )}
+          <div className="flex items-center justify-center gap-1.5 text-[11px] text-faint pt-1">
+            <ShieldCheck size={13} className="text-accent shrink-0" />
+            <span>Secured by Firebase Authentication</span>
+          </div>
+        </div>
       </div>
     </div>
   );

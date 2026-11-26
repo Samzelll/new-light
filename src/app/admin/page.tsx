@@ -22,8 +22,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDispatch } from 'react-redux';
-import { setAuth } from '@/features/auth/authSlice';
 import {
   isPlatformAdmin as checkIsPlatformAdmin,
   isCreator as checkIsCreator,
@@ -37,16 +35,23 @@ import {
   getCategories,
   type Contest,
 } from '@/services/contestService';
-import { getParticipants, updateParticipantStatus } from '@/services/participantService';
-import { saveStageGroupsAndMembers } from '@/services/groupService';
+import {
+  getParticipants,
+  getPendingParticipantsForAdmin,
+  updateParticipantStatus,
+} from '@/services/participantService';
+import {
+  getActiveStageForContest,
+  getUnreviewedFraudFlags,
+  resolveFraudFlag,
+  saveStageGroupsAndMembers,
+} from '@/services/groupService';
 import { distributeIntoGroups } from '@/utils/groupAlgorithm';
-import { setUserRole } from '@/services/profileService';
-import { supabase } from '@/services/supabase';
+import { getAllProfilesForAdmin, setUserRole } from '@/services/profileService';
 import { PostProductionModal } from '@/components/admin/PostProductionModal';
 
 export default function AdminPage() {
-  const { user, profile, isInitialized } = useAuth();
-  const dispatch = useDispatch();
+  const { profile, isInitialized, signInWithGoogle } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'contests' | 'participants' | 'flags' | 'users'>('contests');
   const [contestFilter, setContestFilter] = useState<'all' | 'active' | 'registration' | 'frozen' | 'hidden' | 'completed'>('all');
@@ -96,24 +101,15 @@ export default function AdminPage() {
       if (cData) setContests(cData);
 
       // 3. Load pending participants
-      const { data: pData } = await supabase
-        .from('participants')
-        .select('*, profiles(username, display_name), contests(title)')
-        .eq('status', 'pending');
+      const { data: pData } = await getPendingParticipantsForAdmin();
       if (pData) setPendingApplications(pData);
 
       // 4. Load fraud flags
-      const { data: fData } = await supabase
-        .from('fraud_flags')
-        .select('*, participants(id, submission_data, profiles(username))')
-        .eq('reviewed', false);
+      const { data: fData } = await getUnreviewedFraudFlags();
       if (fData) setFraudFlags(fData);
 
       // 5. Load users list
-      const { data: uData } = await supabase
-        .from('profiles')
-        .select('*')
-        .limit(100);
+      const { data: uData } = await getAllProfilesForAdmin();
       if (uData) setUsersList(uData);
     } catch (err) {
       console.error(err);
@@ -127,39 +123,6 @@ export default function AdminPage() {
       loadAdminData();
     }
   }, [isInitialized, hasAccess, loadAdminData]);
-
-  // Fast Dev Switcher between Super Admin and Creator mode directly in the admin header
-  const handleQuickRoleSwitch = (targetRole: 'admin' | 'creator') => {
-    if (targetRole === 'admin') {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-admin-01', email: 'admin@opinion.net' },
-          profile: {
-            id: 'usr-admin-01',
-            username: 'admin',
-            displayName: 'Alexander (Super Admin)',
-            role: 'admin',
-            avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces',
-          } as any,
-        })
-      );
-      showToast('Switched to 👑 Super Admin mode (Full Post-Production)');
-    } else {
-      dispatch(
-        setAuth({
-          user: { id: 'usr-creator-01', email: 'creator@opinion.net' },
-          profile: {
-            id: 'usr-creator-01',
-            username: 'marcus_creator',
-            displayName: 'Marcus Creator',
-            role: 'creator',
-            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces',
-          } as any,
-        })
-      );
-      showToast('Switched to 🎨 Creator mode (Basic Contest Management)');
-    }
-  };
 
   // ── Contest Actions ──
   const handleUpdateContestStatus = async (contestId: string, status: any) => {
@@ -225,12 +188,7 @@ export default function AdminPage() {
   const handleFormGroups = async (contestId: string) => {
     setActionLoading(true);
     try {
-      const { data: stage } = await supabase
-        .from('contest_stages')
-        .select('*')
-        .eq('contest_id', contestId)
-        .eq('status', 'active')
-        .single();
+      const { data: stage } = await getActiveStageForContest(contestId);
 
       if (!stage) {
         showToast('No active stage found. Please create and activate a stage first.');
@@ -265,12 +223,8 @@ export default function AdminPage() {
   const handleResolveFlag = async (flagId: string, action: 'dismissed' | 'disqualified', participantId: string) => {
     setActionLoading(true);
     try {
-      const { error: flagErr } = await supabase
-        .from('fraud_flags')
-        .update({ reviewed: true, admin_action: action })
-        .eq('id', flagId);
-
-      if (flagErr) throw flagErr;
+      const { error: flagErr } = await resolveFraudFlag(flagId, action);
+      if (flagErr) throw new Error(flagErr);
 
       if (action === 'disqualified') {
         const { error: partErr } = await updateParticipantStatus(
@@ -278,7 +232,7 @@ export default function AdminPage() {
           'eliminated',
           'Disqualified due to fraudulent activity.'
         );
-        if (partErr) throw partErr;
+        if (partErr) throw new Error(partErr);
       }
 
       showToast(`Flag resolved as: ${action}`);
@@ -366,14 +320,20 @@ export default function AdminPage() {
           <p className="text-neutral-400 text-xs leading-relaxed">
             You need Admin or Contest Creator privileges to access the post-production studio.
           </p>
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col gap-2.5">
             <button
               type="button"
-              onClick={() => handleQuickRoleSwitch('admin')}
-              className="px-5 py-2.5 rounded-xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs shadow-lg transition-colors"
+              onClick={() => signInWithGoogle()}
+              className="w-full px-5 py-2.5 rounded-xl bg-[#ff6a2b] hover:bg-[#ff7a3d] text-white font-bold text-xs shadow-lg transition-colors"
             >
-              👑 Switch to Super Admin
+              Sign in with Admin Google Account
             </button>
+            <Link
+              href="/"
+              className="w-full px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs transition-colors"
+            >
+              Back to Home
+            </Link>
           </div>
         </div>
       </main>
@@ -422,32 +382,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Quick Role Toggle Bar (for instant testing of creator vs admin levels) */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#16161a] border border-neutral-800 self-start sm:self-auto">
-          <span className="text-[10px] text-neutral-500 font-bold px-2 uppercase">Test Mode:</span>
-          <button
-            type="button"
-            onClick={() => handleQuickRoleSwitch('admin')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              isSuperAdmin
-                ? 'bg-[#ff6a2b] text-white shadow'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            Admin
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickRoleSwitch('creator')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              isCreatorRole && !isSuperAdmin
-                ? 'bg-emerald-600 text-white shadow'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            Creator
-          </button>
-        </div>
       </header>
 
       {/* Tabs Menu */}

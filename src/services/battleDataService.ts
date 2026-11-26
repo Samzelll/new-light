@@ -6,10 +6,10 @@
  * can be swapped out easily without modifying UI components.
  */
 
-import { supabase } from '@/services/supabase';
+import { auth } from '@/lib/firebase';
 import { getContests, getContestById } from '@/services/contestService';
 import { getParticipants } from '@/services/participantService';
-import { castVote as castVoteService } from '@/services/voteService';
+import { castVote as castVoteService, getContestVotes } from '@/services/voteService';
 import { resolveImageUrl } from '@/services/storageService';
 import type { BattleItem, CompetitorDetails, BattleCorner } from '@/types/battle';
 
@@ -84,24 +84,19 @@ export async function getBattle(contestId?: string): Promise<BattleContest | nul
     if (!contest) return null;
 
     // Fetch participants
-    const { data: participantsData } = await getParticipants(targetId, 'all');
+    const { data: participantsData } = await getParticipants(targetId, 'approved');
     const participants = participantsData || [];
 
-    // Fetch votes with trust_weight for accurate scoring/points
-    const { data: votesData } = await supabase
-      .from('votes')
-      .select('id, participant_id, voter_id, trust_weight')
-      .eq('contest_id', targetId);
-
+    // Fetch votes with trust_weight from Firestore
+    const { data: votesData } = await getContestVotes(targetId);
     const votes = votesData || [];
     const totalVotes = votes.length;
 
-    // Check current user session for existing vote
+    // Check current Firebase Auth user for existing vote
     let userVotedId: string | null = null;
-    const { data: sessionData } = await supabase.auth.getSession();
-    const currentUserId = sessionData?.session?.user?.id;
+    const currentUserId = auth.currentUser?.uid;
     if (currentUserId) {
-      const myVote = votes.find((v: any) => v.voter_id === currentUserId);
+      const myVote = votes.find((v) => v.voter_id === currentUserId);
       if (myVote) userVotedId = myVote.participant_id;
     }
 

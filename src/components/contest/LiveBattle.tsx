@@ -6,7 +6,7 @@ import { useVote } from '@/hooks/useVote';
 import { useAuth } from '@/hooks/useAuth';
 import { getPublicUrl } from '@/services/storageService';
 import { formatPercentage } from '@/utils/formatters';
-import { supabase } from '@/services/supabase';
+import { getContestVotes } from '@/services/voteService';
 import { LazyImage } from '@/components/common/LazyImage';
 
 interface LiveBattleProps {
@@ -32,10 +32,7 @@ export function LiveBattle({ contestId, participants, userTrustScore }: LiveBatt
   // Load existing votes for this contest
   useEffect(() => {
     async function loadVotes() {
-      const { data } = await supabase
-        .from('votes')
-        .select('id, participant_id, trust_weight')
-        .eq('contest_id', contestId);
+      const { data } = await getContestVotes(contestId);
       if (data) setVotes(data);
     }
     loadVotes();

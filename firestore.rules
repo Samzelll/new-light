@@ -1,0 +1,575 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default-Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ── Global Primitives ─────────────────────────────────────────
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdminEmail() {
+      return isVerifiedUser() && request.auth.token.email == 'triumlabsgroup@gmail.com';
+    }
+
+    function isAdmin() {
+      return isAdminEmail() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOptionalString(data, field, maxLen) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function isSeedContestId(contestId) {
+      return contestId in [
+        'contest-stars',
+        'contest-writers',
+        'contest-tennis-night',
+        'contest-tennis-apply',
+        'contest-design-ideas',
+        'contest-glamour',
+        'contest-photo-month',
+        'contest-nature-stars',
+        'contest-battle-01',
+        'contest-neon-shinjuku',
+        'contest-race-02',
+        'contest-eternal-04',
+        'contest-battle-05',
+        'battle-01',
+        'battle-02',
+        'battle-03',
+        'battle-04',
+        'battle-05'
+      ];
+    }
+
+    // ── Entity Validation Blueprints ──────────────────────────────
+    function isValidProfile(data, userId) {
+      return data.keys().hasAll(['id', 'username', 'role', 'show_participations', 'created_at']) &&
+        data.keys().hasOnly([
+          'id', 'username', 'display_name', 'avatar_url', 'bio',
+          'role', 'show_participations', 'created_at', 'updated_at'
+        ]) &&
+        data.id == userId &&
+        isValidId(data.id) &&
+        data.username is string && data.username.size() >= 1 && data.username.size() <= 64 &&
+        isOptionalString(data, 'display_name', 100) &&
+        isOptionalString(data, 'avatar_url', 250000) &&
+        isOptionalString(data, 'bio', 500) &&
+        data.role in ['user', 'creator', 'moderator', 'admin', 'developer'] &&
+        data.show_participations is bool &&
+        data.created_at is string && data.created_at.size() <= 64 &&
+        isOptionalString(data, 'updated_at', 64);
+    }
+
+    function isValidUserPrivate(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'created_at']) &&
+        data.keys().hasOnly(['uid', 'email', 'created_at']) &&
+        data.uid == userId &&
+        isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.created_at is string && data.created_at.size() <= 64;
+    }
+
+    function isValidUserTrust(data, userId) {
+      return data.keys().hasAll(['user_id', 'score', 'level', 'last_updated']) &&
+        data.keys().hasOnly(['user_id', 'score', 'level', 'days_active', 'contests_voted', 'vote_diversity', 'last_updated']) &&
+        data.user_id == userId &&
+        isValidId(data.user_id) &&
+        data.score is number && data.score >= 0 && data.score <= 1000 &&
+        data.level in ['new', 'regular', 'trusted', 'senior'] &&
+        (!('days_active' in data) || (data.days_active is number && data.days_active >= 0 && data.days_active <= 100000)) &&
+        (!('contests_voted' in data) || (data.contests_voted is number && data.contests_voted >= 0 && data.contests_voted <= 1000000)) &&
+        (!('vote_diversity' in data) || (data.vote_diversity is number && data.vote_diversity >= 0 && data.vote_diversity <= 1)) &&
+        data.last_updated is string && data.last_updated.size() <= 64;
+    }
+
+    function isValidCategory(data, catId) {
+      return data.keys().hasAll(['id', 'name', 'slug', 'sort_order']) &&
+        data.keys().hasOnly(['id', 'name', 'slug', 'icon_url', 'sort_order']) &&
+        data.id == catId &&
+        isValidId(data.id) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.slug is string && data.slug.size() >= 1 && data.slug.size() <= 64 &&
+        isOptionalString(data, 'icon_url', 1000) &&
+        data.sort_order is number && data.sort_order >= 0 && data.sort_order <= 1000;
+    }
+
+    function isValidContest(data, contestId) {
+      return data.keys().hasAll(['id', 'title', 'type', 'status', 'visibility', 'group_size', 'created_by', 'is_featured', 'created_at', 'updated_at']) &&
+        data.keys().hasOnly([
+          'id', 'title', 'description', 'rules', 'prize', 'quickRules', 'rulesSections',
+          'type', 'status', 'visibility', 'feed_listing_status', 'category_id', 'cover_url',
+          'max_participants', 'group_size', 'registration_start', 'registration_end',
+          'voting_start', 'voting_end', 'created_by', 'is_featured', 'created_at', 'updated_at'
+        ]) &&
+        data.id == contestId &&
+        isValidId(data.id) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        isOptionalString(data, 'description', 2000) &&
+        isOptionalString(data, 'rules', 4000) &&
+        isOptionalString(data, 'prize', 200) &&
+        (!('quickRules' in data) || data.quickRules == null || (data.quickRules is list && data.quickRules.size() <= 10 && (data.quickRules.size() == 0 || data.quickRules[0] is string))) &&
+        (!('rulesSections' in data) || data.rulesSections == null || (data.rulesSections is list && data.rulesSections.size() <= 12)) &&
+        data.type in ['battle', 'race', 'standard', 'eternal'] &&
+        data.status in ['draft', 'registration', 'voting', 'active', 'completed', 'paused', 'blocked'] &&
+        data.visibility in ['public', 'private'] &&
+        (!('feed_listing_status' in data) || data.feed_listing_status == null || data.feed_listing_status in ['none', 'pending', 'approved', 'rejected']) &&
+        isOptionalString(data, 'category_id', 128) &&
+        isOptionalString(data, 'cover_url', 450000) &&
+        (!('max_participants' in data) || data.max_participants == null || (data.max_participants is number && data.max_participants >= 2 && data.max_participants <= 1000)) &&
+        data.group_size is number && data.group_size >= 2 && data.group_size <= 50 &&
+        isOptionalString(data, 'registration_start', 64) &&
+        isOptionalString(data, 'registration_end', 64) &&
+        isOptionalString(data, 'voting_start', 64) &&
+        isOptionalString(data, 'voting_end', 64) &&
+        isValidId(data.created_by) &&
+        data.is_featured is bool &&
+        data.created_at is string && data.created_at.size() <= 64 &&
+        data.updated_at is string && data.updated_at.size() <= 64;
+    }
+
+    function isValidSubmissionData(sub) {
+      return sub is map &&
+        sub.keys().hasOnly(['name', 'author', 'photos', 'description', 'social_links', 'sponsor', 'tags', 'votes']) &&
+        isOptionalString(sub, 'name', 160) &&
+        isOptionalString(sub, 'author', 100) &&
+        isOptionalString(sub, 'description', 2000) &&
+        (!('photos' in sub) || sub.photos == null || (sub.photos is list && sub.photos.size() <= 10 && (sub.photos.size() == 0 || (sub.photos[0] is string && sub.photos[0].size() <= 450000)))) &&
+        (!('tags' in sub) || sub.tags == null || (sub.tags is list && sub.tags.size() <= 10 && (sub.tags.size() == 0 || (sub.tags[0] is string && sub.tags[0].size() <= 48)))) &&
+        (!('social_links' in sub) || sub.social_links == null || sub.social_links is map) &&
+        (!('sponsor' in sub) || sub.sponsor == null || sub.sponsor is map) &&
+        (!('votes' in sub) || (sub.votes is number && sub.votes >= 0 && sub.votes <= 10000000));
+    }
+
+    function isValidParticipant(data, participantId) {
+      return data.keys().hasAll(['id', 'contest_id', 'user_id', 'submission_data', 'status', 'submitted_at']) &&
+        data.keys().hasOnly(['id', 'contest_id', 'user_id', 'submission_data', 'status', 'admin_note', 'submitted_at']) &&
+        data.id == participantId &&
+        isValidId(data.id) &&
+        isValidId(data.contest_id) &&
+        isValidId(data.user_id) &&
+        isValidSubmissionData(data.submission_data) &&
+        data.status in ['pending', 'approved', 'rejected', 'eliminated'] &&
+        isOptionalString(data, 'admin_note', 500) &&
+        data.submitted_at is string && data.submitted_at.size() <= 64;
+    }
+
+    function isValidVote(data, voteId) {
+      return data.keys().hasAll(['id', 'contest_id', 'stage_id', 'group_id', 'voter_id', 'participant_id', 'trust_weight', 'created_at']) &&
+        data.keys().hasOnly(['id', 'contest_id', 'stage_id', 'group_id', 'voter_id', 'participant_id', 'trust_weight', 'created_at']) &&
+        data.id == voteId &&
+        isValidId(data.id) &&
+        isValidId(data.contest_id) &&
+        isValidId(data.stage_id) &&
+        isValidId(data.group_id) &&
+        isValidId(data.voter_id) &&
+        isValidId(data.participant_id) &&
+        data.trust_weight is number && data.trust_weight >= 0 && data.trust_weight <= 1000 &&
+        data.created_at is string && data.created_at.size() <= 64;
+    }
+
+    function isValidEternalVote(data, voteId) {
+      return data.keys().hasAll(['id', 'contest_id', 'voter_id', 'participant_id', 'trust_weight', 'voted_at', 'updated_at']) &&
+        data.keys().hasOnly(['id', 'contest_id', 'voter_id', 'participant_id', 'trust_weight', 'voted_at', 'updated_at']) &&
+        data.id == voteId &&
+        isValidId(data.id) &&
+        isValidId(data.contest_id) &&
+        isValidId(data.voter_id) &&
+        isValidId(data.participant_id) &&
+        data.trust_weight is number && data.trust_weight >= 0 && data.trust_weight <= 1000 &&
+        data.voted_at is string && data.voted_at.size() <= 64 &&
+        data.updated_at is string && data.updated_at.size() <= 64;
+    }
+
+    function isValidSubscription(data, subId) {
+      return data.keys().hasAll(['id', 'user_id', 'contest_id', 'created_at']) &&
+        data.keys().hasOnly(['id', 'user_id', 'contest_id', 'created_at']) &&
+        data.id == subId &&
+        isValidId(data.id) &&
+        isValidId(data.user_id) &&
+        isValidId(data.contest_id) &&
+        data.created_at is string && data.created_at.size() <= 64;
+    }
+
+    function isValidStage(data, stageId) {
+      return data.keys().hasAll(['id', 'contest_id', 'stage_number', 'status']) &&
+        data.keys().hasOnly(['id', 'contest_id', 'stage_number', 'title', 'status']) &&
+        data.id == stageId &&
+        isValidId(data.id) &&
+        isValidId(data.contest_id) &&
+        data.stage_number is number && data.stage_number >= 1 && data.stage_number <= 100 &&
+        isOptionalString(data, 'title', 160) &&
+        data.status in ['pending', 'active', 'completed'];
+    }
+
+    function isValidGroup(data, groupId) {
+      return data.keys().hasAll(['id', 'stage_id', 'contest_id', 'group_number', 'status']) &&
+        data.keys().hasOnly(['id', 'stage_id', 'contest_id', 'group_number', 'status']) &&
+        data.id == groupId &&
+        isValidId(data.id) &&
+        isValidId(data.stage_id) &&
+        isValidId(data.contest_id) &&
+        data.group_number is number && data.group_number >= 1 && data.group_number <= 1000 &&
+        data.status in ['pending', 'active', 'completed'];
+    }
+
+    function isValidGroupMember(data, memberId) {
+      return data.keys().hasAll(['id', 'group_id', 'stage_id', 'contest_id', 'participant_id']) &&
+        data.keys().hasOnly(['id', 'group_id', 'stage_id', 'contest_id', 'participant_id']) &&
+        data.id == memberId &&
+        isValidId(data.id) &&
+        isValidId(data.group_id) &&
+        isValidId(data.stage_id) &&
+        isValidId(data.contest_id) &&
+        isValidId(data.participant_id);
+    }
+
+    function isValidStageResult(data, resultId) {
+      return data.keys().hasAll(['id', 'stage_id', 'group_id', 'participant_id', 'vote_percentage', 'rank_in_group', 'passed']) &&
+        data.keys().hasOnly(['id', 'stage_id', 'group_id', 'participant_id', 'vote_percentage', 'rank_in_group', 'passed']) &&
+        data.id == resultId &&
+        isValidId(data.id) &&
+        isValidId(data.stage_id) &&
+        isValidId(data.group_id) &&
+        isValidId(data.participant_id) &&
+        data.vote_percentage is number && data.vote_percentage >= 0 && data.vote_percentage <= 100 &&
+        data.rank_in_group is number && data.rank_in_group >= 1 && data.rank_in_group <= 1000 &&
+        data.passed is bool;
+    }
+
+    function isValidFraudFlag(data, flagId) {
+      return data.keys().hasAll(['id', 'participant_id', 'reason', 'reviewed', 'created_at']) &&
+        data.keys().hasOnly(['id', 'participant_id', 'reason', 'reviewed', 'admin_action', 'created_at']) &&
+        data.id == flagId &&
+        isValidId(data.id) &&
+        isValidId(data.participant_id) &&
+        data.reason is string && data.reason.size() >= 1 && data.reason.size() <= 500 &&
+        data.reviewed is bool &&
+        isOptionalString(data, 'admin_action', 64) &&
+        data.created_at is string && data.created_at.size() <= 64;
+    }
+
+    function isValidUserDailyLog(data, logId) {
+      return data.keys().hasAll(['id', 'user_id', 'log_date', 'votes_cast']) &&
+        data.keys().hasOnly(['id', 'user_id', 'log_date', 'votes_cast']) &&
+        data.id == logId &&
+        isValidId(data.id) &&
+        isValidId(data.user_id) &&
+        data.log_date is string && data.log_date.size() == 10 &&
+        data.votes_cast is number && data.votes_cast >= 1 && data.votes_cast <= 10000;
+    }
+
+    // ── Health / Connection Probe ─────────────────────────────────
+    match /test/connection {
+      allow get: if true;
+    }
+
+    // ── Admins Collection ─────────────────────────────────────────
+    match /admins/{adminId} {
+      allow get: if isOwner(adminId) || isAdminEmail();
+      allow list: if isAdminEmail();
+      allow create, update, delete: if isAdminEmail() && isValidId(adminId);
+    }
+
+    // ── Public Profiles (PII-Free) ────────────────────────────────
+    match /profiles/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if isAdminEmail() || (isSignedIn() && resource.data.id == request.auth.uid);
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidProfile(incoming(), userId) &&
+        (incoming().role == 'user' || isAdmin());
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidProfile(incoming(), userId) &&
+        incoming().created_at == existing().created_at &&
+        incoming().id == existing().id &&
+        (
+          isAdmin() ||
+          (
+            isOwner(userId) &&
+            incoming().role == existing().role &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['username', 'display_name', 'avatar_url', 'bio', 'show_participations', 'updated_at'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // ── Private User PII ──────────────────────────────────────────
+    match /users_private/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdminEmail();
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserPrivate(incoming(), userId);
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserPrivate(incoming(), userId) &&
+        incoming().created_at == existing().created_at &&
+        incoming().uid == existing().uid &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['email']);
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // ── User Trust Scores ─────────────────────────────────────────
+    match /user_trust/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdminEmail();
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserTrust(incoming(), userId) &&
+        (incoming().score <= 20 || isAdmin());
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserTrust(incoming(), userId) &&
+        (
+          isAdmin() ||
+          (
+            isOwner(userId) &&
+            incoming().user_id == existing().user_id &&
+            incoming().score <= 20 &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['score', 'level', 'contests_voted', 'last_updated'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // ── Categories ────────────────────────────────────────────────
+    match /categories/{categoryId} {
+      allow get: if isValidId(categoryId);
+      allow list: if resource.data.sort_order is number;
+      allow create, update: if isAdmin() && isValidId(categoryId) && isValidCategory(incoming(), categoryId);
+      allow delete: if isAdmin() && isValidId(categoryId);
+    }
+
+    // ── Contests ──────────────────────────────────────────────────
+    match /contests/{contestId} {
+      allow get: if isValidId(contestId) && (
+        resource.data.visibility != 'private' ||
+        isAdmin() ||
+        (isSignedIn() && resource.data.created_by == request.auth.uid)
+      );
+      allow list: if resource.data.visibility == 'public' ||
+        isAdminEmail() ||
+        (isSignedIn() && resource.data.created_by == request.auth.uid);
+      allow create: if isVerifiedUser() &&
+        isValidId(contestId) &&
+        isValidContest(incoming(), contestId) &&
+        (incoming().created_by == request.auth.uid || isAdmin());
+      allow update: if isVerifiedUser() &&
+        isValidId(contestId) &&
+        isValidContest(incoming(), contestId) &&
+        incoming().created_at == existing().created_at &&
+        incoming().id == existing().id &&
+        (
+          isAdmin() ||
+          (
+            existing().created_by == request.auth.uid &&
+            existing().status != 'completed' &&
+            existing().status != 'blocked' &&
+            incoming().created_by == existing().created_by &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'description', 'rules', 'prize', 'category_id', 'cover_url', 'status', 'visibility', 'voting_end', 'updated_at'
+            ])
+          )
+        );
+      allow delete: if isValidId(contestId) && (isAdmin() || (isVerifiedUser() && resource.data.created_by == request.auth.uid));
+    }
+
+    // ── Participants ──────────────────────────────────────────────
+    match /participants/{participantId} {
+      allow get: if isValidId(participantId) && (
+        resource.data.status == 'approved' ||
+        isAdmin() ||
+        (isSignedIn() && resource.data.user_id == request.auth.uid)
+      );
+      allow list: if resource.data.status == 'approved' ||
+        isAdminEmail() ||
+        (isSignedIn() && resource.data.user_id == request.auth.uid);
+      allow create: if isVerifiedUser() &&
+        isValidId(participantId) &&
+        isValidParticipant(incoming(), participantId) &&
+        (
+          isAdmin() ||
+          (
+            (exists(/databases/$(database)/documents/contests/$(incoming().contest_id)) || isSeedContestId(incoming().contest_id)) &&
+            (
+              incoming().user_id == request.auth.uid ||
+              (
+                exists(/databases/$(database)/documents/contests/$(incoming().contest_id)) &&
+                get(/databases/$(database)/documents/contests/$(incoming().contest_id)).data.created_by == request.auth.uid
+              )
+            )
+          )
+        );
+      allow update: if isVerifiedUser() &&
+        isValidId(participantId) &&
+        isValidParticipant(incoming(), participantId) &&
+        incoming().id == existing().id &&
+        incoming().contest_id == existing().contest_id &&
+        incoming().user_id == existing().user_id &&
+        (
+          isAdmin() ||
+          (
+            existing().user_id == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['submission_data'])
+          ) ||
+          (
+            exists(/databases/$(database)/documents/contests/$(existing().contest_id)) &&
+            get(/databases/$(database)/documents/contests/$(existing().contest_id)).data.created_by == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'admin_note', 'submission_data'])
+          )
+        );
+      allow delete: if isValidId(participantId) && (
+        isAdmin() ||
+        (isVerifiedUser() && resource.data.user_id == request.auth.uid) ||
+        (isVerifiedUser() && exists(/databases/$(database)/documents/contests/$(resource.data.contest_id)) && get(/databases/$(database)/documents/contests/$(resource.data.contest_id)).data.created_by == request.auth.uid)
+      );
+    }
+
+    // ── Votes ─────────────────────────────────────────────────────
+    match /votes/{voteId} {
+      allow get: if isValidId(voteId);
+      allow list: if resource.data.contest_id is string ||
+        (isSignedIn() && resource.data.voter_id == request.auth.uid) ||
+        isAdminEmail() ||
+        resource.data.participant_id is string;
+      allow create: if isVerifiedUser() &&
+        isValidId(voteId) &&
+        isValidVote(incoming(), voteId) &&
+        incoming().voter_id == request.auth.uid &&
+        (exists(/databases/$(database)/documents/contests/$(incoming().contest_id)) || isSeedContestId(incoming().contest_id));
+      allow update: if isVerifiedUser() &&
+        isValidId(voteId) &&
+        isValidVote(incoming(), voteId) &&
+        existing().voter_id == request.auth.uid &&
+        incoming().voter_id == existing().voter_id &&
+        incoming().contest_id == existing().contest_id &&
+        incoming().created_at == existing().created_at &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['participant_id', 'trust_weight']);
+      allow delete: if isValidId(voteId) && (isAdmin() || (isVerifiedUser() && resource.data.voter_id == request.auth.uid));
+    }
+
+    // ── Eternal Votes ─────────────────────────────────────────────
+    match /eternal_votes/{voteId} {
+      allow get: if isValidId(voteId);
+      allow list: if resource.data.contest_id is string ||
+        (isSignedIn() && resource.data.voter_id == request.auth.uid) ||
+        isAdminEmail();
+      allow create: if isVerifiedUser() &&
+        isValidId(voteId) &&
+        isValidEternalVote(incoming(), voteId) &&
+        incoming().voter_id == request.auth.uid &&
+        (exists(/databases/$(database)/documents/contests/$(incoming().contest_id)) || isSeedContestId(incoming().contest_id));
+      allow update: if isVerifiedUser() &&
+        isValidId(voteId) &&
+        isValidEternalVote(incoming(), voteId) &&
+        existing().voter_id == request.auth.uid &&
+        incoming().voter_id == existing().voter_id &&
+        incoming().contest_id == existing().contest_id &&
+        incoming().voted_at == existing().voted_at &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['participant_id', 'trust_weight', 'updated_at']);
+      allow delete: if isValidId(voteId) && (isAdmin() || (isVerifiedUser() && resource.data.voter_id == request.auth.uid));
+    }
+
+    // ── Contest Subscriptions ─────────────────────────────────────
+    match /contest_subscriptions/{subId} {
+      allow get: if isValidId(subId) && isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdminEmail());
+      allow create: if isVerifiedUser() &&
+        isValidId(subId) &&
+        isValidSubscription(incoming(), subId) &&
+        incoming().user_id == request.auth.uid &&
+        (exists(/databases/$(database)/documents/contests/$(incoming().contest_id)) || isSeedContestId(incoming().contest_id));
+      allow delete: if isValidId(subId) && isVerifiedUser() && (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // ── Tournament Stages / Groups / Members / Results ────────────
+    match /contest_stages/{stageId} {
+      allow get: if isValidId(stageId);
+      allow list: if resource.data.contest_id is string;
+      allow create, update: if isVerifiedUser() && isValidId(stageId) && isValidStage(incoming(), stageId) && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/contests/$(incoming().contest_id)) && get(/databases/$(database)/documents/contests/$(incoming().contest_id)).data.created_by == request.auth.uid)
+      );
+      allow delete: if isAdmin() && isValidId(stageId);
+    }
+
+    match /contest_groups/{groupId} {
+      allow get: if isValidId(groupId);
+      allow list: if resource.data.contest_id is string || resource.data.stage_id is string || isAdminEmail();
+      allow create, update: if isVerifiedUser() && isValidId(groupId) && isValidGroup(incoming(), groupId) && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/contests/$(incoming().contest_id)) && get(/databases/$(database)/documents/contests/$(incoming().contest_id)).data.created_by == request.auth.uid)
+      );
+      allow delete: if isAdmin() && isValidId(groupId);
+    }
+
+    match /group_members/{memberId} {
+      allow get: if isValidId(memberId);
+      allow list: if resource.data.group_id is string;
+      allow create, update: if isVerifiedUser() && isValidId(memberId) && isValidGroupMember(incoming(), memberId) && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/contests/$(incoming().contest_id)) && get(/databases/$(database)/documents/contests/$(incoming().contest_id)).data.created_by == request.auth.uid)
+      );
+      allow delete: if isAdmin() && isValidId(memberId);
+    }
+
+    match /stage_results/{resultId} {
+      allow get: if isValidId(resultId);
+      allow list: if resource.data.stage_id is string || resource.data.participant_id is string || isAdminEmail();
+      allow create, update: if isAdmin() && isValidId(resultId) && isValidStageResult(incoming(), resultId);
+      allow delete: if isAdmin() && isValidId(resultId);
+    }
+
+    // ── Fraud Flags (Admin Only) ──────────────────────────────────
+    match /fraud_flags/{flagId} {
+      allow get: if isValidId(flagId) && isAdmin();
+      allow list: if isAdminEmail();
+      allow create, update: if isAdmin() && isValidId(flagId) && isValidFraudFlag(incoming(), flagId);
+      allow delete: if isAdmin() && isValidId(flagId);
+    }
+
+    // ── User Daily Log ────────────────────────────────────────────
+    match /user_daily_log/{logId} {
+      allow get: if isValidId(logId) && isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdminEmail());
+      allow create: if isVerifiedUser() && isValidId(logId) && isValidUserDailyLog(incoming(), logId) && incoming().user_id == request.auth.uid;
+      allow update: if isVerifiedUser() && isValidId(logId) && isValidUserDailyLog(incoming(), logId) && existing().user_id == request.auth.uid && incoming().user_id == existing().user_id && incoming().diff(existing()).affectedKeys().hasOnly(['votes_cast']);
+      allow delete: if isAdmin() && isValidId(logId);
+    }
+  }
+}

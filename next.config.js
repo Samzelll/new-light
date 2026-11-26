@@ -1,9 +1,12 @@
+const { PHASE_DEVELOPMENT_SERVER } = require('next/constants');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
 
   // Enable Next.js image optimisation with allowed remote domains.
-  // All photos from Supabase Storage and Unsplash CDN will be served
+  // All photos from Firebase/external CDNs will be served
   // through Next.js's built-in resizing pipeline (WebP/AVIF, lazy-loaded,
   // right-sized per breakpoint) — the user never downloads the full original.
   images: {
@@ -12,12 +15,6 @@ const nextConfig = {
     deviceSizes: [390, 640, 750, 828, 1080, 1200, 1920],
     imageSizes: [32, 48, 64, 96, 128, 160, 192, 256, 384],
     remotePatterns: [
-      // Supabase Storage (replace project ref with your own if needed)
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-        pathname: '/storage/v1/object/public/**',
-      },
       // Unsplash CDN (used in seed/mock data)
       {
         protocol: 'https',
@@ -102,4 +99,7 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = (phase) => ({
+  ...nextConfig,
+  distDir: phase === PHASE_DEVELOPMENT_SERVER ? '.next-dev' : '.next',
+});

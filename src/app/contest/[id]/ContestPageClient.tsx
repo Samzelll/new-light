@@ -9,8 +9,8 @@ import { ArrowLeft, Bookmark, MoreHorizontal, Check, Trash2, X, Plus, Share2, Tr
 import { useAuth } from '@/hooks/useAuth';
 import { getContestById, Contest, updateContestStatus } from '@/services/contestService';
 import { getParticipants, Participant, addBattleParticipant, deleteParticipant } from '@/services/participantService';
-import { castVote, cancelVote } from '@/services/voteService';
-import { supabase } from '@/services/supabase';
+import { castVote, cancelVote, getContestVotes } from '@/services/voteService';
+import { ADMIN_BOOTSTRAP_EMAIL } from '@/lib/firebase';
 import type { ContestParticipantModalProps } from '@/components/contest/ContestParticipantModal';
 import { ContestPage as RegistrationContestPage } from '@/components/contest/RegistrationContestPage';
 import { resolveImageUrl, shouldBeUnoptimized } from '@/services/storageService';
@@ -62,7 +62,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   const routeParams = useParams();
   const id = (typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : propId) || '';
 
-  const { user, isAuthenticated } = useAuth();
+  const { user, profile, isAuthenticated } = useAuth();
 
   const [contest, setContest] = useState<Contest | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -94,7 +94,11 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
   };
 
   const isCreator = Boolean(
-    user && contest && (contest.created_by === user.id || user.email === 'samzelenkov@gmail.com')
+    user &&
+      contest &&
+      (contest.created_by === user.id ||
+        user.email?.toLowerCase() === ADMIN_BOOTSTRAP_EMAIL ||
+        profile?.role === 'admin')
   );
 
   // Detect Russian/Cyrillic content for adaptive copy matching user screenshots
@@ -172,12 +176,7 @@ export default function ContestPageClient({ id: propId }: { id?: string }) {
       const [contestRes, participantsRes, votesRes] = await Promise.all([
         getContestById(id),
         getParticipants(id, 'approved'),
-        Promise.resolve(
-          supabase
-            .from('votes')
-            .select('id, participant_id, voter_id')
-            .eq('contest_id', id)
-        ).catch(() => ({ data: [] as any[] })),
+        getContestVotes(id).catch(() => ({ data: [] as any[], error: null })),
       ]);
 
       if (cancelled) return;

@@ -37,14 +37,9 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
   return (
     <html lang="en" className={`${manrope.variable} ${lora.variable}`} suppressHydrationWarning>
       <head>
-        {supabaseUrl && supabaseUrl.startsWith('http') && (
-          <link rel="preconnect" href={supabaseUrl} />
-        )}
         <link rel="preconnect" href="https://images.unsplash.com" />
       </head>
       <body className="bg-bg text-ink font-sans min-h-screen">
